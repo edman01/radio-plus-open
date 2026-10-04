@@ -15,8 +15,40 @@ compatibility with those devices has not been verified.
 Android 8.1+ and a compatible stock radio with **FMPlugService** are required.
 **Keep the stock radio installed and enabled.** Radio+ does not replace it or change the firmware.
 
-Confirmed working on the maintainer's **Junsun V7 running Android 13**. Other testing is emulator-only;
-other models and firmware variants are not verified. [Test details](docs/TESTING.md).
+Radio+ controls the stock `com.hcn.autoradio` app through its **FMPlugService**.
+Finding `com.hcn.autoradio` on your head unit is a promising compatibility clue:
+Radio+ **may** work, but the package name alone is not a guarantee. The firmware
+must still expose a compatible service/API.
+
+**Check your stock radio's package name (no PC needed):**
+
+1. Open Android **Settings → Apps**, show all apps or system apps, then select
+   the original **Radio** app and open **App info**. Menu names vary by firmware.
+2. Look for the **package identifier**, not the display name “Radio” or the
+   device's build number. Some firmware does not show it here; if yours does not,
+   inspect the original Radio app with an already-installed app-information tool,
+   such as DevCheck. The expected identifier is exactly `com.hcn.autoradio`.
+
+You do not need to replace, disable or uninstall the stock radio to check this.
+Optional, with an already-authorized ADB connection:
+`adb shell pm list packages com.hcn.autoradio` should include `package:com.hcn.autoradio`.
+
+**Tested and working on the maintainer's unit:**
+
+| Detail | Reported specification |
+| --- | --- |
+| Device / model / board | Junsun V7 / `tb8768p1_64_bsp` |
+| Chipset | MediaTek MT8768V/CX (reported as MT6765) |
+| Memory / storage / display | 6 GB RAM / 128 GB storage / 1280 × 720 |
+| Firmware | `MQ001_2025.12.29.16.58_6_6826_G` |
+| MCU | `MQ001-25.08.01_499` |
+| Android | Android 13 (API 33), observed by DevCheck and diagnostics |
+
+The OEM settings screen displays **Android 15**, but DevCheck and diagnostics
+report **Android 13 / API 33**; the OEM label is not evidence of Android 15 support.
+Physical testing is limited to this unit; other testing is emulator-only. Other
+models and firmware variants remain unverified, and not every feature is guaranteed.
+See [test details and known issues](docs/TESTING.md).
 
 ## How it works
 
