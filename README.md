@@ -18,6 +18,15 @@ Android 8.1+ and a compatible stock radio with **FMPlugService** are required.
 Confirmed working on the maintainer's **Junsun V7 running Android 13**. Other testing is emulator-only;
 other models and firmware variants are not verified. [Test details](docs/TESTING.md).
 
+## How it works
+
+Radio+ provides an alternative interface for the head unit's built-in FM/AM tuner.
+It sends tuning and playback commands to the compatible stock radio service,
+which controls the radio hardware. It is not an internet radio player.
+
+The original radio app must stay installed and enabled, but its interface does
+not need to remain open. [How tuning, audio and station information work](docs/HOW_IT_WORKS.md).
+
 ## Community compatibility reports
 
 Tried Radio+ on your head unit? [Report your results](https://github.com/edman01/radio-plus-open/issues/new?template=compatibility.yml)
