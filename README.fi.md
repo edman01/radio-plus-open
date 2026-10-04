@@ -14,7 +14,11 @@ Asemalista, suosikit ja omat kanavalogot. Kielet: englanti ja suomi.
 Tarvitset **Android 8.1:n tai uudemman** sekä yhteensopivan vakioradion
 **FMPlugService-palvelun**. Säilytä vakioradio asennettuna ja käytössä.
 Radio+ ei korvaa sitä eikä muuta firmwarea. Pelkkä Android-versio ei takaa
-yhteensopivuutta. Tämä on beta: ääni ja rattipainikkeet vaativat laitetestausta.
+yhteensopivuutta.
+
+**Varmistettu toimivaksi oikealla Junsun V7 -soittimella ylläpitäjän omassa testissä.**
+Muu testaus on tehty vain emulaattorissa; muita soitinmalleja ei ole varmistettu.
+Firmware-erot voivat vaikuttaa yhteensopivuuteen. Tämä on beta; katso [testauksen rajaukset](docs/TESTING.md).
 
 ## Aloita näin
 

@@ -5,6 +5,10 @@ Tämä on ilmainen laitekohtainen beta, ei kaikilla Android-laitteilla toimiva r
 **Vakioradion `com.hcn.autoradio` ja sen FMPlugService-palvelun täytyy olla
 asennettuna ja käytössä.** Sovellus ei korvaa vakioradiota eikä muuta firmwarea.
 
+Radio+ on varmistettu toimivaksi oikealla **Junsun V7** -soittimella ylläpitäjän
+omassa testissä. Muu testaus on tehty vain emulaattorissa. Muiden soitinmallien
+toimivuutta ei ole varmistettu, ja firmware-erot voivat vaikuttaa myös V7-malleihin.
+
 [Lataa beta](https://github.com/edman01/radio-plus-open/releases)
 · [English](../README.md) · [Lähdekoodin kääntäminen](BUILD.md)
 

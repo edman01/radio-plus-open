@@ -3,7 +3,9 @@
 Radio+ is a hardware beta for compatible Android head units, not a universal radio
 app. It requires **Android 8.1 / API 27 or newer** and the stock
 `com.hcn.autoradio.service.FMPlugService`. Keep the stock radio installed and enabled.
-Android version or a “Junsun V7” label alone does not prove compatibility.
+The maintainer has confirmed operation on their physical **Junsun V7**. Other
+testing has been emulator-only; other models are unverified. Android version or
+a “Junsun V7” label alone does not guarantee compatibility with every firmware.
 Ordinary phones/tablets do not gain an FM tuner from this app.
 
 ## Install

@@ -14,7 +14,11 @@ Station lists, favorites and your own channel logos. English and Finnish.
 Requires **Android 8.1+** and the compatible stock radio's **FMPlugService**.
 Keep the original radio installed and enabled. Radio+ does not replace it or
 change your firmware. Compatibility depends on the head unit, not just its
-Android version. This is a beta; real-device audio and steering controls need testing.
+Android version.
+
+**Confirmed working on a physical Junsun V7 in the maintainer's own testing.**
+Other testing has been emulator-only; other head units have not been verified.
+Firmware differences may affect compatibility. This is a beta; see [test scope](docs/TESTING.md).
 
 ## Get started
 

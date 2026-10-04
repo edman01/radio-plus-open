@@ -1,5 +1,13 @@
 # Beta testing and known limitations
 
+## Physical device testing
+
+The maintainer reports Radio+ confirmed working on their physical **Junsun V7**.
+Other testing has been emulator-only; no other head-unit model is verified.
+This is a device-specific report, not a guarantee for every V7 firmware variant
+or proof that every feature and long-running scenario has passed. The checks
+below distinguish automated evidence from hardware-dependent regression testing.
+
 ## Verified for this source release
 
 On 4 October 2026 the clean public project built with Gradle 8.11.1, Android SDK
@@ -21,7 +29,7 @@ at 1280×720. The public variant uses the same shared UI sources but ships witho
 the private logo catalogue. The head-unit image is an AI-assisted composite, not
 a photograph of this release running in a physical vehicle.
 
-## Not proven by those tests
+## Not proven by automated tests
 
 | Area | Remaining device verification |
 | --- | --- |
