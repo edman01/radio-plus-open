@@ -4,9 +4,9 @@ Radio+ does not bundle, search for or download station logos. Import one image
 per station through Android's file picker. Use images you are allowed to use;
 this feature does not grant copyright or trademark permissions.
 
-![Import or remove a logo in the public build](images/logo-import-menu.png)
+![Illustration of the logo import and removal menu](images/logo-import-menu.png)
 
-Actual emulator capture of the public build's logo menu.
+*AI-edited illustration with fictional station data, not an unedited screenshot.*
 
 ## From a USB drive
 

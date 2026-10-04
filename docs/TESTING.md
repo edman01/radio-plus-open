@@ -24,10 +24,11 @@ On 4 October 2026 the clean public project built with Gradle 8.11.1, Android SDK
   resource isolation and removal/recycled-card behavior.
 - The signed APK contains no station-logo assets or embedded native/vendor libraries.
 
-The demo screenshot was captured from the private preview with six station logos
-at 1280×720. The public variant uses the same shared UI sources but ships without
-the private logo catalogue. The head-unit image is an AI-assisted composite, not
-a photograph of this release running in a physical vehicle.
+The public demo images are AI-edited illustrations based on earlier emulator
+captures. Their stations, logos and track text are fictional. They are not raw
+screenshots or test evidence. The head-unit image is a synthetic composite, not
+a photograph of this release running in a physical vehicle. The public app
+ships without bundled station logos.
 
 ## Not proven by automated tests
 

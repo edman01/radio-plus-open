@@ -8,7 +8,7 @@ compatibility with those devices has not been verified.
 
 ![Radio+ head-unit demo](docs/images/radio-plus-head-unit-demo.png)
 
-*AI-assisted emulator demo. Station logos are not included.*
+*AI-assisted illustration with fictional stations and logos. Logos are not included in the app.*
 
 ## Compatibility
 
