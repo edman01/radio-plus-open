@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="steering_automatic_hint">"Lenkradtasten funktionieren normalerweise automatisch über die Android-Mediensteuerung. Auf dem getesteten Junsun V7 funktionieren sie ohne diesen Bedienungshilfendienst. Aktivieren Sie den optionalen Dienst nur, wenn die Tasten auf Ihrem Autoradio nicht funktionieren."</string>
+    <string name="steering_test_buttons">"Tasten testen"</string>
+    <string name="steering_test_title">"Lenkradtastentest"</string>
+    <string name="steering_test_instructions">"Parken Sie zuerst. Starten Sie den 30-Sekunden-Test und drücken Sie am Lenkrad die Tasten für den nächsten und vorherigen Sender. Hier erscheinen nur Tastencodes und der technische Status; es werden keine Dateien gespeichert oder hochgeladen. Fotografieren Sie das Ergebnis."</string>
+    <string name="steering_test_start">"30 s starten"</string>
+    <string name="steering_test_previous">"Zurück testen"</string>
+    <string name="steering_test_next">"Weiter testen"</string>
+    <string name="steering_test_recording">"RAM-Aufzeichnung"</string>
+    <string name="steering_test_stopped">"Aufzeichnung beendet"</string>
+    <string name="steering_test_unknown_target">"Ziel der Mediensteuerung: unbekannt. Eine aktive Sitzung beweist nicht, dass sie die Tastenbefehle empfängt."</string>
+</resources>

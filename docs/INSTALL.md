@@ -26,6 +26,11 @@ in the APK; changing language needs no download.
 RDS station names and radio text appear when supplied by the stock service. You
 can rename a station yourself if its name is missing. Configure only while parked.
 
+Next/previous steering-wheel buttons work without an accessibility service on
+the tested Junsun V7. The **Steering-wheel buttons** setting provides an optional
+fallback for other compatible head units; enable it only if the buttons do not
+already work. It cannot intercept commands that the firmware does not expose.
+
 ## Update
 
 Release package: `fi.radioplus.app.play`. The `play` suffix is a legacy identifier,

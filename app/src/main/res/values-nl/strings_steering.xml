@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="steering_automatic_hint">"Stuurwielknoppen werken meestal automatisch via de mediabediening van Android. Op de geteste Junsun V7 werken ze zonder deze toegankelijkheidsservice. Schakel de optionele service alleen in als de knoppen op je autoradio niet werken."</string>
+    <string name="steering_test_buttons">"Knoppen testen"</string>
+    <string name="steering_test_title">"Test van stuurwielknoppen"</string>
+    <string name="steering_test_instructions">"Parkeer eerst. Start de test van 30 seconden en druk op de knoppen voor volgende en vorige op het stuur. Hier verschijnen alleen knopcodes en technische status; er worden geen bestanden opgeslagen of verstuurd. Maak een foto van het resultaat."</string>
+    <string name="steering_test_start">"Start 30 s"</string>
+    <string name="steering_test_previous">"Vorige testen"</string>
+    <string name="steering_test_next">"Volgende testen"</string>
+    <string name="steering_test_recording">"Opname in geheugen"</string>
+    <string name="steering_test_stopped">"Opname gestopt"</string>
+    <string name="steering_test_unknown_target">"Ontvanger van mediaknoppen: onbekend. Een actieve sessie bewijst niet dat deze de knopopdrachten ontvangt."</string>
+</resources>

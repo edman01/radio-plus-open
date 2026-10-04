@@ -33,4 +33,6 @@
     <string name="widget_favorites">Favorites</string>
     <string name="widget_station_list">Station list</string>
     <string name="widget_cancel">Cancel</string>
+    <string name="content_previous_station">Previous station</string>
+    <string name="content_next_station">Next station</string>
 </resources>

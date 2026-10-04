@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="steering_automatic_hint">"I tasti al volante funzionano normalmente in modo automatico tramite i controlli multimediali di Android. Sul Junsun V7 testato funzionano senza questo servizio di accessibilità. Attiva il servizio facoltativo solo se i tasti non funzionano sulla tua autoradio."</string>
+    <string name="steering_test_buttons">"Prova tasti"</string>
+    <string name="steering_test_title">"Test dei tasti al volante"</string>
+    <string name="steering_test_instructions">"Parcheggia prima. Avvia il test di 30 secondi e premi i tasti successivo e precedente sul volante. Qui vengono mostrati solo i codici dei tasti e lo stato tecnico; non vengono salvati né inviati file. Scatta una foto del risultato."</string>
+    <string name="steering_test_start">"Avvia 30 s"</string>
+    <string name="steering_test_previous">"Prova precedente"</string>
+    <string name="steering_test_next">"Prova successivo"</string>
+    <string name="steering_test_recording">"Acquisizione in memoria"</string>
+    <string name="steering_test_stopped">"Acquisizione arrestata"</string>
+    <string name="steering_test_unknown_target">"Destinatario dei tasti multimediali: sconosciuto. Una sessione attiva non dimostra che riceva i comandi dei tasti."</string>
+</resources>

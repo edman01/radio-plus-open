@@ -47,6 +47,39 @@ for playback control and
 [OemFocusInteropPolicy](../app/src/main/java/fi/radioplus/app/OemFocusInteropPolicy.java)
 for the audio-focus decision rules.
 
+## Media controls
+
+Next and previous use the list selected in Radio+:
+**Stations** follows the saved station-list order, and **Favorites**
+follows the favorites order. The selection survives app and service restarts.
+Navigation wraps from the last entry to the first, or vice versa. An empty list
+does nothing; it does not start a frequency search or borrow another list.
+
+The screen arrows, Android media-session controls and supported steering-wheel
+keys use the same navigation path. Holding a media key still selects one adjacent
+station; tuner seeking remains in **Tuning**. Duplicate deliveries of the same
+identified press are ignored. Radio+ confirms the frequency reported by the
+stock service rather than displaying the requested station as if tuning succeeded.
+
+Firmware must still deliver the key events to Radio+. The optional steering-key
+accessibility service can route supported physical keys while Radio+ is visible;
+it cannot handle commands that the firmware never exposes to Android.
+The tested Junsun V7 does not need this accessibility service: its next/previous
+buttons work through Android media controls without it. Enable the optional
+service only if the buttons do not work on your head unit.
+
+Starting radio playback registers Radio+ for Android media controls. Changing
+to an adjacent station while radio playback is already active avoids repeating
+that handoff, which prevents the brief audio interruption after a station change
+on the tested Junsun V7.
+Selecting another station on the screen now also reuses active radio playback.
+Reopening the screen preserves ongoing playback or an intentional pause; merely
+showing the interface is not treated as a Play command. Explicitly starting from
+pause or selecting a station from a widget still allows a fresh audio takeover
+when needed. Tuner hardware may
+briefly mute while changing frequency; this is separate from a delayed audio
+handoff after the new station has started.
+
 ## Station information
 
 Radio+ reads the current frequency and RDS station name from the stock service.

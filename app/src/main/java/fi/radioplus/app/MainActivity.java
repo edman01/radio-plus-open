@@ -73,6 +73,7 @@ public final class MainActivity extends Activity implements
     private static final long STATION_REORDER_HOLD_MS = 3000L;
     private static final long STATION_REORDER_PAGE_DELAY_MS = 550L;
     private static final long MANUAL_SEEK_CAPTURE_TIMEOUT_MS = 15_000L;
+    private static final String PROJECT_URL = "https://github.com/edman01/radio-plus-open";
 
     private final ArrayList<View> radioControls = new ArrayList<>();
     private final ArrayList<FavoriteStation> favoriteStations = new ArrayList<>();
@@ -99,6 +100,8 @@ public final class MainActivity extends Activity implements
     private EditText manualFrequency;
     private AlertDialog manualTuningDialog;
     private RadioSettingsDialog settingsDialog;
+    private AlertDialog aboutDialog;
+    private SteeringDiagnosticsDialog steeringDiagnosticsDialog;
     private EditText manualTuningInput;
     private TextView manualTuningStatus;
     private int manualTuningBand = -1;
@@ -127,6 +130,7 @@ public final class MainActivity extends Activity implements
 
     private FavoriteStore favoriteStore;
     private StationStore stationStore;
+    private StationNavigationStore stationNavigationStore;
     private FavoriteAdapter favoriteAdapter;
     private RadioServiceClient radioClient;
     private RadioServiceClient.RadioState currentState;
@@ -202,6 +206,8 @@ public final class MainActivity extends Activity implements
         favoriteStore = new FavoriteStore(this);
         stationStore = new StationStore(this);
         migrateLegacyStationStorage();
+        stationNavigationStore = new StationNavigationStore(this);
+        showingFavorites = stationNavigationStore.favoritesSelected();
         radioClient = new RadioServiceClient(this, this);
         bindViews();
         configureControls();
@@ -236,7 +242,7 @@ public final class MainActivity extends Activity implements
             requestPlaybackNotificationPermission();
             playbackPausedByStationTap = false;
             try {
-                RadioPlaybackService.ensureRunning(this);
+                RadioPlaybackService.ensureRunningForUi(this);
             } catch (RuntimeException exception) {
                 android.util.Log.w(
                         "JunsunRadioPlus",
@@ -277,6 +283,8 @@ public final class MainActivity extends Activity implements
     @Override
     protected void onPause() {
         SteeringKeyService.setRadioVisible(false);
+        RadioPlaybackService.noteUiBackgrounded();
+        SteeringDiagnosticTrace.get().stop();
         super.onPause();
     }
 
@@ -304,6 +312,11 @@ public final class MainActivity extends Activity implements
         if (settingsDialog != null) {
             settingsDialog.dismiss();
         }
+        if (aboutDialog != null) {
+            aboutDialog.dismiss();
+            aboutDialog = null;
+        }
+        if (steeringDiagnosticsDialog != null) steeringDiagnosticsDialog.dismiss();
         mainHandler.removeCallbacksAndMessages(null);
         if (radioClient != null) {
             radioClient.close();
@@ -367,22 +380,15 @@ public final class MainActivity extends Activity implements
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event != null) SteeringDiagnosticTrace.get().key("activity", event.getKeyCode(),
+                event.getAction(), event.getMetaState(), event.getRepeatCount(),
+                event.getScanCode(), event.getFlags(), event.getSource(), event.getDownTime(), event.getEventTime());
         if (!debugPreview
                 && event != null
                 && RadioPlaybackService.supportsMediaKey(event.getKeyCode())) {
-            Intent service = new Intent(this, RadioPlaybackService.class);
-            service.setAction(Intent.ACTION_MEDIA_BUTTON);
-            service.putExtra(Intent.EXTRA_KEY_EVENT, event);
-            try {
-                startForegroundService(service);
-            } catch (RuntimeException error) {
-                android.util.Log.w(
-                        "JunsunRadioPlus",
-                        "Foreground media key could not reach radio service",
-                        error
-                );
+            if (RadioMediaButtonReceiver.dispatch(this, event)) {
+                return true;
             }
-            return true;
         }
         return super.dispatchKeyEvent(event);
     }
@@ -527,18 +533,12 @@ public final class MainActivity extends Activity implements
 
     private void seekLowerFrequency() {
         manualTuneKey = "";
-        if (showingFavorites && tuneAdjacentFavorite(false)) {
-            return;
-        }
-        seekTunerFrequency(false);
+        tuneAdjacentStation(false);
     }
 
     private void seekHigherFrequency() {
         manualTuneKey = "";
-        if (showingFavorites && tuneAdjacentFavorite(true)) {
-            return;
-        }
-        seekTunerFrequency(true);
+        tuneAdjacentStation(true);
     }
 
     private void seekTunerFrequency(boolean higher) {
@@ -559,16 +559,22 @@ public final class MainActivity extends Activity implements
         });
     }
 
-    private boolean tuneAdjacentFavorite(boolean next) {
-        List<FavoriteStation> favorites = favoriteStore.load();
-        if (favorites.isEmpty()) {
-            toast(tr("Ei suosikkeja", "No favorites"));
+    private boolean tuneAdjacentStation(boolean next) {
+        List<FavoriteStation> stations = stationNavigationStore.load();
+        if (stations.isEmpty()) {
+            toast(getString(showingFavorites ? R.string.favorites_empty : R.string.stations_empty));
+            return true;
+        }
+        clearPendingStationSelection();
+        if (!debugPreview) {
+            // Use the same serialized, hardware-confirmed path as steering controls.
+            RadioPlaybackService.skipStation(this, next);
             return true;
         }
         int band = currentState == null ? -1 : currentState.band;
         int frequency = currentState == null ? -1 : currentState.frequency;
         FavoriteStation target = FavoriteNavigator.selectInStoredOrder(
-                favorites,
+                stations,
                 band,
                 frequency,
                 next
@@ -578,7 +584,7 @@ public final class MainActivity extends Activity implements
         }
         // A one-item list has no adjacent station. Do not feed the currently
         // playing tile back through its tap-to-pause behavior.
-        if (favorites.size() == 1
+        if (stations.size() == 1
                 && target.band == band
                 && target.frequency == frequency
                 && (debugPreview
@@ -588,6 +594,17 @@ public final class MainActivity extends Activity implements
         }
         onTune(target);
         return true;
+    }
+
+    private void clearPendingStationSelection() {
+        pendingTuneKey = "";
+        pendingTuneAt = 0L;
+        favoritePageManuallySelected = false;
+        playbackPausedByStationTap = false;
+        if (pendingUnnamedStationPrompt != null) {
+            mainHandler.removeCallbacks(pendingUnnamedStationPrompt);
+            pendingUnnamedStationPrompt = null;
+        }
     }
 
     private void stepLowerFrequency() {
@@ -649,6 +666,7 @@ public final class MainActivity extends Activity implements
                     @Override public void onLanguage() { showLanguageDialog(); }
                     @Override public void onSensitivity() { showReceptionModeDialog(); }
                     @Override public void onSteeringKeys() { showSteeringKeySetup(); }
+                    @Override public void onAbout() { showAboutDialog(); }
                     @Override public void onAutoStartChanged(boolean enabled) {
                         setAutoStartEnabled(enabled);
                     }
@@ -656,10 +674,38 @@ public final class MainActivity extends Activity implements
         settingsDialog.show();
     }
 
+    private void showAboutDialog() {
+        if (destroyed || isFinishing() || (aboutDialog != null && aboutDialog.isShowing())) return;
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.about_title)
+                .setMessage(getString(R.string.about_version, BuildConfig.VERSION_NAME)
+                        + "\n\n" + PROJECT_URL)
+                .setPositiveButton(R.string.about_open_github, null)
+                .setNegativeButton(R.string.settings_back, null)
+                .create();
+        aboutDialog = dialog;
+        dialog.setOnDismissListener(ignored -> {
+            if (aboutDialog == dialog) aboutDialog = null;
+        });
+        dialog.show();
+        styleCarDialog(dialog);
+        // Set the listener after show so a missing/blocked browser does not
+        // automatically close the version and project information.
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+            try {
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(PROJECT_URL)));
+                dialog.dismiss();
+            } catch (ActivityNotFoundException | SecurityException error) {
+                toast(getString(R.string.about_browser_unavailable));
+            }
+        });
+    }
+
     private void showSteeringKeySetup() {
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle(R.string.settings_steering)
-                .setMessage(R.string.steering_permission_description)
+                .setMessage(getString(R.string.steering_automatic_hint) + "\n\n"
+                        + getString(R.string.steering_permission_description))
                 .setPositiveButton(R.string.steering_open_settings, (ignored, which) -> {
                     try {
                         startActivity(new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS));
@@ -667,9 +713,21 @@ public final class MainActivity extends Activity implements
                         toast(getString(R.string.steering_settings_unavailable));
                     }
                 })
-                .setNegativeButton(R.string.settings_close, null).create();
+                .setNeutralButton(getString(R.string.steering_test_buttons), (ignored, which) ->
+                        showSteeringDiagnostics())
+                .setNegativeButton(R.string.settings_back, null).create();
         dialog.show();
         styleCarDialog(dialog);
+    }
+
+    private void showSteeringDiagnostics() {
+        if (steeringDiagnosticsDialog != null && steeringDiagnosticsDialog.isShowing()) return;
+        SteeringDiagnosticsDialog dialog = new SteeringDiagnosticsDialog(this, debugPreview);
+        steeringDiagnosticsDialog = dialog;
+        dialog.setOnClosed(() -> {
+            if (steeringDiagnosticsDialog == dialog) steeringDiagnosticsDialog = null;
+        });
+        dialog.show();
     }
 
     private void showReceptionModeDialog() {
@@ -684,7 +742,7 @@ public final class MainActivity extends Activity implements
                     setReceptionMode(which == 0);
                     choiceDialog.dismiss();
                 })
-                .setNegativeButton(tr("Sulje", "Close"), null)
+                .setNegativeButton(R.string.settings_back, null)
                 .create();
         dialog.show();
         styleCarDialog(dialog);
@@ -716,7 +774,7 @@ public final class MainActivity extends Activity implements
                         recreate();
                     }
                 })
-                .setNegativeButton(tr("Peruuta", "Cancel"), null)
+                .setNegativeButton(R.string.settings_back, null)
                 .create();
         dialog.show();
         styleCarDialog(dialog);
@@ -1599,9 +1657,9 @@ public final class MainActivity extends Activity implements
                     selected,
                     observedScanNames
             );
-            showingFavorites = false;
             favoritePage = 0;
-            refreshFavorites();
+            favoritePageManuallySelected = false;
+            showStationCatalog(false);
             if (stoppedByUser) {
                 completeStoppedScan(selected.length, added);
                 return;
@@ -2331,6 +2389,9 @@ public final class MainActivity extends Activity implements
             return;
         }
         currentState = state;
+        if (settingsDialog != null && settingsDialog.isShowing()) {
+            settingsDialog.updateLocalMode(state.localMode);
+        }
         captureManualStationIfReady(state);
         updateManualTuningDialog(state);
         RadioPlaybackService.publishMediaState(
@@ -2601,6 +2662,7 @@ public final class MainActivity extends Activity implements
     }
 
     private void showStationCatalog(boolean favorites) {
+        stationNavigationStore.setFavoritesSelected(favorites);
         if (showingFavorites != favorites) {
             showingFavorites = favorites;
             favoritePage = 0;
@@ -2623,10 +2685,10 @@ public final class MainActivity extends Activity implements
         stationsButton.setSelected(!showingFavorites);
         savedButton.setSelected(showingFavorites);
         findViewById(R.id.seek_down_button).setContentDescription(getString(
-                showingFavorites ? R.string.content_previous_favorite : R.string.content_seek_down
+                showingFavorites ? R.string.content_previous_favorite : R.string.content_previous_station
         ));
         findViewById(R.id.seek_up_button).setContentDescription(getString(
-                showingFavorites ? R.string.content_next_favorite : R.string.content_seek_up
+                showingFavorites ? R.string.content_next_favorite : R.string.content_next_station
         ));
     }
 

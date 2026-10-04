@@ -172,4 +172,6 @@
     <string name="settings_local">"Solo emisoras fuertes"</string>
     <string name="settings_dx">"También emisoras débiles"</string>
     <string name="settings_unknown">"No disponible"</string>
+    <string name="content_previous_station">Emisora anterior</string>
+    <string name="content_next_station">Emisora siguiente</string>
 </resources>

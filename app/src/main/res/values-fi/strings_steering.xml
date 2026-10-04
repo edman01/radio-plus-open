@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="steering_automatic_hint">"Rattipainikkeet toimivat yleensä automaattisesti Androidin mediakomentojen kautta. Testatulla Junsun V7:llä ne toimivat ilman tätä esteettömyyspalvelua. Ota valinnainen palvelu käyttöön vain, jos painikkeet eivät toimi omassa soittimessasi."</string>
+    <string name="steering_test_buttons">"Testaa painikkeet"</string>
+    <string name="steering_test_title">"Rattipainiketesti"</string>
+    <string name="steering_test_instructions">"Pysäköi auto. Aloita 30 sekunnin testi ja paina ratista seuraava- ja edellinen-painikkeita. Tässä näkyvät vain painikekoodit ja tekninen tila; mitään ei tallenneta tiedostoon tai lähetetä verkkoon. Ota lopuksi kuva tuloksesta."</string>
+    <string name="steering_test_start">"Aloita 30 s"</string>
+    <string name="steering_test_previous">"Testaa edellinen"</string>
+    <string name="steering_test_next">"Testaa seuraava"</string>
+    <string name="steering_test_recording">"Tallennus muistiin"</string>
+    <string name="steering_test_stopped">"Testi pysäytetty"</string>
+    <string name="steering_test_unknown_target">"Järjestelmän mediapainikkeiden kohde: ei tiedossa. Aktiivinen mediasessio ei varmista sitä."</string>
+</resources>

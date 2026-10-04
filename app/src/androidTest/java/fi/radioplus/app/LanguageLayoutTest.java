@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Locale;
 import org.junit.Test;
 import static org.junit.Assert.*;
+import static org.junit.Assume.assumeTrue;
 
 /** Run on API 29+ emulator at each supported viewport; no physical tuner is required. */
 public final class LanguageLayoutTest {
@@ -136,7 +137,14 @@ public final class LanguageLayoutTest {
 
     @Test public void translatedScreensFitViewport() throws Exception {
         if (android.os.Build.VERSION.SDK_INT < 29) return;
+        assumeTrue("Preview cleanup requires a debug build", BuildConfig.DEBUG);
+        assumeTrue("Preview cleanup is restricted to an Android emulator",
+                "ranchu".equals(android.os.Build.HARDWARE)
+                        || "goldfish".equals(android.os.Build.HARDWARE)
+                        || android.os.Build.PRODUCT.startsWith("sdk"));
         Context context = instrumentation.getTargetContext();
+        // Do not take ownership of, or stop, a service that predates this fixture.
+        assertNull("Stop playback before running the layout fixture", runningPlaybackService());
         String previous = AppLanguage.get(context);
         try {
             for (String language : AppLanguage.codes()) {
@@ -153,6 +161,7 @@ public final class LanguageLayoutTest {
                             public void onLanguage() {}
                             public void onSensitivity() {}
                             public void onSteeringKeys() {}
+                            public void onAbout() {}
                             public void onAutoStartChanged(boolean enabled) {}
                         });
                         settings[0].show();
@@ -174,7 +183,8 @@ public final class LanguageLayoutTest {
                     });
                     inspect(language + "-station");
                     instrumentation.runOnMainSync(() -> station[0].dismiss());
-                    for (String method : new String[]{"showLanguageDialog", "showReceptionModeDialog",
+                    for (String method : new String[]{"showAboutDialog", "showSteeringKeySetup", "showSteeringDiagnostics",
+                            "showLanguageDialog", "showReceptionModeDialog",
                             "showStationActionsDialog", "showManualTuningDialog"}) {
                         instrumentation.runOnMainSync(() -> invoke(activity, method, new Class<?>[]{}));
                         inspect(language + "-" + method);
@@ -186,7 +196,28 @@ public final class LanguageLayoutTest {
                     instrumentation.waitForIdleSync();
                 }
             }
-        } finally { AppLanguage.set(context, previous); }
+        } finally {
+            try {
+                // Opening Manual tuning currently starts playback even in preview.
+                // Activity.finish() alone cannot clean up that foreground service.
+                instrumentation.runOnMainSync(() ->
+                        context.stopService(new Intent(context, RadioPlaybackService.class)));
+                long deadline = android.os.SystemClock.elapsedRealtime() + 5000L;
+                while (runningPlaybackService() != null
+                        && android.os.SystemClock.elapsedRealtime() < deadline) {
+                    android.os.SystemClock.sleep(20L);
+                }
+                assertNull("Layout fixture playback service must stop", runningPlaybackService());
+            } finally { AppLanguage.set(context, previous); }
+        }
+    }
+
+    private static Object runningPlaybackService() {
+        try {
+            java.lang.reflect.Field field = RadioPlaybackService.class.getDeclaredField("runningInstance");
+            field.setAccessible(true);
+            return field.get(null);
+        } catch (ReflectiveOperationException error) { throw new AssertionError(error); }
     }
 
     private static void invoke(Object target, String name, Class<?>[] signature, Object... args) {
@@ -235,7 +266,9 @@ public final class LanguageLayoutTest {
                     if (layout.getEllipsisCount(line) > 0
                             && text.getId() != R.id.favorite_name)
                         failures.add("ellipsis: " + text.getText());
-                    if (layout.getLineWidth(line) > layout.getWidth() + 2)
+                    // A wrap may leave a trailing space outside the line box.
+                    // Check rendered text extent, not invisible trailing whitespace.
+                    if (layout.getLineMax(line) > layout.getWidth() + 2)
                         failures.add("width: " + text.getText());
                 }
             }

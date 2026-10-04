@@ -68,8 +68,11 @@ not a compatibility guarantee for every unit or firmware version.
 
 ## Known issues
 
-Steering-wheel controls (next/previous station and mute) may not work in all
-situations. Behavior depends on the head unit and firmware. [Details](docs/TESTING.md#known-issues).
+Next/previous steering-wheel controls are fixed and confirmed working on the
+tested **Junsun V7 running Android 13** in community beta 4: one press changes one
+station, without the subsequent brief audio interruption.
+Other head units, firmware variants and steering-wheel mute behavior still need
+separate verification. [Details](docs/TESTING.md#known-issues).
 
 ## Using Radio+
 

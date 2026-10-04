@@ -3,6 +3,13 @@
 ## Physical device testing
 
 The maintainer reports Radio+ confirmed working on their physical **Junsun V7 running Android 13**.
+Next/previous steering-wheel controls were confirmed working with the correction
+included in community beta 4. One press changes one station, and the brief audio
+interruption after the new station starts has been resolved on this tested unit.
+The optional accessibility service was not needed for these next/previous buttons.
+On-screen station selection was also confirmed without the delayed interruption
+in beta21. The newer beta22 app-return adjustment still needs audible verification
+on the head unit.
 Other testing has been emulator-only; no other head-unit model is verified.
 This is a device-specific report, not a guarantee for every V7 firmware variant
 or proof that every feature and long-running scenario has passed. The checks
@@ -10,11 +17,11 @@ below distinguish automated evidence from hardware-dependent regression testing.
 
 ## Known issues
 
-Steering-wheel controls (next/previous station and mute) may not work in all
-situations, including on otherwise compatible head units. Behavior depends on
-the head unit, firmware and how button events are routed. Successful volume
-control does not guarantee that station switching or mute will work. Test these
-functions separately while parked; support is not guaranteed for every setup.
+Next/previous steering-wheel controls are fixed on the tested Junsun V7 / Android
+13 configuration. Other head units and firmware variants remain unverified.
+Steering-wheel mute behavior needs separate testing. Successful volume control
+does not establish compatibility with every steering command. Behavior depends
+on how the firmware routes button events; test while parked.
 
 ## Automated test coverage
 
@@ -23,6 +30,13 @@ custom-image import and removal, logo-resource isolation, translation coverage,
 language selection and activity recreation, and translated screen layouts.
 Logo-isolation checks verify that the public build has no bundled station-logo
 collection. These checks do not verify radio hardware or audible playback.
+
+Media-control tests cover station-list and favorites order, single-press handling,
+Android media-key routing, and avoiding a repeated audio handoff during adjacent
+station changes and direct on-screen station selection. They also cover resuming
+from pause, explicit audio takeover, and preserving playback or pause when
+reopening the app. About-app tests cover the displayed version, project link,
+and visible Back navigation between settings and its subdialogs.
 
 The public images are AI-assisted illustrations with fictional stations, logos
 and track text, not screenshots or test evidence. The head-unit image is a
@@ -38,7 +52,8 @@ translated. Translations may contain mistakes; native-speaker corrections are
 welcome. See [languages and translations](LOCALIZATION.md).
 
 Emulator layout tests cover the main screen, radio/general settings, station
-menu, language selection, reception mode, tuning choice and manual tuning.
+menu, language selection, reception mode, steering settings, diagnostics,
+About app, tuning choice and manual tuning.
 Dialogs can scroll where needed; long user-supplied station names may
 intentionally ellipsize. These tests do not guarantee that every screen size,
 font setting or manufacturer layout behaves identically.
@@ -77,6 +92,9 @@ from the model name or minimum Android version.
 2. Test cold start, selecting a station, next/previous in Stations and Favorites,
    tap-to-pause/resume, and at least a 30-minute stationary playback session.
 3. Switch between another audio app and Radio+, then verify which source is audible.
+   Also leave and reopen Radio+ while its radio is playing, and repeat while
+   intentionally paused. Reopening should preserve that state without a new
+   audio interruption.
 4. Test manual FM and AM tuning, scan cancellation, saving/renaming and app restart.
 5. Import a PNG/JPEG from USB, disconnect the USB drive and restart. Test removal.
 6. Test physical steering buttons and ACC wake separately. Record UI state and

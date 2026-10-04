@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="steering_automatic_hint">"Przyciski na kierownicy zwykle działają automatycznie dzięki sterowaniu multimediami w Androidzie. Na przetestowanym Junsun V7 działają bez tej usługi ułatwień dostępu. Włącz tę opcjonalną usługę tylko wtedy, gdy przyciski nie działają w Twoim radiu."</string>
+    <string name="steering_test_buttons">"Testuj przyciski"</string>
+    <string name="steering_test_title">"Test przycisków na kierownicy"</string>
+    <string name="steering_test_instructions">"Najpierw zaparkuj. Rozpocznij 30-sekundowy test i naciśnij na kierownicy przyciski następnej i poprzedniej stacji. Tutaj wyświetlane są tylko kody przycisków i stan techniczny; żadne pliki nie są zapisywane ani wysyłane. Zrób zdjęcie wyniku."</string>
+    <string name="steering_test_start">"Rozpocznij 30 s"</string>
+    <string name="steering_test_previous">"Testuj poprzednią"</string>
+    <string name="steering_test_next">"Testuj następną"</string>
+    <string name="steering_test_recording">"Zapis w pamięci"</string>
+    <string name="steering_test_stopped">"Zapis zatrzymany"</string>
+    <string name="steering_test_unknown_target">"Odbiorca przycisków multimedialnych: nieznany. Aktywna sesja nie dowodzi, że odbiera polecenia z przycisków."</string>
+</resources>

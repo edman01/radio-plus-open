@@ -172,4 +172,6 @@
     <string name="settings_local">"Apenas estações fortes"</string>
     <string name="settings_dx">"Também estações fracas"</string>
     <string name="settings_unknown">"Indisponível"</string>
+    <string name="content_previous_station">Estação anterior</string>
+    <string name="content_next_station">Estação seguinte</string>
 </resources>

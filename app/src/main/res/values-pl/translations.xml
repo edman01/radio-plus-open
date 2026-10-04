@@ -172,4 +172,6 @@
     <string name="message_116" formatted="false">"ULUBIONE"</string>
     <string name="message_117" formatted="false">"Nie znaleziono jeszcze stacji"</string>
     <string name="message_118" formatted="false">"Nie ma jeszcze ulubionych"</string>
+    <string name="content_previous_station">Poprzednia stacja</string>
+    <string name="content_next_station">Następna stacja</string>
 </resources>

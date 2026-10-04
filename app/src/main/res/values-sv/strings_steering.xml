@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="steering_automatic_hint">"Rattknapparna fungerar vanligtvis automatiskt via Androids mediekontroller. På den testade Junsun V7 fungerar de utan den här tillgänglighetstjänsten. Aktivera den valfria tjänsten endast om knapparna inte fungerar på din bilstereo."</string>
+    <string name="steering_test_buttons">"Testa knappar"</string>
+    <string name="steering_test_title">"Test av rattknappar"</string>
+    <string name="steering_test_instructions">"Parkera först. Starta testet på 30 sekunder och tryck på nästa och föregående på ratten. Här visas bara knappkoder och teknisk status; inga filer sparas eller skickas. Ta ett foto av resultatet."</string>
+    <string name="steering_test_start">"Starta 30 s"</string>
+    <string name="steering_test_previous">"Testa föregående"</string>
+    <string name="steering_test_next">"Testa nästa"</string>
+    <string name="steering_test_recording">"Inspelning i minnet"</string>
+    <string name="steering_test_stopped">"Inspelning stoppad"</string>
+    <string name="steering_test_unknown_target">"Mottagare för medieknappar: okänd. En aktiv session bevisar inte att den tar emot knappkommandon."</string>
+</resources>

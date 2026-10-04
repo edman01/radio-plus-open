@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_back">← Geri</string>
+    <string name="settings_about">Uygulama hakkında</string>
+    <string name="about_title">Radio+ hakkında</string>
+    <string name="about_version">Sürüm %1$s</string>
+    <string name="about_open_github">GitHub’ı aç</string>
+    <string name="about_browser_unavailable">GitHub açılamadı. Bir tarayıcının yüklü olduğundan emin olun.</string>
+</resources>

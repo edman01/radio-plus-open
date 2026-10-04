@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="steering_automatic_hint">"Direksiyon tuşları genellikle Android medya kontrolleri üzerinden otomatik olarak çalışır. Test edilen Junsun V7’de bu erişilebilirlik hizmeti olmadan çalışırlar. İsteğe bağlı hizmeti yalnızca cihazınızda tuşlar çalışmıyorsa etkinleştirin."</string>
+    <string name="steering_test_buttons">"Tuşları test et"</string>
+    <string name="steering_test_title">"Direksiyon tuşu testi"</string>
+    <string name="steering_test_instructions">"Önce park edin. 30 saniyelik testi başlatın ve direksiyondaki sonraki ve önceki tuşlarına basın. Burada yalnızca tuş kodları ve teknik durum gösterilir; dosya kaydedilmez veya gönderilmez. Sonucun fotoğrafını çekin."</string>
+    <string name="steering_test_start">"30 sn başlat"</string>
+    <string name="steering_test_previous">"Önceki tuşunu dene"</string>
+    <string name="steering_test_next">"Sonraki tuşunu dene"</string>
+    <string name="steering_test_recording">"Belleğe kayıt"</string>
+    <string name="steering_test_stopped">"Kayıt durduruldu"</string>
+    <string name="steering_test_unknown_target">"Medya tuşlarının hedefi: bilinmiyor. Etkin bir oturum, tuş komutlarını aldığını kanıtlamaz."</string>
+</resources>

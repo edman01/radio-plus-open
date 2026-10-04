@@ -1,4 +1,4 @@
-# Community beta 3
+# Community beta 4
 
 This is a free, MIT-licensed source release of Radio+'s original code, with a
 signed installable Android beta. It is not a Google Play release or a manufacturer
@@ -10,7 +10,7 @@ approved app. Third-party rights are excluded as explained in the notices.
 - `SHA256SUMS.txt`: SHA-256 checksum for that exact APK.
 - GitHub's source archives: source code for this release.
 
-Android version name: `0.16.1-beta20-play`, version code `80`.
+Android version name: `0.16.1-beta22-play`, version code `88`.
 Package: `fi.radioplus.app.play`. This installs beside the personal version and
 does not replace the manufacturer's stock radio. The historical `play` suffix
 does not imply distribution on Google Play.
@@ -21,9 +21,28 @@ as real tuners. Test while parked at a low safe volume.
 
 ## New in this release
 
-Swedish, Polish, Dutch, Turkish and Czech bring the total to 12 selectable
-languages. All languages are included for offline switching. English remains
-the default. Radio audio routing and hardware control are unchanged.
+- Fixed next/previous steering-wheel controls on the tested **Junsun V7 running
+  Android 13**. One press advances or goes back one station in the selected
+  Stations or Favorites list.
+- Fixed duplicate channel changes from one button press.
+- Removed the brief audio interruption after an adjacent station change while
+  radio playback is already active.
+- On-screen station selection now also reuses active radio playback, avoiding
+  an unnecessary audio handoff after selecting another station.
+- Clarified that the optional steering-key accessibility service is not needed
+  for next/previous buttons on the tested Junsun V7.
+- Added **About app** under **Settings → General**, showing the installed version
+  and a link to the GitHub project.
+- Reopening the app now preserves ongoing radio playback or an intentional pause
+  without starting another audio handoff.
+- Added visible **Back** buttons to settings and its subdialogs. Returning from a
+  subdialog preserves the selected settings category.
+
+The steering-control correction and its audio behavior were confirmed on the
+maintainer's physical Junsun V7, as was on-screen station selection in beta21.
+The newer app-return and settings-navigation adjustments have automated coverage
+but still need confirmation on the head unit.
+Other models and firmware variants remain unverified.
 
 ## Included
 
@@ -38,9 +57,9 @@ the default. Radio audio routing and hardware control are unchanged.
 
 ## Limits
 
-FM audio, physical steering controls, AM behavior and sleep/wake depend on firmware
-and have not been verified by the emulator tests. This beta is not a guarantee
-that historical audio/steering issues are resolved on every device. See
+AM behavior, steering-wheel mute, sleep/wake and other firmware-specific behavior
+still need separate device testing. The confirmed next/previous correction applies
+to the tested Junsun V7 configuration. See
 [testing](https://github.com/edman01/radio-plus-open/blob/main/docs/TESTING.md) before reporting an issue.
 
 Station logos shown in the illustrations are not part of the APK.

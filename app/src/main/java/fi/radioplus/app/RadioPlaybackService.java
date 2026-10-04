@@ -59,14 +59,6 @@ public final class RadioPlaybackService extends MediaBrowserService {
     private static final long METADATA_REFRESH_MS = 1500L;
     private static final long PAUSE_FOCUS_HANDOFF_MS = 650L;
     private static final long OEM_GAIN_SETTLE_MS = 650L;
-    private static final long[] STEERING_SESSION_PROMOTION_DELAYS_MS = {
-            0L,
-            250L,
-            750L,
-            1500L,
-            3000L,
-            5000L
-    };
     // Junsun's framework exposes these as McuConstant.K_STEP_FORWARD (274)
     // and K_STEP_BACKWARD (275). They are not Android DPAD directions.
     private static final int KEYCODE_JUNSUN_TUNER_NEXT = 274;
@@ -92,6 +84,8 @@ public final class RadioPlaybackService extends MediaBrowserService {
             "fi.radioplus.app.action.TAKE_OVER_PLAYBACK";
     static final String ACTION_TUNE_STATION =
             "fi.radioplus.app.action.TUNE_WIDGET_STATION";
+    static final String ACTION_TUNE_UI_STATION =
+            "fi.radioplus.app.action.TUNE_UI_STATION";
     static final String EXTRA_STATION_BAND =
             "fi.radioplus.app.extra.STATION_BAND";
     static final String EXTRA_STATION_FREQUENCY =
@@ -103,12 +97,22 @@ public final class RadioPlaybackService extends MediaBrowserService {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private boolean bound;
-    private boolean stopping;
+    private volatile boolean stopping;
     private boolean foregroundStarted;
     // A MediaBrowser client (for example the Junsun launcher) may bind this
     // service without asking the radio to play. Never acquire the vendor's
     // global audio focus until an explicit app, widget or media-key command.
-    private boolean playbackRequested;
+    private volatile boolean playbackRequested;
+    // Invalidate queued/delayed work on pause/resume, not on each consecutive
+    // Next press: every press in one playback epoch must advance one station.
+    private volatile long playbackEpoch;
+    // Accessed by serialized tuner commands; pause/resume changes playbackEpoch.
+    private volatile long activatedPlaybackEpoch = -1L;
+    private volatile boolean uiTakeoverRequired;
+    private volatile long routingClaimId;
+    private final PlaybackOwnershipPolicy playbackOwnership = new PlaybackOwnershipPolicy();
+    private Runnable pendingRoutingClaim;
+    private volatile String routingPulseStatus = "not-requested";
     // FMPlugService acquires its own singleton AudioFocusRequest in onCreate().
     // Track only a focus release explicitly requested through Radio+'s pause
     // control; never pretend that Radio+ owns the vendor service's request.
@@ -117,12 +121,14 @@ public final class RadioPlaybackService extends MediaBrowserService {
     private final MediaKeyPressTracker mediaKeyPressTracker =
             new MediaKeyPressTracker();
     private final MediaKeyEventDeduplicator mediaKeyEvents = new MediaKeyEventDeduplicator();
-    private IRadioServiceAPI radio;
+    private volatile IRadioServiceAPI radio;
     private IBinder radioBinder;
     private long rebindDelayMs = MIN_REBIND_DELAY_MS;
     private FavoriteStore favoriteStore;
     private StationStore stationStore;
+    private StationNavigationStore stationNavigationStore;
     private volatile FavoriteStation pendingWidgetStation;
+    private boolean pendingStationReusesPlayback;
     private RadioCommand pendingRadioCommand;
     private String pendingRadioCommandName = "";
     private MediaSession mediaSession;
@@ -151,8 +157,6 @@ public final class RadioPlaybackService extends MediaBrowserService {
     private final Runnable rebindTask = this::bindOemRadio;
     private final Runnable startupVolumePolicyTask =
             this::reassertRadioVolumePolicy;
-    private final Runnable steeringSessionPromotionTask =
-            this::promoteMediaSessionForSteeringControls;
     private final Runnable oemBindWatchdogTask = () -> {
         if (stopping || !bound || radio != null) {
             return;
@@ -165,6 +169,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
         @Override
         public void run() {
             refreshMediaMetadataFromRadio();
+            reconcilePlaybackOwnership();
             applyRadioVolumePolicy();
             if (!stopping) {
                 mainHandler.postDelayed(this, METADATA_REFRESH_MS);
@@ -175,8 +180,9 @@ public final class RadioPlaybackService extends MediaBrowserService {
             mainHandler.post(() -> handleOemConnectionLoss("binder died"));
     private final Runnable pendingShortMediaTask = () -> {
         handleTrackedMediaDecision(mediaKeyPressTracker.onFallback(
-                SystemClock.elapsedRealtime()
+                SystemClock.elapsedRealtime(), mediaKeyFallbackTimeout()
         ));
+        scheduleShortMediaKey();
     };
 
     private final ServiceConnection connection = new ServiceConnection() {
@@ -234,6 +240,14 @@ public final class RadioPlaybackService extends MediaBrowserService {
         context.startForegroundService(service);
     }
 
+    static void ensureRunningForUi(Context context) {
+        RadioPlaybackService current = runningInstance;
+        // Reopening the screen is not a Play command. Preserve both ongoing
+        // radio playback and an intentional pause without another focus/PCM
+        // handoff. A cold launch retains the normal radio startup behavior.
+        if (current == null || current.stopping) ensureRunning(context);
+    }
+
     static void tuneStation(Context context, FavoriteStation station) {
         if (station == null
                 || !FrequencyRules.isValid(station.band, station.frequency)) {
@@ -241,15 +255,20 @@ public final class RadioPlaybackService extends MediaBrowserService {
         }
         RadioPlaybackService current = runningInstance;
         if (current != null && !current.stopping) {
-            current.mainHandler.post(() -> current.queueStation(station));
+            current.mainHandler.post(() -> current.queueStation(station, !current.uiTakeoverRequired));
             return;
         }
         Intent service = new Intent(context, RadioPlaybackService.class);
-        service.setAction(ACTION_TUNE_STATION);
+        service.setAction(ACTION_TUNE_UI_STATION);
         service.putExtra(EXTRA_STATION_BAND, station.band);
         service.putExtra(EXTRA_STATION_FREQUENCY, station.frequency);
         service.putExtra(EXTRA_STATION_NAME, station.name);
         context.startForegroundService(service);
+    }
+
+    static void noteUiBackgrounded() {
+        RadioPlaybackService current = runningInstance;
+        if (current != null && !current.stopping) current.uiTakeoverRequired = true;
     }
 
     static void pause(Context context) {
@@ -258,9 +277,25 @@ public final class RadioPlaybackService extends MediaBrowserService {
         context.startForegroundService(service);
     }
 
+    static void skipStation(Context context, boolean next) {
+        context.startForegroundService(new Intent(context, RadioPlaybackService.class)
+                .setAction(next ? ACTION_MEDIA_NEXT : ACTION_MEDIA_PREVIOUS));
+    }
+
     static boolean isPlaybackRequested() {
         RadioPlaybackService current = runningInstance;
         return current != null && !current.stopping && current.playbackRequested;
+    }
+
+    /** Read on the UI thread; local state does not prove system media-key ownership. */
+    static String steeringDiagnosticStatus() {
+        RadioPlaybackService current = runningInstance;
+        if (current == null || current.stopping) return "service=false";
+        return "service=true session=" + (current.mediaSession != null && current.mediaSession.isActive())
+                + "\nplayRequested=" + current.playbackRequested
+                + " oemConnected=" + (current.radio != null)
+                + " routeReported=" + current.oemRouteActive
+                + "\nroutingPulse=" + current.routingPulseStatus;
     }
 
     static void publishMediaState(
@@ -307,15 +342,16 @@ public final class RadioPlaybackService extends MediaBrowserService {
         runningInstance = this;
         favoriteStore = new FavoriteStore(this);
         stationStore = new StationStore(this);
+        stationNavigationStore = new StationNavigationStore(this);
         audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         radioVolumeGuard = new RadioVolumeGuard();
         registerAccWakeMonitor();
         createNotificationChannel();
         createMediaSession();
-        // The ROM routes analog FM audio itself. Creating even a silent MEDIA
-        // AudioTrack here can take that route away from the tuner on Junsun
-        // units. Keep key routing independent of the physical audio route.
-        Log.i(TAG, "MediaSession active without a PCM audio route");
+        // Passive startup must never create a PCM route. Internal dev builds
+        // register one finite media-routing pulse only after explicit playback,
+        // then release it before restoring the OEM analog route.
+        Log.i(TAG, "MediaSession created without taking audio ownership");
         startForeground(NOTIFICATION_ID, createNotification());
         foregroundStarted = true;
         // Bluetooth, the launcher and System UI may bind only to browse the
@@ -353,7 +389,8 @@ public final class RadioPlaybackService extends MediaBrowserService {
             return START_NOT_STICKY;
         }
         if (ACTION_MEDIA_PREVIOUS.equals(action)) {
-            selectFavorite(false);
+            SteeringDiagnosticTrace.get().event("service-intent", "previous");
+            selectAdjacentStation(false);
             return START_NOT_STICKY;
         }
         if (ACTION_MEDIA_TOGGLE.equals(action)) {
@@ -361,7 +398,12 @@ public final class RadioPlaybackService extends MediaBrowserService {
             return START_NOT_STICKY;
         }
         if (ACTION_MEDIA_NEXT.equals(action)) {
-            selectFavorite(true);
+            SteeringDiagnosticTrace.get().event("service-intent", "next");
+            selectAdjacentStation(true);
+            return START_NOT_STICKY;
+        }
+        if (ACTION_TUNE_UI_STATION.equals(action)) {
+            queueWidgetStation(intent, !uiTakeoverRequired);
             return START_NOT_STICKY;
         }
         if (ACTION_TUNE_STATION.equals(action)) {
@@ -390,6 +432,8 @@ public final class RadioPlaybackService extends MediaBrowserService {
     @Override
     public void onDestroy() {
         stopping = true;
+        playbackEpoch++;
+        cancelRoutingClaim();
         if (runningInstance == this) {
             runningInstance = null;
         }
@@ -585,7 +629,9 @@ public final class RadioPlaybackService extends MediaBrowserService {
     }
 
     private void pausePlayback() {
+        SteeringDiagnosticTrace.get().event("playback", "pause-request");
         setPlaybackRequested(false);
+        long pauseEpoch = playbackEpoch;
         // FMPlugService.releaseAudioFocus() only abandons the stock request; it
         // does not call RadioPlayer.setMute(true). Taking media focus first
         // makes the stock focus listener run its real mute path, exactly as it
@@ -597,8 +643,12 @@ public final class RadioPlaybackService extends MediaBrowserService {
         if (focusTaken) {
             // Give the stock process time to handle AUDIOFOCUS_LOSS before the
             // fallback release. Calling release first bypasses its mute code.
-            mainHandler.postDelayed(this::releasePlaybackFocus, 250L);
-            mainHandler.postDelayed(this::abandonPauseAudioFocus,
+            mainHandler.postDelayed(() -> {
+                if (playbackEpoch == pauseEpoch && !playbackRequested) releasePlaybackFocus();
+            }, 250L);
+            mainHandler.postDelayed(() -> {
+                if (playbackEpoch == pauseEpoch && !playbackRequested) abandonPauseAudioFocus();
+            },
                     PAUSE_FOCUS_HANDOFF_MS);
         } else {
             releasePlaybackFocus();
@@ -667,7 +717,10 @@ public final class RadioPlaybackService extends MediaBrowserService {
     }
 
     private void releasePlaybackFocus() {
+        if (stopping || playbackRequested) return;
+        SteeringDiagnosticTrace.get().event("playback", "pause-release requested=" + playbackRequested);
         executeRadioCommand("pause", current -> {
+            if (stopping || playbackRequested) return;
             if (!oemFocusState.wasFocusReleasedByRadioPlus()) {
                 current.releaseAudioFocus();
                 oemFocusState.markFocusReleasedByRadioPlus();
@@ -685,6 +738,8 @@ public final class RadioPlaybackService extends MediaBrowserService {
             boolean explicitTakeover
     )
             throws RemoteException {
+        long epoch = playbackEpoch;
+        if (!isCurrentPlayback(epoch, current)) return;
         if (OemFocusInteropPolicy.shouldReplaceFocusRequest(
                 explicitTakeover,
                 oemFocusState.wasFocusReleasedByRadioPlus()
@@ -698,6 +753,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
             Log.i(TAG, "Stale OEM audio focus released for explicit radio takeover");
         }
         RadioPlaybackHealthReader.Snapshot snapshot = playbackHealthReader.read();
+        if (!isCurrentPlayback(epoch, current)) return;
         boolean requestFocus = oemFocusState.shouldRequestFocus(
                 snapshot.sourceKnown,
                 snapshot.radioOwnsSource(),
@@ -714,29 +770,102 @@ public final class RadioPlaybackService extends MediaBrowserService {
                     : "Stock radio audio route activation was rejected");
         }
         if (requestFocus) {
+            if (!isCurrentPlayback(epoch, current)) return;
             // requestAudioFocus() is also the vendor's unmute operation. RDS
             // can keep updating while this step is missing, which is why a
             // metadata-only success must not be treated as active playback.
             current.requestAudioFocus();
+            if (!isCurrentPlayback(epoch, current)) return;
             playbackHealthReader.setMuted(false);
             oemFocusState.markFocusResumed();
             Log.i(TAG, snapshot.muteKnown && snapshot.muted
                     ? "Stock radio audio focus resumed from OEM mute"
                     : "Stock radio audio focus activated for this session");
         }
-        // FMPlugService activates the stock radio's own MediaSession when its
-        // audio focus request succeeds. Re-promote Radio+ only after that
-        // synchronous vendor call, otherwise steering-wheel media keys remain
-        // targeted at the stock receiver even though Radio+ is visible.
-        scheduleSteeringSessionPromotion();
+        // PLAYING/setActive alone does not register our UID in Android's audio
+        // playback history. Wait for the stock focus handoff (including its
+        // delayed unmute) before a single bounded pulse, never a keep-alive loop.
+        if (!isCurrentPlayback(epoch, current)) return;
+        activatedPlaybackEpoch = epoch;
+        if (explicitTakeover) {
+            uiTakeoverRequired = false;
+            scheduleRoutingClaim(current, epoch);
+        }
         scheduleStartupVolumePolicy(requestFocus);
     }
 
-    private void scheduleSteeringSessionPromotion() {
-        mainHandler.removeCallbacks(steeringSessionPromotionTask);
-        for (long delay : STEERING_SESSION_PROMOTION_DELAYS_MS) {
-            mainHandler.postDelayed(steeringSessionPromotionTask, delay);
-        }
+    private boolean isCurrentPlayback(long epoch, IRadioServiceAPI current) {
+        return !stopping && playbackRequested && playbackEpoch == epoch && radio == current;
+    }
+
+    private boolean isRadioOrOwnSource(RadioPlaybackHealthReader.Snapshot health) {
+        // Some ROMs report the client package while our finite PCM marker is
+        // open. Never mistake it for another app; do NOT allow the other flavor.
+        return health.radioOwnsSource() || getPackageName().equals(health.sourcePackage)
+                || health.sourcePackage.startsWith(getPackageName() + "/");
+    }
+
+    private void cancelRoutingClaim() {
+        routingClaimId++;
+        if (pendingRoutingClaim != null) mainHandler.removeCallbacks(pendingRoutingClaim);
+        pendingRoutingClaim = null;
+    }
+
+    private void scheduleRoutingClaim(IRadioServiceAPI current, long epoch) {
+        mainHandler.post(() -> {
+            if (!isCurrentPlayback(epoch, current)) return;
+            cancelRoutingClaim();
+            long claim = routingClaimId;
+            routingPulseStatus = "scheduled";
+            pendingRoutingClaim = () -> {
+                pendingRoutingClaim = null;
+                if (!isCurrentPlayback(epoch, current) || routingClaimId != claim) return;
+                executeRadioCommand("media routing", connected -> {
+                    if (!isCurrentPlayback(epoch, current) || routingClaimId != claim) return;
+                    RadioPlaybackHealthReader.Snapshot health = playbackHealthReader.read();
+                    if (health.sourceKnown && !isRadioOrOwnSource(health)) {
+                        routingPulseStatus = "skipped-external-source";
+                        return; // Never reclaim radio from another app in a delayed callback.
+                    }
+                    routingPulseStatus = "running";
+                    MediaKeyRoutingPulse.Result result = MediaKeyRoutingPulse.run(() ->
+                            !isCurrentPlayback(epoch, current) || routingClaimId != claim);
+                    routingPulseStatus = result.status.name().toLowerCase(Locale.ROOT);
+                    SteeringDiagnosticTrace.get().event("routing-pulse", result.diagnostic());
+                    if (!isCurrentPlayback(epoch, current) || routingClaimId != claim) return;
+                    if (result.trackCreated && !result.trackReleased) return;
+                    // AudioTrack can affect a vendor analog path even with no
+                    // focus request. It has been RELEASED before this one-time
+                    // restore. Do not request focus again or change any volume.
+                    health = playbackHealthReader.read();
+                    if (health.sourceKnown && !isRadioOrOwnSource(health)) return;
+                    if (!isCurrentPlayback(epoch, current) || routingClaimId != claim) return;
+                    oemRouteActive = current.requestPlayAudio();
+                    SteeringDiagnosticTrace.get().event("routing-pulse",
+                            "route-restored=" + oemRouteActive);
+                });
+            };
+            mainHandler.postDelayed(pendingRoutingClaim, OEM_GAIN_SETTLE_MS);
+        });
+    }
+
+    private void reconcilePlaybackOwnership() {
+        IRadioServiceAPI current = radio;
+        if (current == null || stopping || !playbackRequested) return;
+        long epoch = playbackEpoch;
+        executeRadioCommand("playback ownership", connected -> {
+            RadioPlaybackHealthReader.Snapshot health = playbackHealthReader.read();
+            mainHandler.post(() -> {
+                if (!isCurrentPlayback(epoch, current)) return;
+                if (!playbackOwnership.shouldYield(SystemClock.elapsedRealtime(),
+                        health.sourceKnown, isRadioOrOwnSource(health))) return;
+                // Only correct OUR advertised state. Do not mute/release focus
+                // belonging to the user's newly selected app or restart FM.
+                setPlaybackRequested(false);
+                oemRouteActive = false;
+                SteeringDiagnosticTrace.get().event("playback", "external-source-paused");
+            });
+        });
     }
 
     private void scheduleStartupVolumePolicy(boolean focusRequested) {
@@ -763,16 +892,6 @@ public final class RadioPlaybackService extends MediaBrowserService {
         }
     }
 
-    private void promoteMediaSessionForSteeringControls() {
-        if (mediaSession == null || stopping || !playbackRequested) {
-            return;
-        }
-        mediaSession.setActive(false);
-        mediaSession.setActive(true);
-        updatePlaybackState();
-        Log.i(TAG, "Radio+ MediaSession promoted after OEM audio activation");
-    }
-
     private void activateForTunerCommand(IRadioServiceAPI current)
             throws RemoteException {
         // Selecting, seeking or tuning a station explicitly leaves the
@@ -780,7 +899,27 @@ public final class RadioPlaybackService extends MediaBrowserService {
         activateOemPlayback(current, true);
     }
 
+    private void activateForStationNavigation(IRadioServiceAPI current)
+            throws RemoteException {
+        RadioPlaybackHealthReader.Snapshot health = playbackHealthReader.read();
+        boolean takeover = OemFocusInteropPolicy.shouldTakeOverForTuning(
+                activatedPlaybackEpoch == playbackEpoch,
+                oemRouteActive,
+                oemFocusState.wasFocusReleasedByRadioPlus(),
+                health.sourceKnown && !isRadioOrOwnSource(health),
+                health.muteKnown && health.muted
+        );
+        // Keep cold start, resume and observed source changes on the original
+        // takeover path. A healthy next/previous needs only tuning, not another
+        // delayed PCM marker. In-app station taps use this same path while the
+        // radio screen stays open. Returning from another app, widgets and
+        // external media-ID commands retain explicit takeover on unknown ROMs.
+        activateOemPlayback(current, takeover);
+    }
+
     private void resetOemPlaybackOwnership() {
+        cancelRoutingClaim();
+        activatedPlaybackEpoch = -1L;
         oemRouteActive = false;
         oemFocusState.onServiceDisconnected();
     }
@@ -794,34 +933,41 @@ public final class RadioPlaybackService extends MediaBrowserService {
         }
     }
 
-    private void selectFavorite(boolean next) {
+    private void selectAdjacentStation(boolean next) {
+        // Snapshot the list when the command arrives. A later tab change must
+        // not redirect a queued press, and no list must ever fall back to seek.
+        List<FavoriteStation> stations = stationNavigationStore.load();
+        SteeringDiagnosticTrace.get().event("navigation", (next ? "next" : "previous")
+                + " list=" + (stationNavigationStore.favoritesSelected() ? "favorites" : "stations")
+                + " count=" + stations.size());
+        if (stations.isEmpty()) {
+            Log.i(TAG, "Media skip ignored: selected station list is empty");
+            return;
+        }
         Log.i(TAG, next
                 ? "Media command: next preset"
                 : "Media command: previous preset");
         setPlaybackRequested(true);
         executeRadioCommand(next ? "next preset" : "previous preset", current -> {
-            activateForTunerCommand(current);
+            long epoch = playbackEpoch;
             int band = normalizeBand(current.getCurrentBand());
             int frequency = current.getCurrentFreq();
-            List<FavoriteStation> favorites = favoriteStore.load();
             FavoriteStation target = FavoriteNavigator.selectInStoredOrder(
-                    favorites,
+                    stations,
                     band,
                     frequency,
                     next
             );
             if (target == null) {
-                // Mirrors the stock Junsun radio: if no preset exists, use seek.
-                if (next) {
-                    current.onSeekDownEvent();
-                } else {
-                    current.onSeekUpEvent();
-                }
+                SteeringDiagnosticTrace.get().event("navigation", "no-target");
+                return;
             } else {
-                boolean tuned = tuneTo(current, target);
-                if (tuned) {
+                activateForStationNavigation(current);
+                boolean tuned = tuneTo(current, target, epoch);
+                SteeringDiagnosticTrace.get().event("tuner", "frequency-confirmed=" + tuned);
+                if (tuned && isCurrentPlayback(epoch, current)) {
                     oemRouteActive = current.requestPlayAudio();
-                    mainHandler.post(this::scheduleSteeringSessionPromotion);
+                    SteeringDiagnosticTrace.get().event("tuner", "route-reported=" + oemRouteActive);
                     mainHandler.post(this::refreshMediaMetadataFromRadio);
                     Log.i(TAG, "Media preset confirmed: " + target.key());
                 } else {
@@ -829,33 +975,14 @@ public final class RadioPlaybackService extends MediaBrowserService {
                     Log.w(TAG, "Media preset was not confirmed: " + target.key());
                 }
             }
-            if (target == null) {
-                oemRouteActive = current.requestPlayAudio();
-                mainHandler.post(this::scheduleSteeringSessionPromotion);
-            }
-        });
-    }
-
-    private void seekStation(boolean higher) {
-        Log.i(TAG, higher
-                ? "Media command: seek higher"
-                : "Media command: seek lower");
-        setPlaybackRequested(true);
-        executeRadioCommand(higher ? "seek higher" : "seek lower", current -> {
-            activateForTunerCommand(current);
-            // The Junsun API names are reversed relative to the displayed
-            // frequency: seekDown raises and seekUp lowers the frequency.
-            if (higher) {
-                current.onSeekDownEvent();
-            } else {
-                current.onSeekUpEvent();
-            }
-            oemRouteActive = current.requestPlayAudio();
-            mainHandler.post(this::scheduleSteeringSessionPromotion);
         });
     }
 
     private void queueWidgetStation(Intent intent) {
+        queueWidgetStation(intent, false);
+    }
+
+    private void queueWidgetStation(Intent intent, boolean reusePlayback) {
         int band = intent.getIntExtra(EXTRA_STATION_BAND, -1);
         int frequency = intent.getIntExtra(EXTRA_STATION_FREQUENCY, -1);
         if (!FrequencyRules.isValid(band, frequency)) {
@@ -866,16 +993,21 @@ public final class RadioPlaybackService extends MediaBrowserService {
                 band,
                 frequency,
                 intent.getStringExtra(EXTRA_STATION_NAME)
-        ));
+        ), reusePlayback);
     }
 
     private void queueStation(FavoriteStation station) {
+        queueStation(station, false);
+    }
+
+    private void queueStation(FavoriteStation station, boolean reusePlayback) {
         if (station == null
                 || !FrequencyRules.isValid(station.band, station.frequency)) {
             return;
         }
         FavoriteStation stored = findStoredStation(station.band, station.frequency);
         pendingWidgetStation = stored == null ? station : stored;
+        pendingStationReusesPlayback = reusePlayback;
         setPlaybackRequested(true);
         if (!bound && !stopping) {
             bindOemRadio();
@@ -885,15 +1017,17 @@ public final class RadioPlaybackService extends MediaBrowserService {
 
     private void tunePendingWidgetStation() {
         FavoriteStation target = pendingWidgetStation;
+        boolean reusePlayback = pendingStationReusesPlayback;
         if (target == null) {
             return;
         }
         executeRadioCommand("widget station", current -> {
-            activateForTunerCommand(current);
-            boolean tuned = tuneTo(current, target);
-            if (tuned) {
+            long epoch = playbackEpoch;
+            if (reusePlayback) activateForStationNavigation(current);
+            else activateForTunerCommand(current);
+            boolean tuned = tuneTo(current, target, epoch);
+            if (tuned && isCurrentPlayback(epoch, current)) {
                 oemRouteActive = current.requestPlayAudio();
-                mainHandler.post(this::scheduleSteeringSessionPromotion);
             }
             mainHandler.post(this::refreshMediaMetadataFromRadio);
             mainHandler.post(() -> {
@@ -908,10 +1042,12 @@ public final class RadioPlaybackService extends MediaBrowserService {
         });
     }
 
-    private boolean tuneTo(IRadioServiceAPI current, FavoriteStation target)
+    private boolean tuneTo(IRadioServiceAPI current, FavoriteStation target, long epoch)
             throws RemoteException {
+        if (!isCurrentPlayback(epoch, current)) return false;
         int normalizedTarget = normalizeBand(target.band);
         int currentBand = normalizeBand(current.getCurrentBand());
+        if (!isCurrentPlayback(epoch, current)) return false;
         boolean commandIssued;
         if (currentBand == normalizedTarget) {
             current.gotoFreq(target.frequency);
@@ -928,11 +1064,13 @@ public final class RadioPlaybackService extends MediaBrowserService {
                 int guard = 0;
                 int observedBand = current.getCurrentBand();
                 while (normalizeBand(observedBand) != normalizedTarget && guard < 5) {
+                    if (!isCurrentPlayback(epoch, current)) return false;
                     current.onBandEvent();
                     observedBand = current.getCurrentBand();
                     guard++;
                 }
                 if (normalizeBand(observedBand) == normalizedTarget) {
+                    if (!isCurrentPlayback(epoch, current)) return false;
                     current.gotoFreq(target.frequency);
                     commandIssued = true;
                 }
@@ -946,6 +1084,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
 
         for (int attempt = 1; attempt <= RadioTuneConfirmation.MAX_ATTEMPTS; attempt++) {
             SystemClock.sleep(TUNE_CONFIRM_DELAY_MS);
+            if (!isCurrentPlayback(epoch, current)) return false;
             int observedBand = normalizeBand(current.getCurrentBand());
             int observedFrequency = current.getCurrentFreq();
             if (RadioTuneConfirmation.matches(
@@ -957,6 +1096,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
                 return true;
             }
             if (attempt < RadioTuneConfirmation.MAX_ATTEMPTS) {
+                if (!isCurrentPlayback(epoch, current)) return false;
                 Log.w(TAG, "Tuner did not confirm " + target.key()
                         + "; retry " + (attempt + 1)
                         + " (actual=" + observedBand + ":" + observedFrequency + ")");
@@ -978,6 +1118,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
     private void executeRadioCommand(String command, RadioCommand action) {
         IRadioServiceAPI current = radio;
         if (current == null || stopping) {
+            SteeringDiagnosticTrace.get().event("oem", "waiting: " + command);
             if (!stopping && playbackRequested) {
                 // A cold media-button or widget command can arrive before the
                 // asynchronous OEM binding completes. Preserve only the newest
@@ -991,11 +1132,14 @@ public final class RadioPlaybackService extends MediaBrowserService {
         }
         pendingRadioCommandName = "";
         pendingRadioCommand = null;
+        long epoch = playbackEpoch;
         try {
             executor.submit(() -> {
+                if (stopping || playbackEpoch != epoch || radio != current) return;
                 try {
                     action.run(current);
                 } catch (RemoteException | RuntimeException | LinkageError error) {
+                    SteeringDiagnosticTrace.get().event("oem", "command-failed: " + command);
                     Log.w(TAG, "Stock radio command failed: " + command, error);
                     mainHandler.post(() -> {
                         if (radio == current && !stopping) {
@@ -1229,7 +1373,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
         if (mediaSession == null) {
             return;
         }
-        List<FavoriteStation> favorites = favoriteStore.load();
+        List<FavoriteStation> favorites = stationNavigationStore.load();
         ArrayList<MediaSession.QueueItem> queue = new ArrayList<>(
                 favorites.size()
         );
@@ -1240,7 +1384,8 @@ public final class RadioPlaybackService extends MediaBrowserService {
             ));
         }
         mediaSession.setQueue(queue);
-        mediaSession.setQueueTitle("Radio+ suosikit");
+        mediaSession.setQueueTitle(stationNavigationStore.favoritesSelected()
+                ? tr("Suosikit", "Favorites") : tr("Asemalista", "Station list"));
     }
 
     private long stationQueueId(FavoriteStation station) {
@@ -1249,7 +1394,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
     }
 
     private FavoriteStation stationForQueueId(long queueId) {
-        for (FavoriteStation station : favoriteStore.load()) {
+        for (FavoriteStation station : stationNavigationStore.load()) {
             if (stationQueueId(station) == queueId) {
                 return station;
             }
@@ -1300,6 +1445,9 @@ public final class RadioPlaybackService extends MediaBrowserService {
                 KeyEvent event = mediaButtonIntent == null
                         ? null
                         : mediaButtonIntent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
+                if (event != null) SteeringDiagnosticTrace.get().key("media-session", event.getKeyCode(),
+                        event.getAction(), event.getMetaState(), event.getRepeatCount(),
+                        event.getScanCode(), event.getFlags(), event.getSource(), event.getDownTime(), event.getEventTime());
                 if (handleMediaKeyEvent(event)) {
                     return true;
                 }
@@ -1323,12 +1471,14 @@ public final class RadioPlaybackService extends MediaBrowserService {
 
             @Override
             public void onSkipToNext() {
-                selectFavorite(true);
+                SteeringDiagnosticTrace.get().event("transport", "next");
+                selectAdjacentStation(true);
             }
 
             @Override
             public void onSkipToPrevious() {
-                selectFavorite(false);
+                SteeringDiagnosticTrace.get().event("transport", "previous");
+                selectAdjacentStation(false);
             }
 
             @Override
@@ -1341,12 +1491,14 @@ public final class RadioPlaybackService extends MediaBrowserService {
 
             @Override
             public void onFastForward() {
-                selectFavorite(true);
+                SteeringDiagnosticTrace.get().event("transport", "fast-forward");
+                selectAdjacentStation(true);
             }
 
             @Override
             public void onRewind() {
-                selectFavorite(false);
+                SteeringDiagnosticTrace.get().event("transport", "rewind");
+                selectAdjacentStation(false);
             }
 
             @Override
@@ -1389,24 +1541,39 @@ public final class RadioPlaybackService extends MediaBrowserService {
                 .putString(MediaMetadata.METADATA_KEY_ARTIST, "Autoradio")
                 .build());
         mediaSession.setActive(true);
-        // Publish PLAYING only after activation so Android promotes this
-        // session as the current steering-wheel media-button target.
+        // Publish our state after activation. This does not prove the ROM
+        // routes steering-wheel media buttons to this session.
         updatePlaybackState();
         refreshMediaQueue();
     }
 
     private boolean handleMediaKeyEvent(KeyEvent event) {
-        if (event == null || !supportsMediaKey(event.getKeyCode())) {
+        if (event == null) {
             return false;
         }
-        int keyCode = event.getKeyCode();
+        // Called only by the MEDIA_BUTTON intent or MediaSession callback.
+        // Window/accessibility input keeps the strict supportsMediaKey filter.
+        int keyCode = MediaButtonKeyMapping.commandKeyCode(
+                event.getKeyCode(), event.getMetaState());
+        SteeringDiagnosticTrace.get().key("handler", event.getKeyCode(),
+                event.getAction(), event.getMetaState(), event.getRepeatCount(),
+                event.getScanCode(), event.getFlags(), event.getSource(), event.getDownTime(), event.getEventTime());
+        Log.i(TAG, "Media button received: raw=" + event.getKeyCode()
+                + " meta=" + event.getMetaState() + " command=" + keyCode
+                + " action=" + event.getAction() + " repeat=" + event.getRepeatCount());
+        if (!supportsMediaKey(keyCode)) {
+            SteeringDiagnosticTrace.get().event("handler", "unsupported=" + keyCode);
+            return false;
+        }
         if (event.isCanceled()) {
-            mainHandler.removeCallbacks(pendingShortMediaTask);
-            mediaKeyPressTracker.reset();
+            SteeringDiagnosticTrace.get().event("handler", "canceled");
+            mediaKeyPressTracker.cancel(keyCode, event.getDownTime());
+            scheduleShortMediaKey();
             return true;
         }
         if (!mediaKeyEvents.accept(keyCode, event.getAction(), event.getDownTime(),
                 event.getEventTime(), event.getRepeatCount())) {
+            SteeringDiagnosticTrace.get().event("handler", "duplicate");
             return true;
         }
         Log.i(TAG, "Media key received: code=" + keyCode
@@ -1415,43 +1582,41 @@ public final class RadioPlaybackService extends MediaBrowserService {
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
             boolean longPress = event.isLongPress() || event.getRepeatCount() > 0;
             MediaKeyPressTracker.Decision decision = mediaKeyPressTracker.onDown(
-                    keyCode, longPress, event.getRepeatCount(), SystemClock.elapsedRealtime());
-            if (decision.action == MediaKeyPressTracker.Action.SCHEDULE_SHORT) {
-                scheduleShortMediaKey();
-            } else {
-                mainHandler.removeCallbacks(pendingShortMediaTask);
-                handleTrackedMediaDecision(decision);
-            }
+                    keyCode, longPress, event.getRepeatCount(),
+                    SystemClock.elapsedRealtime(), event.getDownTime());
+            handleTrackedMediaDecision(decision);
+            scheduleShortMediaKey();
             return true;
         }
         if (event.getAction() != KeyEvent.ACTION_UP) {
             return true;
         }
-        mainHandler.removeCallbacks(pendingShortMediaTask);
-        handleTrackedMediaDecision(mediaKeyPressTracker.onUp(keyCode, SystemClock.elapsedRealtime()));
+        handleTrackedMediaDecision(mediaKeyPressTracker.onUp(
+                keyCode, SystemClock.elapsedRealtime(), event.getDownTime()));
+        scheduleShortMediaKey();
         return true;
     }
 
     private void scheduleShortMediaKey() {
         mainHandler.removeCallbacks(pendingShortMediaTask);
-        mainHandler.postDelayed(
-                pendingShortMediaTask,
-                ViewConfiguration.getLongPressTimeout() + MEDIA_LONG_PRESS_GRACE_MS
-        );
+        long delay = mediaKeyPressTracker.nextFallbackDelay(
+                SystemClock.elapsedRealtime(), mediaKeyFallbackTimeout());
+        if (delay >= 0L) mainHandler.postDelayed(pendingShortMediaTask, delay);
+    }
+
+    private long mediaKeyFallbackTimeout() {
+        return ViewConfiguration.getLongPressTimeout() + MEDIA_LONG_PRESS_GRACE_MS;
     }
 
     private void handleTrackedMediaDecision(MediaKeyPressTracker.Decision decision) {
         if (decision == null || decision.action == MediaKeyPressTracker.Action.NONE) {
             return;
         }
+        SteeringDiagnosticTrace.get().event("tracker", decision.action.name() + " code=" + decision.keyCode);
         if (decision.action == MediaKeyPressTracker.Action.DISPATCH_LONG) {
-            if (isNextMediaKey(decision.keyCode)) {
-                seekStation(true);
-            } else if (isPreviousMediaKey(decision.keyCode)) {
-                seekStation(false);
-            } else {
-                dispatchShortMediaKey(decision.keyCode);
-            }
+            // CAN adapters may flag even brief presses as repeats. Media skip
+            // always means an adjacent saved station, never a frequency search.
+            dispatchShortMediaKey(decision.keyCode);
             return;
         }
         if (decision.action == MediaKeyPressTracker.Action.DISPATCH_SHORT) {
@@ -1460,18 +1625,19 @@ public final class RadioPlaybackService extends MediaBrowserService {
     }
 
     private void dispatchShortMediaKey(int keyCode) {
+        SteeringDiagnosticTrace.get().event("command", "code=" + keyCode);
         switch (keyCode) {
             case KeyEvent.KEYCODE_MEDIA_NEXT:
             case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
             case KEYCODE_JUNSUN_TUNER_NEXT:
             case KEYCODE_JUNSUN_SKIP_NEXT:
-                selectFavorite(true);
+                selectAdjacentStation(true);
                 break;
             case KeyEvent.KEYCODE_MEDIA_PREVIOUS:
             case KeyEvent.KEYCODE_MEDIA_REWIND:
             case KEYCODE_JUNSUN_TUNER_PREVIOUS:
             case KEYCODE_JUNSUN_SKIP_PREVIOUS:
-                selectFavorite(false);
+                selectAdjacentStation(false);
                 break;
             case KeyEvent.KEYCODE_MEDIA_PLAY:
                 requestPlayback(true);
@@ -1527,8 +1693,14 @@ public final class RadioPlaybackService extends MediaBrowserService {
     }
 
     private void setPlaybackRequested(boolean requested) {
+        if (requested) abandonPauseAudioFocus();
+        if (playbackRequested != requested) playbackEpoch++;
         playbackRequested = requested;
+        playbackOwnership.reset(SystemClock.elapsedRealtime());
         if (!requested) {
+            cancelRoutingClaim();
+            mainHandler.removeCallbacks(startupVolumePolicyTask);
+            pendingWidgetStation = null;
             pendingRadioCommandName = "";
             pendingRadioCommand = null;
         }

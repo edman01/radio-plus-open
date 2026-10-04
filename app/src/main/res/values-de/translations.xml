@@ -172,4 +172,6 @@
     <string name="settings_local">"Nur starke Sender"</string>
     <string name="settings_dx">"Auch schwache Sender"</string>
     <string name="settings_unknown">"Nicht verfügbar"</string>
+    <string name="content_previous_station">Vorheriger Sender</string>
+    <string name="content_next_station">Nächster Sender</string>
 </resources>

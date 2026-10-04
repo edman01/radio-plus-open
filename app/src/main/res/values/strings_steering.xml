@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="steering_automatic_hint">"Steering-wheel buttons normally work automatically through Android media controls. They work without this accessibility service on the tested Junsun V7. Enable this optional service only if the buttons do not work on your head unit."</string>
+    <string name="steering_test_buttons">"Test buttons"</string>
+    <string name="steering_test_title">"Steering button test"</string>
+    <string name="steering_test_instructions">"Park first. Start the 30 s test, then press Next and Previous on the steering wheel. Only button codes and technical state appear here; no files are saved or uploaded. Photograph the result."</string>
+    <string name="steering_test_start">"Start 30 s"</string>
+    <string name="steering_test_previous">"Test previous"</string>
+    <string name="steering_test_next">"Test next"</string>
+    <string name="steering_test_recording">"RAM capture"</string>
+    <string name="steering_test_stopped">"Capture stopped"</string>
+    <string name="steering_test_unknown_target">"System media-key target: unknown. An active session does not prove ownership."</string>
+</resources>

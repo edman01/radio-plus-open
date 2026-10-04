@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="steering_automatic_hint">"Os botões do volante normalmente funcionam automaticamente através dos controlos multimédia do Android. No Junsun V7 testado, funcionam sem este serviço de acessibilidade. Ative este serviço opcional apenas se os botões não funcionarem no seu autorrádio."</string>
+    <string name="steering_test_buttons">"Testar botões"</string>
+    <string name="steering_test_title">"Teste dos botões do volante"</string>
+    <string name="steering_test_instructions">"Estacione primeiro. Inicie o teste de 30 segundos e prima os botões seguinte e anterior do volante. Aqui só aparecem os códigos dos botões e o estado técnico; não são guardados nem enviados ficheiros. Tire uma fotografia do resultado."</string>
+    <string name="steering_test_start">"Iniciar 30 s"</string>
+    <string name="steering_test_previous">"Testar anterior"</string>
+    <string name="steering_test_next">"Testar seguinte"</string>
+    <string name="steering_test_recording">"Captura em memória"</string>
+    <string name="steering_test_stopped">"Captura terminada"</string>
+    <string name="steering_test_unknown_target">"Destino dos botões multimédia: desconhecido. Uma sessão ativa não prova que recebe os comandos desses botões."</string>
+</resources>

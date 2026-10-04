@@ -172,4 +172,6 @@
     <string name="settings_local">"Solo stazioni forti"</string>
     <string name="settings_dx">"Anche stazioni deboli"</string>
     <string name="settings_unknown">"Non disponibile"</string>
+    <string name="content_previous_station">Stazione precedente</string>
+    <string name="content_next_station">Stazione successiva</string>
 </resources>

@@ -172,4 +172,6 @@
     <string name="message_116" formatted="false">"FAVORİLER"</string>
     <string name="message_117" formatted="false">"Henüz istasyon bulunamadı"</string>
     <string name="message_118" formatted="false">"Henüz favori yok"</string>
+    <string name="content_previous_station">Önceki istasyon</string>
+    <string name="content_next_station">Sonraki istasyon</string>
 </resources>

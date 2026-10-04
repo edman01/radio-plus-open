@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_back">← Tillbaka</string>
+    <string name="settings_about">Om appen</string>
+    <string name="about_title">Om Radio+</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_open_github">Öppna GitHub</string>
+    <string name="about_browser_unavailable">Det gick inte att öppna GitHub. Kontrollera att en webbläsare är installerad.</string>
+</resources>

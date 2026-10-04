@@ -33,4 +33,6 @@
     <string name="widget_favorites">Suosikit</string>
     <string name="widget_station_list">Asemalista</string>
     <string name="widget_cancel">Peruuta</string>
+    <string name="content_previous_station">Edellinen asema</string>
+    <string name="content_next_station">Seuraava asema</string>
 </resources>

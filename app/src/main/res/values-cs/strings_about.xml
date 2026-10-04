@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_back">← Zpět</string>
+    <string name="settings_about">O aplikaci</string>
+    <string name="about_title">O aplikaci Radio+</string>
+    <string name="about_version">Verze %1$s</string>
+    <string name="about_open_github">Otevřít GitHub</string>
+    <string name="about_browser_unavailable">GitHub nelze otevřít. Zkontrolujte, zda je nainstalován prohlížeč.</string>
+</resources>

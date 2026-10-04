@@ -20,7 +20,16 @@ public final class RadioMediaButtonReceiver extends BroadcastReceiver {
             return;
         }
         KeyEvent event = intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
-        if (event == null || !RadioPlaybackService.supportsMediaKey(event.getKeyCode())) {
+        if (event == null) {
+            return;
+        }
+        SteeringDiagnosticTrace.get().key("receiver", event.getKeyCode(),
+                event.getAction(), event.getMetaState(), event.getRepeatCount(),
+                event.getScanCode(), event.getFlags(), event.getSource(), event.getDownTime(), event.getEventTime());
+        int command = MediaButtonKeyMapping.commandKeyCode(event.getKeyCode(), event.getMetaState());
+        if (!RadioPlaybackService.supportsMediaKey(command)) {
+            Log.i(TAG, "Ignored media-button code=" + event.getKeyCode()
+                    + " meta=" + event.getMetaState() + " action=" + event.getAction());
             return;
         }
 
@@ -35,6 +44,7 @@ public final class RadioMediaButtonReceiver extends BroadcastReceiver {
             context.startForegroundService(service);
             return true;
         } catch (RuntimeException error) {
+            SteeringDiagnosticTrace.get().event("dispatch", "service-start-failed");
             Log.w(TAG, "Media button could not start radio controls", error);
             return false;
         }

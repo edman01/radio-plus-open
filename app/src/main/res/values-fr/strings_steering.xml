@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="steering_automatic_hint">"Les commandes au volant fonctionnent généralement automatiquement via les commandes multimédias Android. Sur le Junsun V7 testé, elles fonctionnent sans ce service d’accessibilité. Activez ce service facultatif uniquement si les boutons ne fonctionnent pas sur votre autoradio."</string>
+    <string name="steering_test_buttons">"Tester les boutons"</string>
+    <string name="steering_test_title">"Test des commandes au volant"</string>
+    <string name="steering_test_instructions">"Garez-vous d’abord. Lancez le test de 30 secondes, puis appuyez sur les boutons suivant et précédent du volant. Seuls les codes des boutons et l’état technique s’affichent ici ; aucun fichier n’est enregistré ni envoyé. Prenez une photo du résultat."</string>
+    <string name="steering_test_start">"Lancer 30 s"</string>
+    <string name="steering_test_previous">"Tester précédent"</string>
+    <string name="steering_test_next">"Tester suivant"</string>
+    <string name="steering_test_recording">"Capture en mémoire"</string>
+    <string name="steering_test_stopped">"Capture arrêtée"</string>
+    <string name="steering_test_unknown_target">"Destinataire des commandes multimédias : inconnu. Une session active ne prouve pas qu’elle reçoit ces commandes."</string>
+</resources>

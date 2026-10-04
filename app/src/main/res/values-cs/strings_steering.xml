@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="steering_automatic_hint">"Tlačítka na volantu obvykle fungují automaticky prostřednictvím ovládání médií v Androidu. Na testovaném Junsun V7 fungují bez této služby usnadnění. Volitelnou službu zapněte pouze tehdy, pokud tlačítka na vašem autorádiu nefungují."</string>
+    <string name="steering_test_buttons">"Testovat tlačítka"</string>
+    <string name="steering_test_title">"Test tlačítek na volantu"</string>
+    <string name="steering_test_instructions">"Nejprve zaparkujte. Spusťte 30sekundový test a na volantu stiskněte tlačítka další a předchozí stanice. Zde se zobrazují pouze kódy tlačítek a technický stav; žádné soubory se neukládají ani neodesílají. Vyfoťte výsledek."</string>
+    <string name="steering_test_start">"Spustit 30 s"</string>
+    <string name="steering_test_previous">"Test předchozí"</string>
+    <string name="steering_test_next">"Test další"</string>
+    <string name="steering_test_recording">"Záznam do paměti"</string>
+    <string name="steering_test_stopped">"Záznam zastaven"</string>
+    <string name="steering_test_unknown_target">"Příjemce mediálních tlačítek: neznámý. Aktivní relace nedokazuje, že přijímá příkazy tlačítek."</string>
+</resources>

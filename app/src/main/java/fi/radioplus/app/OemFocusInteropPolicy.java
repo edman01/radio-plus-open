@@ -40,4 +40,19 @@ final class OemFocusInteropPolicy {
     static boolean shouldRequestRoute(boolean routeAlreadyActive, boolean focusWasResumed) {
         return !routeAlreadyActive || focusWasResumed;
     }
+
+    static boolean shouldTakeOverForTuning(
+            boolean activeInPlaybackEpoch,
+            boolean routeActive,
+            boolean focusReleasedByRadioPlus,
+            boolean externalSourceObserved,
+            boolean mutedObserved
+    ) {
+        // Adjacent station navigation within an active radio session is not a
+        // new playback source. Replacing focus and registering PCM again here
+        // interrupts analog FM after the new station has already started.
+        // Unknown firmware health alone is not evidence of a source change.
+        return !activeInPlaybackEpoch || !routeActive || focusReleasedByRadioPlus
+                || externalSourceObserved || mutedObserved;
+    }
 }

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_back">← Zurück</string>
+    <string name="settings_about">Über die App</string>
+    <string name="about_title">Über Radio+</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_open_github">GitHub öffnen</string>
+    <string name="about_browser_unavailable">GitHub konnte nicht geöffnet werden. Bitte prüfen Sie, ob ein Browser installiert ist.</string>
+</resources>

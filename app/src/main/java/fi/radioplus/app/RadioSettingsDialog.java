@@ -25,6 +25,7 @@ final class RadioSettingsDialog extends Dialog {
         void onLanguage();
         void onSensitivity();
         void onSteeringKeys();
+        void onAbout();
         void onAutoStartChanged(boolean enabled);
     }
 
@@ -33,7 +34,8 @@ final class RadioSettingsDialog extends Dialog {
     private static final int PANEL = Color.rgb(23, 31, 42);
     private final Activity activity;
     private final Listener listener;
-    private final Boolean localMode;
+    private Boolean localMode;
+    private int selectedCategory;
     private final LinearLayout content;
     private final TextView[] categories = new TextView[2];
     private final int accent;
@@ -73,7 +75,7 @@ final class RadioSettingsDialog extends Dialog {
         header.addView(title, new LinearLayout.LayoutParams(0, dp(52), 1));
         Button close = new Button(activity);
         close.setId(R.id.settings_close);
-        close.setText(R.string.settings_close);
+        close.setText(R.string.settings_back);
         close.setTextSize(22);
         close.setTextColor(WHITE);
         close.setAllCaps(false);
@@ -142,6 +144,7 @@ final class RadioSettingsDialog extends Dialog {
     }
 
     private void showCategory(int index) {
+        selectedCategory = index;
         for (int i = 0; i < categories.length; i++) {
             categories[i].setSelected(i == index);
             categories[i].setTextColor(i == index ? accent : MUTED);
@@ -164,7 +167,16 @@ final class RadioSettingsDialog extends Dialog {
                     listener::onLanguage);
             addAction(R.id.settings_steering, R.string.settings_steering,
                     R.string.settings_steering_hint, listener::onSteeringKeys);
+            addAction(R.id.settings_about, R.string.settings_about,
+                    activity.getString(R.string.about_version, BuildConfig.VERSION_NAME),
+                    listener::onAbout);
         }
+    }
+
+    void updateLocalMode(Boolean mode) {
+        if (java.util.Objects.equals(localMode, mode)) return;
+        localMode = mode;
+        if (selectedCategory == 0) showCategory(0);
     }
 
     private void section(int title, int subtitle) {
@@ -213,7 +225,9 @@ final class RadioSettingsDialog extends Dialog {
         chevron.setGravity(Gravity.CENTER);
         chevron.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         row.addView(chevron, new LinearLayout.LayoutParams(dp(80), dp(56)));
-        row.setOnClickListener(v -> { dismiss(); callback.run(); });
+        // Keep the selected settings page underneath its child dialog so
+        // the child's Back button returns here instead of to the radio.
+        row.setOnClickListener(v -> callback.run());
     }
 
     private interface ToggleListener { void changed(boolean enabled); }
