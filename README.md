@@ -1,6 +1,8 @@
 # Radio+
 
-Free, open-source FM/AM radio for compatible Android head units, with favorites and custom logos.
+Free, open-source FM/AM radio tested on the **Junsun V7**, with favorites and custom logos.
+May also work on other Chinese Android head units with a compatible stock radio service;
+compatibility with those devices has not been verified.
 
 **[Download beta APK](https://github.com/edman01/radio-plus-open/releases)**
 
