@@ -1,72 +1,43 @@
 # Radio+
 
-Radio+ on avoimen lähdekoodin FM/AM-käyttöliittymä yhteensopiville Android-soittimille.
-Tämä on ilmainen laitekohtainen beta, ei kaikilla Android-laitteilla toimiva radio.
-**Vakioradion `com.hcn.autoradio` ja sen FMPlugService-palvelun täytyy olla
-asennettuna ja käytössä.** Sovellus ei korvaa vakioradiota eikä muuta firmwarea.
+Ilmainen, avoimen lähdekoodin FM/AM-radio yhteensopiville Android-soittimille.
+Asemalista, suosikit ja omat kanavalogot. Kielet: englanti ja suomi.
 
-[Lataa beta](https://github.com/edman01/radio-plus-open/releases)
-· [English and source build instructions](README.md)
+**[Lataa beta-APK](https://github.com/edman01/radio-plus-open/releases)** · [English](README.md)
 
-## Asennus
+![Radio+ soittimen näytöllä](docs/images/radio-plus-head-unit-demo.png)
 
-1. Varmista Android 8.1 tai uudempi sekä yhteensopiva vakioradion palvelu.
-   Pelkkä Junsun V7 -nimi tai Android-versio ei takaa toimintaa.
-2. Lataa Releases-sivulta `RadioPlus-community-beta.apk`. Tarkistussumma on saman
-   julkaisun `SHA256SUMS.txt`-tiedostossa.
-3. Kopioi APK esimerkiksi USB-tikulle ja avaa se soittimen tiedostonhallinnassa.
-   Salli tarvittaessa asennus tästä lähteestä, jos luotat julkaisuun.
-4. Säilytä vakioradio asennettuna. Avaa Radio+. **Viritys / Tuning** avaa
-   automaattihaun tai manuaalisen virityksen. **Asemalista / Stations** näyttää asemat.
-5. Vaihda halutessasi kieli: **Settings → General → Language → Suomi**.
+*Emulaattorikuvaan perustuva, tekoälyavusteinen havainnekuva. Kanavalogot eivät sisälly sovellukseen.*
 
-Julkisen version sovellustunnus on `fi.radioplus.app.play`. Nimestä huolimatta
-kyseessä ei ole Google Play -julkaisu. Versio asentuu vanhan henkilökohtaisen
-Radio+:n rinnalle, eikä sen tietoja siirretä automaattisesti. Päivitä tämä versio
-jatkossa saman julkaisusarjan APK:lla poistamatta sovellusta tai sen tietoja.
+## Ennen asennusta
 
-Tässä GitHub-betassa ei ole kokeilurajaa, maksuja tai mainoksia.
+Tarvitset **Android 8.1:n tai uudemman** sekä yhteensopivan vakioradion
+**FMPlugService-palvelun**. Säilytä vakioradio asennettuna ja käytössä.
+Radio+ ei korvaa sitä eikä muuta firmwarea. Pelkkä Android-versio ei takaa
+yhteensopivuutta. Tämä on beta: ääni ja rattipainikkeet vaativat laitetestausta.
 
-## Omien logojen tuonti USB-tikulta
+## Aloita näin
 
-1. Hanki PNG- tai JPG-kuvat lähteestä, jonka käyttöehdot sallivat käyttötarkoituksesi.
-   Pura mahdollinen ZIP/RAR-paketti ensin. Sovellus valitsee yksittäisiä kuvia,
-   ei kokonaisia logopaketteja.
-2. Kopioi kuvat tikulle ja liitä tikku soittimeen.
-3. Paina kanavakorttia pitkään → **Vaihda logo** → **Lisää oma logo laitteelta…**.
-4. Valitse Androidin tiedostonvalitsimesta USB-tikku ja kanavan kuva.
-5. Toista haluamillesi kanaville. Logot eivät yhdisty kanaviin automaattisesti.
+1. Lataa Releases-sivulta `RadioPlus-community-beta.apk` ja asenna se soittimeen.
+2. Avaa **Viritys / Tuning** ja valitse automaattihaku tai manuaalinen viritys.
+3. Paina kanavaa pitkään, kun haluat muokata suosikkeja, nimeä tai logoa.
 
-**160×120 pikselin kuvat toimivat.** Tarkempi alkuperäinen, esimerkiksi 400×240 tai
-500×500, voi näyttää paremmalta suurella näytöllä. Kuvasuhde säilyy; yli 512 pikselin
-pitkä sivu pienennetään 512:een, eikä pieniä kuvia suurenneta tuonnissa. Pieni kuva
-voi siksi näkyä kortissa pienempänä. Tuonti ei palauta puuttuvia yksityiskohtia.
+[Tarkemmat käyttö- ja asennusohjeet](docs/GUIDE.fi.md)
 
-Sovellus tallentaa kuvasta oman kopion: tikun voi irrottaa onnistuneen tuonnin
-jälkeen. **Vaihda logo → Poista logo** poistaa kanavan logon sovelluksesta, ei
-alkuperäistä tiedostoa tikulta. Kanavan nimi tai taajuus säilyy.
+## Lisää omat logot
 
-Škodan virallisilta lataussivuilta saadut tavalliset PNG/JPG-logot voivat toimia
-samalla tavalla, mutta lataussivun ehdot pitää tarkistaa. Tekninen yhteensopivuus
-ei ole käyttö- tai uudelleenjakelulupa. APK ei sisällä kanavalogoja.
+Paina kanavaa pitkään → **Vaihda logo → Lisää oma logo laitteelta…**.
+Valitse PNG- tai JPG-kuva USB-tikulta tai laitteesta. **Poista logo** poistaa kuvan kanavalta.
 
-## Suosikit ja kanavat
+160×120-kuvat toimivat. Tarkempi alkuperäinen, enintään noin 512 pikselin pitkällä
+sivulla, voi näyttää paremmalta. Käytä kuvia, joiden käyttöön sinulla on oikeus.
+[Logojen tuonti vaiheittain](docs/GUIDE.fi.md#omien-logojen-tuonti-usb-tikulta).
 
-Suosikkeja hallitaan vain kanavan pitkän painalluksen valikosta. Sieltä voi lisätä
-tai poistaa suosikin, nimetä kanavan uudelleen, vaihtaa logon tai järjestää listaa.
-Suosikit ja koko asemalista ovat erillisiä. RDS-nimi näkyy vain, jos laite toimittaa
-käyttökelpoisen nimitiedon; voit nimetä kanavan itse.
+## Lisätietoja
 
-## Rajoitukset
+[Lähdekoodin kääntäminen](docs/BUILD.md) · [Tunnetut rajoitukset](docs/TESTING.md) ·
+[Virheilmoitukset](CONTRIBUTING.md) · [Tietosuoja](docs/PRIVACY.md) · [MIT-lisenssi](LICENSE)
 
-FM-ääntä, mykistystä, AM-viritystä, YouTubesta radioon vaihtamista, rattipainikkeita
-ja ACC-heräämistä ei voi todistaa emulaattorilla. Toiminta riippuu soittimen
-firmwaresta. Valinnainen rattipainikkeiden saavutettavuuspalvelu käsittelee
-tuettuja näppäimiä vain Radio+:n ollessa näkyvissä. Se ei ohita valmistajan
-estoja, eikä sitä tarvitse ottaa käyttöön, jos tavallinen mediaohjaus toimii.
-
-Demokuvan kaikki kanavalogot ovat havainnollistavaa esikatselua, eivät ladattavan
-version sisältöä. Tämä ei ole Junsunin tai Škodan hyväksymä sovellus.
+Itsenäinen projekti, ei Junsunin tai Škodan virallinen sovellus. Ei mainoksia,
+kokeilurajaa tai maksuja tässä betassa. [Oikeustiedot](THIRD_PARTY_NOTICES.md).
 Tee asetukset auton ollessa pysäköitynä.
-
-[Testauksen rajaus](docs/TESTING.md) · [Tietosuoja](docs/PRIVACY.md) · [MIT](LICENSE)
