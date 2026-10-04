@@ -8,6 +8,14 @@ This is a device-specific report, not a guarantee for every V7 firmware variant
 or proof that every feature and long-running scenario has passed. The checks
 below distinguish automated evidence from hardware-dependent regression testing.
 
+## Known issues
+
+Steering-wheel controls (next/previous station and mute) may not work in all
+situations, including on otherwise compatible head units. Behavior depends on
+the head unit, firmware and how button events are routed. Successful volume
+control does not guarantee that station switching or mute will work. Test these
+functions separately while parked; support is not guaranteed for every setup.
+
 ## Verified for this source release
 
 On 4 October 2026 the clean public project built with Gradle 8.11.1, Android SDK

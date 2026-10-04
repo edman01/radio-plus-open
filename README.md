@@ -18,6 +18,11 @@ Android 8.1+ and a compatible stock radio with **FMPlugService** are required.
 Confirmed working on the maintainer's **Junsun V7**. Other testing is emulator-only;
 other models and firmware variants are not verified. [Test details](docs/TESTING.md).
 
+## Known issues
+
+Steering-wheel controls (next/previous station and mute) may not work in all
+situations. Behavior depends on the head unit and firmware. [Details](docs/TESTING.md#known-issues).
+
 ## Using Radio+
 
 Open **Tuning** to find stations. Hold a station to manage favorites, rename it or change its logo.
