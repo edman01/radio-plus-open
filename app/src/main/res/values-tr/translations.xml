@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_steering">"Direksiyon tuşları"</string>
+    <string name="settings_steering_hint">"Radio+ görünürken isteğe bağlı tuş yönlendirme."</string>
+    <string name="steering_service_name">"Radio+ direksiyon tuşları"</string>
+    <string name="steering_open_settings">"Android ayarlarını aç"</string>
+    <string name="steering_settings_unavailable">"Android ayarlarında Erişilebilirlik bölümünü açın."</string>
+    <string name="steering_permission_description">"Direksiyon tuşları orijinal radyoyu kontrol ediyorsa Android'in Erişilebilirlik ayarlarından Radio+ direksiyon tuşları hizmetini etkinleştirin. Bu isteğe bağlı hizmet, sonraki, önceki ve sessize al/çal tuşlarını yalnızca Radio+ görünürken işler. Ekran içeriğini okumaz ve yazılan metni işlemez. Diğer uygulamalar ve ses açma/kısma tuşları kontrol edilmez. Araç yazılımının yakaladığı tuş komutları bu yöntemle yönlendirilemez. Android 13'te önce uygulama bilgileri menüsünden kısıtlı ayarlara izin vermeniz gerekebilir. Bunu yalnızca park halindeyken etkinleştirin."</string>
+    <string name="settings_close">"Kapat"</string>
+    <string name="settings_radio">"Radyo"</string>
+    <string name="settings_general">"Genel"</string>
+    <string name="settings_playback">"Çalma ve frekans ayarı"</string>
+    <string name="settings_playback_hint">"Radyonun nasıl başlatılacağını ve istasyonları nasıl bulacağını seçin."</string>
+    <string name="settings_auto_start_hint">"Cihaz açıldığında veya uyandığında Radio+ uygulamasını başlat."</string>
+    <string name="settings_general_hint">"Uygulamayı tercihlerinize göre özelleştirin."</string>
+    <string name="settings_finnish">"Suomi"</string>
+    <string name="settings_english">"English"</string>
+    <string name="settings_auto_start">"Otomatik başlatma"</string>
+    <string name="settings_language">"Dil"</string>
+    <string name="settings_sensitivity">"Arama hassasiyeti"</string>
+    <string name="settings_local">"Yalnızca güçlü istasyonlar"</string>
+    <string name="settings_dx">"Zayıf istasyonlar da"</string>
+    <string name="settings_unknown">"Kullanılamıyor"</string>
+    <string name="app_name">"Radio+"</string>
+    <string name="stations_empty">"Henüz istasyon bulunamadı.\nFrekans ayarı menüsünden otomatik taramayı başlatın."</string>
+    <string name="favorites_empty">"Henüz favori yok.\nİstasyon listesindeki bir istasyona basılı tutup Favorilere ekle seçeneğini seçin."</string>
+    <string name="content_edit">"İstasyonu yeniden adlandır"</string>
+    <string name="content_delete">"Favorilerden kaldır"</string>
+    <string name="content_add_favorite">"Favorilere ekle"</string>
+    <string name="content_remove_favorite">"Favorilerden kaldır"</string>
+    <string name="content_seek_down">"Daha düşük frekanstaki bir sonraki istasyonu bul"</string>
+    <string name="content_seek_up">"Daha yüksek frekanstaki bir sonraki istasyonu bul"</string>
+    <string name="content_more">"Radyo ayarlarını göster"</string>
+    <string name="content_previous_favorite">"Önceki favori"</string>
+    <string name="content_next_favorite">"Sonraki favori"</string>
+    <string name="station_waiting">"Bir istasyon seçin"</string>
+    <string name="service_ready">"İstasyon ve parça bilgileri burada görünür"</string>
+    <string name="action_auto_store">"Frekans ayarı"</string>
+    <string name="content_tuning">"Otomatik taramayı veya manuel ayarı seçin"</string>
+    <string name="tuning_automatic">"Otomatik tarama"</string>
+    <string name="tuning_manual">"Manuel ayar"</string>
+    <string name="action_band_short">"FM"</string>
+    <string name="content_switch_band">"Bandı değiştir. Etkin: %1$s"</string>
+    <string name="action_stations">"İstasyonlar"</string>
+    <string name="action_saved">"Favoriler"</string>
+    <string name="action_setup">"Ayarlar"</string>
+    <string name="station_meta">"%1$s  •  %2$s"</string>
+    <string name="station_page_description">"İstasyon sayfası %1$d / %2$d"</string>
+    <string name="widget_name">"Radio+ istasyonları"</string>
+    <string name="widget_description">"Ana ekrandan Radio+ favorilerini veya istasyon listesini görüntüleyin ve istasyon seçin."</string>
+    <string name="widget_configure_title">"Widget içeriğini seçin"</string>
+    <string name="widget_configure_description">"Her Radio+ widget'ı için ayrı ayrı seçebilirsiniz."</string>
+    <string name="widget_favorites">"Favoriler"</string>
+    <string name="widget_station_list">"İstasyon listesi"</string>
+    <string name="widget_cancel">"İptal"</string>
+    <string name="message_000" formatted="false">"İstasyonum"</string>
+    <string name="message_001" formatted="false">"Adlandır: "</string>
+    <string name="message_002" formatted="false">"Boş"</string>
+    <string name="message_003" formatted="false">", favori."</string>
+    <string name="message_004" formatted="false">", favori değil."</string>
+    <string name="message_005" formatted="false">" Dinlemek ve istasyonu adlandırmak için dokunun."</string>
+    <string name="message_006" formatted="false">" Düzenlemek için basılı tutun."</string>
+    <string name="message_007" formatted="false">"Özel logo kaydedildi"</string>
+    <string name="message_008" formatted="false">"Görüntü logo olarak kullanılamadı"</string>
+    <string name="message_009" formatted="false">"Favori yok"</string>
+    <string name="message_010" formatted="false">"LOCAL yalnızca güçlü istasyonlar"</string>
+    <string name="message_011" formatted="false">"DX zayıf istasyonlar da"</string>
+    <string name="message_012" formatted="false">"Arama hassasiyeti"</string>
+    <string name="message_013" formatted="false">"Kapat"</string>
+    <string name="message_014" formatted="false">"Otomatik başlatma açıldı. Junsun Startup application ayarını Empty olarak seçin."</string>
+    <string name="message_015" formatted="false">"Otomatik başlatma kapatıldı"</string>
+    <string name="message_016" formatted="false">"Dil"</string>
+    <string name="message_017" formatted="false">"İptal"</string>
+    <string name="message_018" formatted="false">"İstasyon listesi tamamlanıyor…"</string>
+    <string name="message_019" formatted="false">"Otomatik tarama durduruluyor…"</string>
+    <string name="message_020" formatted="false">"Otomatik taramayı durdur"</string>
+    <string name="message_021" formatted="false">"İstasyon adlandırmayı durdur"</string>
+    <string name="message_022" formatted="false">"Ayarlanan istasyonlar istasyon listesine kaydedilir."</string>
+    <string name="message_023" formatted="false">"LOCAL güçlü istasyonlar"</string>
+    <string name="message_024" formatted="false">"◀  Aşağı ara"</string>
+    <string name="message_025" formatted="false">"Yukarı ara  ▶"</string>
+    <string name="message_026" formatted="false">"Daha düşük frekansta istasyon aranıyor…"</string>
+    <string name="message_027" formatted="false">"Daha yüksek frekansta istasyon aranıyor…"</string>
+    <string name="message_028" formatted="false">"Manuel ayar"</string>
+    <string name="message_029" formatted="false">"Ayarla"</string>
+    <string name="message_030" formatted="false">"Radyo bilgilerinin yüklenmesini bekleyin"</string>
+    <string name="message_031" formatted="false">"Ayarlanıyor: "</string>
+    <string name="message_032" formatted="false">"İstasyon aranıyor…"</string>
+    <string name="message_033" formatted="false">"Ayarlandı • "</string>
+    <string name="message_034" formatted="false">"RDS adı yok — alımı dinleyerek kontrol edin"</string>
+    <string name="message_035" formatted="false">"İstasyon listesine eklendi"</string>
+    <string name="message_036" formatted="false">"İstasyon listesi güncellendi"</string>
+    <string name="message_037" formatted="false">"87,5 ile 108,0 arasında, 100 kHz adımlı bir frekans girin"</string>
+    <string name="message_038" formatted="false">"522 ile 1620 arasında, 9 kHz adımlı bir frekans girin"</string>
+    <string name="message_039" formatted="false">"Radyo yanıt vermiyor — frekans ayarlanmadı"</string>
+    <string name="message_040" formatted="false">"Radyo yanıt vermiyor — tekrar deneyin"</string>
+    <string name="message_041" formatted="false">"Radyo yanıt vermiyor — otomatik tarama başlatılmadı"</string>
+    <string name="message_042" formatted="false">"Otomatik tarama başlatılamadı"</string>
+    <string name="message_043" formatted="false">"Tüm frekans aralığı taranıyor…"</string>
+    <string name="message_044" formatted="false">"Otomatik tarama başlamadan durduruldu"</string>
+    <string name="message_045" formatted="false">"Tarama durduruldu • %d istasyon korundu • %d yeni"</string>
+    <string name="message_046" formatted="false">"İstasyonlar adlandırılıyor %d/%d…"</string>
+    <string name="message_047" formatted="false">"İstasyon adlandırma durduruldu"</string>
+    <string name="message_048" formatted="false">"Adlandırma durduruldu • bulunan istasyonlar korundu"</string>
+    <string name="message_049" formatted="false">"Tarama tamamlandı • %d istasyon • %d yeni"</string>
+    <string name="message_050" formatted="false">"Tarama tamamlandı • istasyon listesi okunamadı"</string>
+    <string name="message_051" formatted="false">"Tarama tamamlandı • istasyon bulunamadı"</string>
+    <string name="message_052" formatted="false">"87,5 ile 108,0 arasında bir FM frekansı girin, örneğin 101,7"</string>
+    <string name="message_053" formatted="false">"522 ile 1620 kHz arasında bir AM frekansı girin"</string>
+    <string name="message_054" formatted="false">"İstasyon listesi"</string>
+    <string name="message_055" formatted="false">"Kayıtlı istasyon yok. Önce otomatik taramayı çalıştırın."</string>
+    <string name="message_056" formatted="false">"Kayıtlı istasyon frekansı geçersiz"</string>
+    <string name="message_057" formatted="false">"İstasyonu yeniden adlandır"</string>
+    <string name="message_058" formatted="false">"Favorilerden kaldır"</string>
+    <string name="message_059" formatted="false">"Favorilere ekle"</string>
+    <string name="message_060" formatted="false">"Yeniden adlandır"</string>
+    <string name="message_061" formatted="false">"Logoyu değiştir"</string>
+    <string name="message_062" formatted="false">"Favorileri sırala"</string>
+    <string name="message_063" formatted="false">"İstasyonları sırala"</string>
+    <string name="message_064" formatted="false">"Favorilere eklendi"</string>
+    <string name="message_065" formatted="false">"Favorilerden kaldırıldı"</string>
+    <string name="message_066" formatted="false">"İstasyon logosu"</string>
+    <string name="message_067" formatted="false">"Cihazdan özel logo ekle…"</string>
+    <string name="message_068" formatted="false">"Logoyu kaldır"</string>
+    <string name="message_069" formatted="false">"İstasyon adına göre otomatik logo"</string>
+    <string name="message_070" formatted="false">"Logo kaldırıldı"</string>
+    <string name="message_071" formatted="false">"Otomatik logo açıldı"</string>
+    <string name="message_072" formatted="false">"Logo değiştirildi"</string>
+    <string name="message_073" formatted="false">"Cihazda görüntü seçici bulunamadı"</string>
+    <string name="message_074" formatted="false">"Favorilerden kaldırılsın mı?"</string>
+    <string name="message_075" formatted="false">"Sil"</string>
+    <string name="message_076" formatted="false">"Örneğin Radio Nova"</string>
+    <string name="message_077" formatted="false">"Kaydet"</string>
+    <string name="message_078" formatted="false">"Bir istasyon adı girin"</string>
+    <string name="message_079" formatted="false">"Radyo bağlantısı kesildiğinde otomatik tarama durduruldu"</string>
+    <string name="message_080" formatted="false">"Bir istasyon seçin"</string>
+    <string name="message_081" formatted="false">"HAZIR"</string>
+    <string name="message_082" formatted="false">"Otomatik taramaya hazır"</string>
+    <string name="message_083" formatted="false">"Otomatik tarama"</string>
+    <string name="message_084" formatted="false">"Taranıyor"</string>
+    <string name="message_085" formatted="false">"Aranıyor"</string>
+    <string name="message_086" formatted="false">"Çalıyor"</string>
+    <string name="message_087" formatted="false">"İstasyonlar taranıyor…"</string>
+    <string name="message_088" formatted="false">"İstasyonları sıralamak için sürükleyin"</string>
+    <string name="message_089" formatted="false">"İstasyon sırası kaydedildi"</string>
+    <string name="message_090" formatted="false">"Önizleme modu"</string>
+    <string name="message_091" formatted="false">"Favoriler"</string>
+    <string name="message_092" formatted="false">"Radio+ uygulamasında kayıtlı favoriler"</string>
+    <string name="message_093" formatted="false">"Bulunan tüm istasyonlar"</string>
+    <string name="message_094" formatted="false">"Arka planda radyo çalma"</string>
+    <string name="message_095" formatted="false">"Uygulama arka plandayken araç radyosunun çalmasını sürdürür"</string>
+    <string name="message_096" formatted="false">"Önceki istasyon"</string>
+    <string name="message_097" formatted="false">"Duraklat"</string>
+    <string name="message_098" formatted="false">"Çal"</string>
+    <string name="message_099" formatted="false">"Sonraki istasyon"</string>
+    <string name="message_100" formatted="false">"Durdur"</string>
+    <string name="message_101" formatted="false">"Radyo arka planda çalıyor"</string>
+    <string name="message_102" formatted="false">"Radyo duraklatıldı"</string>
+    <string name="message_103" formatted="false">"Radyo donanımı bağlandı"</string>
+    <string name="message_104" formatted="false">"Radyo donanımı bağlantısı kesildi"</string>
+    <string name="message_105" formatted="false">"Radyo donanımı yeniden başlatılıyor"</string>
+    <string name="message_106" formatted="false">"Radyo donanımı bir kontrol arayüzü sağlamadı"</string>
+    <string name="message_107" formatted="false">"Orijinal radyonun alıcı hizmeti bulunamadı"</string>
+    <string name="message_108" formatted="false">"Cihaz yazılımı radyo donanımına erişimi engelledi"</string>
+    <string name="message_109" formatted="false">"Radyo donanımı kullanılamıyor"</string>
+    <string name="message_110" formatted="false">"Radyo donanımı bağlı değil"</string>
+    <string name="message_111" formatted="false">"Radyo kontrolü başarısız oldu"</string>
+    <string name="message_112" formatted="false">"Ayarlanan frekans geçersiz"</string>
+    <string name="message_113" formatted="false">"Seçilen radyo bandı açılamadı"</string>
+    <string name="message_114" formatted="false">"Radyo durumu okunamadı"</string>
+    <string name="message_115" formatted="false">"İSTASYON LİSTESİ"</string>
+    <string name="message_116" formatted="false">"FAVORİLER"</string>
+    <string name="message_117" formatted="false">"Henüz istasyon bulunamadı"</string>
+    <string name="message_118" formatted="false">"Henüz favori yok"</string>
+</resources>

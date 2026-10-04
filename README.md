@@ -1,6 +1,6 @@
 # Radio+
 
-Free, open-source FM/AM radio tested on the **Junsun V7**, with favorites and custom logos.
+Free, open-source FM/AM radio tested on the **Junsun V7 running Android 13**, with favorites and custom logos.
 May also work on other Chinese Android head units with a compatible stock radio service;
 compatibility with those devices has not been verified.
 
@@ -15,8 +15,15 @@ compatibility with those devices has not been verified.
 Android 8.1+ and a compatible stock radio with **FMPlugService** are required.
 **Keep the stock radio installed and enabled.** Radio+ does not replace it or change the firmware.
 
-Confirmed working on the maintainer's **Junsun V7**. Other testing is emulator-only;
+Confirmed working on the maintainer's **Junsun V7 running Android 13**. Other testing is emulator-only;
 other models and firmware variants are not verified. [Test details](docs/TESTING.md).
+
+## Community compatibility reports
+
+Tried Radio+ on your head unit? [Report your results](https://github.com/edman01/radio-plus-open/issues/new?template=compatibility.yml)
+or [browse user reports](https://github.com/edman01/radio-plus-open/issues?q=is%3Aissue%20label%3Acompatibility).
+Include the model, firmware and what works or does not. Reports are user-submitted,
+not a compatibility guarantee for every unit or firmware version.
 
 ## Known issues
 
@@ -27,7 +34,8 @@ situations. Behavior depends on the head unit and firmware. [Details](docs/TESTI
 
 Open **Tuning** to find stations. Hold a station to manage favorites, rename it or change its logo.
 
-Languages: English (default), Finnish, German, French, Spanish, Portuguese and Italian.
+12 languages: English (default), Finnish, German, French, Spanish, Portuguese,
+Italian, Swedish, Polish, Dutch, Turkish and Czech.
 Choose yours in **Settings → General → Language**.
 
 To import a logo: **Change logo → Add custom logo from device…** → choose a PNG/JPEG from USB or your device.

@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_steering">"Tlačítka na volantu"</string>
+    <string name="settings_steering_hint">"Volitelné přesměrování tlačítek, když je Radio+ zobrazeno."</string>
+    <string name="steering_service_name">"Radio+ tlačítka na volantu"</string>
+    <string name="steering_open_settings">"Otevřít nastavení Androidu"</string>
+    <string name="steering_settings_unavailable">"Otevřete Usnadnění v nastavení Androidu."</string>
+    <string name="steering_permission_description">"Pokud stisky tlačítek přijímá původní rádio, zapněte službu Radio+ tlačítka na volantu v nastavení usnadnění Androidu. Tato volitelná služba zpracovává tlačítka další, předchozí a ztlumit/přehrát pouze tehdy, když je Radio+ zobrazeno. Nečte obsah obrazovky ani zadaný text. Neovládá jiné aplikace ani tlačítka hlasitosti. Tlačítka zachycená firmwarem vozidla nelze tímto způsobem přesměrovat. V Androidu 13 může být nutné nejprve povolit omezená nastavení v informacích o aplikaci. Zapínejte pouze v zaparkovaném vozidle."</string>
+    <string name="settings_close">"Zavřít"</string>
+    <string name="settings_radio">"Rádio"</string>
+    <string name="settings_general">"Obecné"</string>
+    <string name="settings_playback">"Přehrávání a ladění"</string>
+    <string name="settings_playback_hint">"Nastavte, jak se rádio spouští a vyhledává stanice."</string>
+    <string name="settings_auto_start_hint">"Spustit Radio+ při zapnutí nebo probuzení zařízení."</string>
+    <string name="settings_general_hint">"Přizpůsobte si aplikaci podle svých potřeb."</string>
+    <string name="settings_finnish">"Suomi"</string>
+    <string name="settings_english">"English"</string>
+    <string name="settings_auto_start">"Automatické spuštění"</string>
+    <string name="settings_language">"Jazyk"</string>
+    <string name="settings_sensitivity">"Citlivost vyhledávání"</string>
+    <string name="settings_local">"Pouze silné stanice"</string>
+    <string name="settings_dx">"I slabé stanice"</string>
+    <string name="settings_unknown">"Nedostupné"</string>
+    <string name="app_name">"Radio+"</string>
+    <string name="stations_empty">"Zatím nebyly nalezeny žádné stanice.\nSpusťte automatické vyhledávání v nabídce Ladění."</string>
+    <string name="favorites_empty">"Zatím žádné oblíbené.\nPodržte stanici v seznamu a zvolte Přidat do oblíbených."</string>
+    <string name="content_edit">"Přejmenovat stanici"</string>
+    <string name="content_delete">"Odebrat z oblíbených"</string>
+    <string name="content_add_favorite">"Přidat do oblíbených"</string>
+    <string name="content_remove_favorite">"Odebrat z oblíbených"</string>
+    <string name="content_seek_down">"Najít další stanici na nižší frekvenci"</string>
+    <string name="content_seek_up">"Najít další stanici na vyšší frekvenci"</string>
+    <string name="content_more">"Zobrazit nastavení rádia"</string>
+    <string name="content_previous_favorite">"Předchozí oblíbená stanice"</string>
+    <string name="content_next_favorite">"Další oblíbená stanice"</string>
+    <string name="station_waiting">"Vyberte stanici"</string>
+    <string name="service_ready">"Zde se zobrazí informace o stanici a skladbě"</string>
+    <string name="action_auto_store">"Ladění"</string>
+    <string name="content_tuning">"Vyberte automatické vyhledávání nebo ruční ladění"</string>
+    <string name="tuning_automatic">"Automatické vyhledávání"</string>
+    <string name="tuning_manual">"Ruční ladění"</string>
+    <string name="action_band_short">"FM"</string>
+    <string name="content_switch_band">"Přepnout pásmo. Aktivní: %1$s"</string>
+    <string name="action_stations">"Stanice"</string>
+    <string name="action_saved">"Oblíbené"</string>
+    <string name="action_setup">"Nastavení"</string>
+    <string name="station_meta">"%1$s  •  %2$s"</string>
+    <string name="station_page_description">"Stránka stanic %1$d z %2$d"</string>
+    <string name="widget_name">"Stanice Radio+"</string>
+    <string name="widget_description">"Zobrazujte oblíbené nebo seznam stanic Radio+ a vybírejte stanice z domovské obrazovky."</string>
+    <string name="widget_configure_title">"Vyberte obsah widgetu"</string>
+    <string name="widget_configure_description">"Pro každý widget Radio+ můžete vybrat obsah zvlášť."</string>
+    <string name="widget_favorites">"Oblíbené"</string>
+    <string name="widget_station_list">"Seznam stanic"</string>
+    <string name="widget_cancel">"Zrušit"</string>
+    <string name="message_000" formatted="false">"Moje stanice"</string>
+    <string name="message_001" formatted="false">"Pojmenovat "</string>
+    <string name="message_002" formatted="false">"Prázdné"</string>
+    <string name="message_003" formatted="false">", oblíbená."</string>
+    <string name="message_004" formatted="false">", není oblíbená."</string>
+    <string name="message_005" formatted="false">" Klepnutím si stanici poslechnete a pojmenujete ji."</string>
+    <string name="message_006" formatted="false">" Podržením upravíte."</string>
+    <string name="message_007" formatted="false">"Vlastní logo uloženo"</string>
+    <string name="message_008" formatted="false">"Obrázek nelze použít jako logo"</string>
+    <string name="message_009" formatted="false">"Žádné oblíbené"</string>
+    <string name="message_010" formatted="false">"LOCAL pouze silné stanice"</string>
+    <string name="message_011" formatted="false">"DX i slabé stanice"</string>
+    <string name="message_012" formatted="false">"Citlivost vyhledávání"</string>
+    <string name="message_013" formatted="false">"Zavřít"</string>
+    <string name="message_014" formatted="false">"Automatické spuštění zapnuto. V Junsun nastavte Startup application na Empty."</string>
+    <string name="message_015" formatted="false">"Automatické spuštění vypnuto"</string>
+    <string name="message_016" formatted="false">"Jazyk"</string>
+    <string name="message_017" formatted="false">"Zrušit"</string>
+    <string name="message_018" formatted="false">"Dokončování seznamu stanic…"</string>
+    <string name="message_019" formatted="false">"Zastavování automatického vyhledávání…"</string>
+    <string name="message_020" formatted="false">"Zastavit automatické vyhledávání"</string>
+    <string name="message_021" formatted="false">"Zastavit pojmenovávání stanic"</string>
+    <string name="message_022" formatted="false">"Naladěné stanice se ukládají do seznamu stanic."</string>
+    <string name="message_023" formatted="false">"LOCAL silné stanice"</string>
+    <string name="message_024" formatted="false">"◀  Hledat níže"</string>
+    <string name="message_025" formatted="false">"Hledat výše  ▶"</string>
+    <string name="message_026" formatted="false">"Vyhledávání stanice na nižší frekvenci…"</string>
+    <string name="message_027" formatted="false">"Vyhledávání stanice na vyšší frekvenci…"</string>
+    <string name="message_028" formatted="false">"Ruční ladění"</string>
+    <string name="message_029" formatted="false">"Naladit"</string>
+    <string name="message_030" formatted="false">"Počkejte na načtení informací z rádia"</string>
+    <string name="message_031" formatted="false">"Ladění "</string>
+    <string name="message_032" formatted="false">"Vyhledávání stanice…"</string>
+    <string name="message_033" formatted="false">"Naladěno • "</string>
+    <string name="message_034" formatted="false">"Bez názvu RDS — ověřte příjem poslechem"</string>
+    <string name="message_035" formatted="false">"Přidáno do seznamu stanic"</string>
+    <string name="message_036" formatted="false">"Seznam stanic aktualizován"</string>
+    <string name="message_037" formatted="false">"Zadejte frekvenci od 87,5 do 108,0 v krocích po 100 kHz"</string>
+    <string name="message_038" formatted="false">"Zadejte frekvenci od 522 do 1620 v krocích po 9 kHz"</string>
+    <string name="message_039" formatted="false">"Rádio neodpovídá — ladění neproběhlo"</string>
+    <string name="message_040" formatted="false">"Rádio neodpovídá — zkuste to znovu"</string>
+    <string name="message_041" formatted="false">"Rádio neodpovídá — automatické vyhledávání nebylo spuštěno"</string>
+    <string name="message_042" formatted="false">"Automatické vyhledávání nelze spustit"</string>
+    <string name="message_043" formatted="false">"Prohledávání celého frekvenčního rozsahu…"</string>
+    <string name="message_044" formatted="false">"Automatické vyhledávání zastaveno před spuštěním"</string>
+    <string name="message_045" formatted="false">"Vyhledávání zastaveno • zachované stanice: %d • nové: %d"</string>
+    <string name="message_046" formatted="false">"Pojmenovávání stanic %d/%d…"</string>
+    <string name="message_047" formatted="false">"Pojmenovávání stanic zastaveno"</string>
+    <string name="message_048" formatted="false">"Pojmenovávání zastaveno • nalezené stanice byly zachovány"</string>
+    <string name="message_049" formatted="false">"Vyhledávání dokončeno • stanice: %d • nové: %d"</string>
+    <string name="message_050" formatted="false">"Vyhledávání dokončeno • seznam stanic nelze načíst"</string>
+    <string name="message_051" formatted="false">"Vyhledávání dokončeno • žádné stanice nenalezeny"</string>
+    <string name="message_052" formatted="false">"Zadejte frekvenci FM od 87,5 do 108,0, například 101,7"</string>
+    <string name="message_053" formatted="false">"Zadejte frekvenci AM od 522 do 1620 kHz"</string>
+    <string name="message_054" formatted="false">"Seznam stanic"</string>
+    <string name="message_055" formatted="false">"Žádné uložené stanice. Nejprve spusťte automatické vyhledávání."</string>
+    <string name="message_056" formatted="false">"Uložená frekvence stanice je neplatná"</string>
+    <string name="message_057" formatted="false">"Přejmenovat stanici"</string>
+    <string name="message_058" formatted="false">"Odebrat z oblíbených"</string>
+    <string name="message_059" formatted="false">"Přidat do oblíbených"</string>
+    <string name="message_060" formatted="false">"Přejmenovat"</string>
+    <string name="message_061" formatted="false">"Změnit logo"</string>
+    <string name="message_062" formatted="false">"Seřadit oblíbené"</string>
+    <string name="message_063" formatted="false">"Seřadit stanice"</string>
+    <string name="message_064" formatted="false">"Přidáno do oblíbených"</string>
+    <string name="message_065" formatted="false">"Odebráno z oblíbených"</string>
+    <string name="message_066" formatted="false">"Logo stanice"</string>
+    <string name="message_067" formatted="false">"Přidat vlastní logo ze zařízení…"</string>
+    <string name="message_068" formatted="false">"Odebrat logo"</string>
+    <string name="message_069" formatted="false">"Automatické logo podle názvu stanice"</string>
+    <string name="message_070" formatted="false">"Logo odebráno"</string>
+    <string name="message_071" formatted="false">"Automatické logo zapnuto"</string>
+    <string name="message_072" formatted="false">"Logo změněno"</string>
+    <string name="message_073" formatted="false">"V zařízení nebyla nalezena aplikace pro výběr obrázků"</string>
+    <string name="message_074" formatted="false">"Odebrat z oblíbených?"</string>
+    <string name="message_075" formatted="false">"Smazat"</string>
+    <string name="message_076" formatted="false">"Například Radio Nova"</string>
+    <string name="message_077" formatted="false">"Uložit"</string>
+    <string name="message_078" formatted="false">"Zadejte název stanice"</string>
+    <string name="message_079" formatted="false">"Automatické vyhledávání se zastavilo po ztrátě spojení s rádiem"</string>
+    <string name="message_080" formatted="false">"Vyberte stanici"</string>
+    <string name="message_081" formatted="false">"PŘIPRAVENO"</string>
+    <string name="message_082" formatted="false">"Připraveno k automatickému vyhledávání"</string>
+    <string name="message_083" formatted="false">"Automatické vyhledávání"</string>
+    <string name="message_084" formatted="false">"Prohledávání pásma"</string>
+    <string name="message_085" formatted="false">"Hledání stanice"</string>
+    <string name="message_086" formatted="false">"Přehrávání"</string>
+    <string name="message_087" formatted="false">"Vyhledávání stanic…"</string>
+    <string name="message_088" formatted="false">"Přetažením změníte pořadí stanic"</string>
+    <string name="message_089" formatted="false">"Pořadí stanic uloženo"</string>
+    <string name="message_090" formatted="false">"Režim náhledu"</string>
+    <string name="message_091" formatted="false">"Oblíbené"</string>
+    <string name="message_092" formatted="false">"Oblíbené uložené v Radio+"</string>
+    <string name="message_093" formatted="false">"Všechny nalezené stanice"</string>
+    <string name="message_094" formatted="false">"Přehrávání rádia na pozadí"</string>
+    <string name="message_095" formatted="false">"Umožňuje přehrávání autorádia, i když je aplikace na pozadí."</string>
+    <string name="message_096" formatted="false">"Předchozí stanice"</string>
+    <string name="message_097" formatted="false">"Pozastavit"</string>
+    <string name="message_098" formatted="false">"Přehrát"</string>
+    <string name="message_099" formatted="false">"Další stanice"</string>
+    <string name="message_100" formatted="false">"Zastavit"</string>
+    <string name="message_101" formatted="false">"Rádio hraje na pozadí"</string>
+    <string name="message_102" formatted="false">"Rádio je pozastaveno"</string>
+    <string name="message_103" formatted="false">"Rádiový tuner připojen"</string>
+    <string name="message_104" formatted="false">"Spojení s rádiovým tunerem ztraceno"</string>
+    <string name="message_105" formatted="false">"Rádiový tuner se restartuje"</string>
+    <string name="message_106" formatted="false">"Rádiový tuner neposkytl ovládací rozhraní"</string>
+    <string name="message_107" formatted="false">"Služba tuneru původního rádia nebyla nalezena"</string>
+    <string name="message_108" formatted="false">"Firmware zablokoval přístup k rádiovému tuneru"</string>
+    <string name="message_109" formatted="false">"Rádiový tuner není dostupný"</string>
+    <string name="message_110" formatted="false">"Rádiový tuner není připojen"</string>
+    <string name="message_111" formatted="false">"Ovládání rádia selhalo"</string>
+    <string name="message_112" formatted="false">"Frekvence ladění je neplatná"</string>
+    <string name="message_113" formatted="false">"Vybrané rádiové pásmo nelze otevřít"</string>
+    <string name="message_114" formatted="false">"Načtení stavu rádia selhalo"</string>
+    <string name="message_115" formatted="false">"SEZNAM STANIC"</string>
+    <string name="message_116" formatted="false">"OBLÍBENÉ"</string>
+    <string name="message_117" formatted="false">"Zatím nebyly nalezeny žádné stanice"</string>
+    <string name="message_118" formatted="false">"Zatím žádné oblíbené"</string>
+</resources>

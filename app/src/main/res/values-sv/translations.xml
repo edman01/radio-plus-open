@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_steering">"Rattknappar"</string>
+    <string name="settings_steering_hint">"Valfri vidarebefordran av knapptryck när Radio+ visas."</string>
+    <string name="steering_service_name">"Radio+ rattknappar"</string>
+    <string name="steering_open_settings">"Öppna Android-inställningar"</string>
+    <string name="steering_settings_unavailable">"Öppna Tillgänglighet i Android-inställningarna."</string>
+    <string name="steering_permission_description">"Om originalradion tar emot knapptryckningarna, aktivera Radio+ rattknappar i Androids tillgänglighetsinställningar. Den här valfria tjänsten hanterar nästa, föregående och ljud av/spela endast när Radio+ visas. Den läser inte skärminnehåll och hanterar inte inskriven text. Andra appar och volymknappar styrs inte. Knapptryckningar som fångas upp av bilens inbyggda programvara kan inte vidarebefordras på detta sätt. På Android 13 kan du först behöva tillåta begränsade inställningar i menyn Appinformation. Aktivera endast när bilen är parkerad."</string>
+    <string name="settings_close">"Stäng"</string>
+    <string name="settings_radio">"Radio"</string>
+    <string name="settings_general">"Allmänt"</string>
+    <string name="settings_playback">"Uppspelning och stationssökning"</string>
+    <string name="settings_playback_hint">"Välj hur radion startar och söker stationer."</string>
+    <string name="settings_auto_start_hint">"Starta Radio+ när enheten startar eller vaknar."</string>
+    <string name="settings_general_hint">"Anpassa appen efter dina önskemål."</string>
+    <string name="settings_finnish">"Suomi"</string>
+    <string name="settings_english">"English"</string>
+    <string name="settings_auto_start">"Autostart"</string>
+    <string name="settings_language">"Språk"</string>
+    <string name="settings_sensitivity">"Sökkänslighet"</string>
+    <string name="settings_local">"Endast starka stationer"</string>
+    <string name="settings_dx">"Även svaga stationer"</string>
+    <string name="settings_unknown">"Inte tillgängligt"</string>
+    <string name="app_name">"Radio+"</string>
+    <string name="stations_empty">"Ännu inga stationer.\nStarta en automatisk sökning från menyn Frekvensval."</string>
+    <string name="favorites_empty">"Inga favoriter ännu.\nHåll ned en station i stationslistan och välj Lägg till i favoriter."</string>
+    <string name="content_edit">"Byt stationsnamn"</string>
+    <string name="content_delete">"Ta bort favorit"</string>
+    <string name="content_add_favorite">"Lägg till i favoriter"</string>
+    <string name="content_remove_favorite">"Ta bort från favoriter"</string>
+    <string name="content_seek_down">"Sök nästa station på en lägre frekvens"</string>
+    <string name="content_seek_up">"Sök nästa station på en högre frekvens"</string>
+    <string name="content_more">"Visa radioinställningar"</string>
+    <string name="content_previous_favorite">"Föregående favorit"</string>
+    <string name="content_next_favorite">"Nästa favorit"</string>
+    <string name="station_waiting">"Välj en station"</string>
+    <string name="service_ready">"Stations- och låtinformation visas här"</string>
+    <string name="action_auto_store">"Frekvensval"</string>
+    <string name="content_tuning">"Välj automatisk sökning eller manuell frekvensinställning"</string>
+    <string name="tuning_automatic">"Automatisk sökning"</string>
+    <string name="tuning_manual">"Manuell frekvensinställning"</string>
+    <string name="action_band_short">"FM"</string>
+    <string name="content_switch_band">"Byt frekvensband. Aktivt: %1$s"</string>
+    <string name="action_stations">"Stationer"</string>
+    <string name="action_saved">"Favoriter"</string>
+    <string name="action_setup">"Inställningar"</string>
+    <string name="station_meta">"%1$s  •  %2$s"</string>
+    <string name="station_page_description">"Stationssida %1$d av %2$d"</string>
+    <string name="widget_name">"Radio+ stationer"</string>
+    <string name="widget_description">"Visa och välj Radio+-favoriter eller stationer från stationslistan på startskärmen."</string>
+    <string name="widget_configure_title">"Välj widgetinnehåll"</string>
+    <string name="widget_configure_description">"Du kan välja separat för varje Radio+-widget."</string>
+    <string name="widget_favorites">"Favoriter"</string>
+    <string name="widget_station_list">"Stationslista"</string>
+    <string name="widget_cancel">"Avbryt"</string>
+    <string name="message_000" formatted="false">"Min station"</string>
+    <string name="message_001" formatted="false">"Namnge "</string>
+    <string name="message_002" formatted="false">"Tom"</string>
+    <string name="message_003" formatted="false">", favorit."</string>
+    <string name="message_004" formatted="false">", inte en favorit."</string>
+    <string name="message_005" formatted="false">" Tryck för att lyssna och namnge stationen."</string>
+    <string name="message_006" formatted="false">" Håll ned för att redigera."</string>
+    <string name="message_007" formatted="false">"Egen logotyp sparad"</string>
+    <string name="message_008" formatted="false">"Bilden kunde inte användas som logotyp"</string>
+    <string name="message_009" formatted="false">"Inga favoriter"</string>
+    <string name="message_010" formatted="false">"LOCAL endast starka stationer"</string>
+    <string name="message_011" formatted="false">"DX även svaga stationer"</string>
+    <string name="message_012" formatted="false">"Sökkänslighet"</string>
+    <string name="message_013" formatted="false">"Stäng"</string>
+    <string name="message_014" formatted="false">"Autostart aktiverad. Ställ in Junsuns Startup application på Empty."</string>
+    <string name="message_015" formatted="false">"Autostart avaktiverad"</string>
+    <string name="message_016" formatted="false">"Språk"</string>
+    <string name="message_017" formatted="false">"Avbryt"</string>
+    <string name="message_018" formatted="false">"Slutför stationslistan…"</string>
+    <string name="message_019" formatted="false">"Stoppar automatisk sökning…"</string>
+    <string name="message_020" formatted="false">"Stoppa automatisk sökning"</string>
+    <string name="message_021" formatted="false">"Stoppa namngivning av stationer"</string>
+    <string name="message_022" formatted="false">"Inställda stationer sparas i stationslistan."</string>
+    <string name="message_023" formatted="false">"LOCAL starka stationer"</string>
+    <string name="message_024" formatted="false">"◀  Sök nedåt"</string>
+    <string name="message_025" formatted="false">"Sök uppåt  ▶"</string>
+    <string name="message_026" formatted="false">"Söker efter en station på lägre frekvens…"</string>
+    <string name="message_027" formatted="false">"Söker efter en station på högre frekvens…"</string>
+    <string name="message_028" formatted="false">"Manuell frekvensinställning"</string>
+    <string name="message_029" formatted="false">"Ställ in"</string>
+    <string name="message_030" formatted="false">"Vänta tills radioinformationen har lästs in"</string>
+    <string name="message_031" formatted="false">"Ställer in "</string>
+    <string name="message_032" formatted="false">"Söker efter en station…"</string>
+    <string name="message_033" formatted="false">"Inställd • "</string>
+    <string name="message_034" formatted="false">"Inget RDS-namn — lyssna på mottagningen"</string>
+    <string name="message_035" formatted="false">"Tillagd i stationslistan"</string>
+    <string name="message_036" formatted="false">"Stationslistan uppdaterad"</string>
+    <string name="message_037" formatted="false">"Ange en frekvens mellan 87,5 och 108,0 i steg om 100 kHz"</string>
+    <string name="message_038" formatted="false">"Ange en frekvens mellan 522 och 1620 i steg om 9 kHz"</string>
+    <string name="message_039" formatted="false">"Radion svarar inte — frekvensen ställdes inte in"</string>
+    <string name="message_040" formatted="false">"Radion svarar inte — försök igen"</string>
+    <string name="message_041" formatted="false">"Radion svarar inte — automatisk sökning startades inte"</string>
+    <string name="message_042" formatted="false">"Automatisk sökning kunde inte startas"</string>
+    <string name="message_043" formatted="false">"Söker i hela frekvensområdet…"</string>
+    <string name="message_044" formatted="false">"Automatisk sökning stoppades innan den startade"</string>
+    <string name="message_045" formatted="false">"Sökning stoppad • %d stationer behölls • %d nya"</string>
+    <string name="message_046" formatted="false">"Namnger stationer %d/%d…"</string>
+    <string name="message_047" formatted="false">"Namngivning av stationer stoppad"</string>
+    <string name="message_048" formatted="false">"Namngivning stoppad • hittade stationer behölls"</string>
+    <string name="message_049" formatted="false">"Sökning klar • %d stationer • %d nya"</string>
+    <string name="message_050" formatted="false">"Sökning klar • stationslistan kunde inte läsas"</string>
+    <string name="message_051" formatted="false">"Sökning klar • inga stationer hittades"</string>
+    <string name="message_052" formatted="false">"Ange en FM-frekvens mellan 87,5 och 108,0, till exempel 101,7"</string>
+    <string name="message_053" formatted="false">"Ange en AM-frekvens mellan 522 och 1620 kHz"</string>
+    <string name="message_054" formatted="false">"Stationslista"</string>
+    <string name="message_055" formatted="false">"Inga sparade stationer. Kör en automatisk sökning först."</string>
+    <string name="message_056" formatted="false">"Den sparade stationsfrekvensen är ogiltig"</string>
+    <string name="message_057" formatted="false">"Byt stationsnamn"</string>
+    <string name="message_058" formatted="false">"Ta bort från favoriter"</string>
+    <string name="message_059" formatted="false">"Lägg till i favoriter"</string>
+    <string name="message_060" formatted="false">"Byt namn"</string>
+    <string name="message_061" formatted="false">"Byt logotyp"</string>
+    <string name="message_062" formatted="false">"Ändra favoritordning"</string>
+    <string name="message_063" formatted="false">"Ändra stationsordning"</string>
+    <string name="message_064" formatted="false">"Tillagd i favoriter"</string>
+    <string name="message_065" formatted="false">"Borttagen från favoriter"</string>
+    <string name="message_066" formatted="false">"Stationslogotyp"</string>
+    <string name="message_067" formatted="false">"Lägg till egen logotyp från enheten…"</string>
+    <string name="message_068" formatted="false">"Ta bort logotyp"</string>
+    <string name="message_069" formatted="false">"Automatisk logotyp utifrån stationsnamnet"</string>
+    <string name="message_070" formatted="false">"Logotyp borttagen"</string>
+    <string name="message_071" formatted="false">"Automatisk logotyp aktiverad"</string>
+    <string name="message_072" formatted="false">"Logotyp ändrad"</string>
+    <string name="message_073" formatted="false">"Ingen bildväljare hittades på enheten"</string>
+    <string name="message_074" formatted="false">"Ta bort favorit?"</string>
+    <string name="message_075" formatted="false">"Ta bort"</string>
+    <string name="message_076" formatted="false">"Till exempel Radio Nova"</string>
+    <string name="message_077" formatted="false">"Spara"</string>
+    <string name="message_078" formatted="false">"Ange ett stationsnamn"</string>
+    <string name="message_079" formatted="false">"Automatisk sökning stoppades när anslutningen till radion bröts"</string>
+    <string name="message_080" formatted="false">"Välj en station"</string>
+    <string name="message_081" formatted="false">"KLAR"</string>
+    <string name="message_082" formatted="false">"Redo för automatisk sökning"</string>
+    <string name="message_083" formatted="false">"Autosökning"</string>
+    <string name="message_084" formatted="false">"Söker stationer"</string>
+    <string name="message_085" formatted="false">"Söker frekvens"</string>
+    <string name="message_086" formatted="false">"Spelar"</string>
+    <string name="message_087" formatted="false">"Söker efter stationer…"</string>
+    <string name="message_088" formatted="false">"Dra för att ändra stationsordning"</string>
+    <string name="message_089" formatted="false">"Stationsordningen sparad"</string>
+    <string name="message_090" formatted="false">"Förhandsvisning"</string>
+    <string name="message_091" formatted="false">"Favoriter"</string>
+    <string name="message_092" formatted="false">"Favoriter sparade i Radio+"</string>
+    <string name="message_093" formatted="false">"Alla hittade stationer"</string>
+    <string name="message_094" formatted="false">"Radiouppspelning i bakgrunden"</string>
+    <string name="message_095" formatted="false">"Håller bilradion igång när appen är i bakgrunden"</string>
+    <string name="message_096" formatted="false">"Föregående station"</string>
+    <string name="message_097" formatted="false">"Pausa"</string>
+    <string name="message_098" formatted="false">"Spela"</string>
+    <string name="message_099" formatted="false">"Nästa station"</string>
+    <string name="message_100" formatted="false">"Stoppa"</string>
+    <string name="message_101" formatted="false">"Radion spelar i bakgrunden"</string>
+    <string name="message_102" formatted="false">"Radion är pausad"</string>
+    <string name="message_103" formatted="false">"Radiomaskinvaran ansluten"</string>
+    <string name="message_104" formatted="false">"Anslutningen till radiomaskinvaran bröts"</string>
+    <string name="message_105" formatted="false">"Radiomaskinvaran startar om"</string>
+    <string name="message_106" formatted="false">"Radiomaskinvaran tillhandahöll inget styrgränssnitt"</string>
+    <string name="message_107" formatted="false">"Originalradions mottagartjänst hittades inte"</string>
+    <string name="message_108" formatted="false">"Enhetens systemprogramvara blockerade åtkomst till radiomaskinvaran"</string>
+    <string name="message_109" formatted="false">"Radiomaskinvaran är inte tillgänglig"</string>
+    <string name="message_110" formatted="false">"Radiomaskinvaran är inte ansluten"</string>
+    <string name="message_111" formatted="false">"Radiostyrningen misslyckades"</string>
+    <string name="message_112" formatted="false">"Den angivna frekvensen är ogiltig"</string>
+    <string name="message_113" formatted="false">"Det valda frekvensbandet kunde inte öppnas"</string>
+    <string name="message_114" formatted="false">"Radions status kunde inte läsas"</string>
+    <string name="message_115" formatted="false">"STATIONSLISTA"</string>
+    <string name="message_116" formatted="false">"FAVORITER"</string>
+    <string name="message_117" formatted="false">"Ännu inga stationer"</string>
+    <string name="message_118" formatted="false">"Inga favoriter ännu"</string>
+</resources>

@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_steering">"Stuurwielknoppen"</string>
+    <string name="settings_steering_hint">"Optioneel doorgeven van knopdrukken terwijl Radio+ zichtbaar is."</string>
+    <string name="steering_service_name">"Radio+ stuurwielknoppen"</string>
+    <string name="steering_open_settings">"Android-instellingen openen"</string>
+    <string name="steering_settings_unavailable">"Open Toegankelijkheid in de Android-instellingen."</string>
+    <string name="steering_permission_description">"Als de originele radio je knopdrukken ontvangt, schakel dan Radio+ stuurwielknoppen in via de toegankelijkheidsinstellingen van Android. Deze optionele service verwerkt volgende, vorige en dempen/afspelen alleen terwijl Radio+ zichtbaar is. De service leest geen scherminhoud of getypte tekst. Andere apps en volumeknoppen worden niet bestuurd. Knopdrukken die door de autofirmware worden onderschept, kunnen niet op deze manier worden doorgestuurd. Op Android 13 moet je mogelijk eerst beperkte instellingen toestaan via het menu App-info. Schakel dit alleen in terwijl je geparkeerd staat."</string>
+    <string name="settings_close">"Sluiten"</string>
+    <string name="settings_radio">"Radio"</string>
+    <string name="settings_general">"Algemeen"</string>
+    <string name="settings_playback">"Afspelen en afstemmen"</string>
+    <string name="settings_playback_hint">"Kies hoe de radio start en zenders zoekt."</string>
+    <string name="settings_auto_start_hint">"Start Radio+ wanneer het apparaat opstart of ontwaakt."</string>
+    <string name="settings_general_hint">"Pas de app aan je voorkeuren aan."</string>
+    <string name="settings_finnish">"Suomi"</string>
+    <string name="settings_english">"English"</string>
+    <string name="settings_auto_start">"Automatisch starten"</string>
+    <string name="settings_language">"Taal"</string>
+    <string name="settings_sensitivity">"Zoekgevoeligheid"</string>
+    <string name="settings_local">"Alleen sterke zenders"</string>
+    <string name="settings_dx">"Ook zwakke zenders"</string>
+    <string name="settings_unknown">"Niet beschikbaar"</string>
+    <string name="app_name">"Radio+"</string>
+    <string name="stations_empty">"Nog geen zenders gevonden.\nStart automatisch zoeken via het menu Afstemmen."</string>
+    <string name="favorites_empty">"Nog geen favorieten.\nHoud een zender in de zenderlijst ingedrukt en kies Toevoegen aan favorieten."</string>
+    <string name="content_edit">"Zender hernoemen"</string>
+    <string name="content_delete">"Favoriet verwijderen"</string>
+    <string name="content_add_favorite">"Toevoegen aan favorieten"</string>
+    <string name="content_remove_favorite">"Verwijderen uit favorieten"</string>
+    <string name="content_seek_down">"Zoek de volgende zender op een lagere frequentie"</string>
+    <string name="content_seek_up">"Zoek de volgende zender op een hogere frequentie"</string>
+    <string name="content_more">"Radio-instellingen tonen"</string>
+    <string name="content_previous_favorite">"Vorige favoriet"</string>
+    <string name="content_next_favorite">"Volgende favoriet"</string>
+    <string name="station_waiting">"Selecteer een zender"</string>
+    <string name="service_ready">"Zender- en nummerinformatie verschijnt hier"</string>
+    <string name="action_auto_store">"Afstemmen"</string>
+    <string name="content_tuning">"Kies automatisch zoeken of handmatig afstemmen"</string>
+    <string name="tuning_automatic">"Automatisch zoeken"</string>
+    <string name="tuning_manual">"Handmatig afstemmen"</string>
+    <string name="action_band_short">"FM"</string>
+    <string name="content_switch_band">"Band wisselen. Actief: %1$s"</string>
+    <string name="action_stations">"Zenders"</string>
+    <string name="action_saved">"Favorieten"</string>
+    <string name="action_setup">"Instellingen"</string>
+    <string name="station_meta">"%1$s  •  %2$s"</string>
+    <string name="station_page_description">"Zenderpagina %1$d van %2$d"</string>
+    <string name="widget_name">"Radio+ zenders"</string>
+    <string name="widget_description">"Bekijk Radio+-favorieten of de zenderlijst op het startscherm en stem af op een zender."</string>
+    <string name="widget_configure_title">"Widgetinhoud kiezen"</string>
+    <string name="widget_configure_description">"Je kunt dit voor elke Radio+-widget afzonderlijk kiezen."</string>
+    <string name="widget_favorites">"Favorieten"</string>
+    <string name="widget_station_list">"Zenderlijst"</string>
+    <string name="widget_cancel">"Annuleren"</string>
+    <string name="message_000" formatted="false">"Mijn zender"</string>
+    <string name="message_001" formatted="false">"Naam geven aan "</string>
+    <string name="message_002" formatted="false">"Leeg"</string>
+    <string name="message_003" formatted="false">", favoriet."</string>
+    <string name="message_004" formatted="false">", geen favoriet."</string>
+    <string name="message_005" formatted="false">" Tik om te luisteren en de zender een naam te geven."</string>
+    <string name="message_006" formatted="false">" Houd ingedrukt om te bewerken."</string>
+    <string name="message_007" formatted="false">"Eigen logo opgeslagen"</string>
+    <string name="message_008" formatted="false">"De afbeelding kon niet als logo worden gebruikt"</string>
+    <string name="message_009" formatted="false">"Geen favorieten"</string>
+    <string name="message_010" formatted="false">"LOCAL alleen sterke zenders"</string>
+    <string name="message_011" formatted="false">"DX ook zwakke zenders"</string>
+    <string name="message_012" formatted="false">"Zoekgevoeligheid"</string>
+    <string name="message_013" formatted="false">"Sluiten"</string>
+    <string name="message_014" formatted="false">"Automatisch starten ingeschakeld. Stel Junsun Startup application in op Empty."</string>
+    <string name="message_015" formatted="false">"Automatisch starten uitgeschakeld"</string>
+    <string name="message_016" formatted="false">"Taal"</string>
+    <string name="message_017" formatted="false">"Annuleren"</string>
+    <string name="message_018" formatted="false">"Zenderlijst afronden…"</string>
+    <string name="message_019" formatted="false">"Automatisch zoeken stoppen…"</string>
+    <string name="message_020" formatted="false">"Automatisch zoeken stoppen"</string>
+    <string name="message_021" formatted="false">"Naamgeving van zenders stoppen"</string>
+    <string name="message_022" formatted="false">"Afgestemde zenders worden opgeslagen in de zenderlijst."</string>
+    <string name="message_023" formatted="false">"LOCAL sterke zenders"</string>
+    <string name="message_024" formatted="false">"◀  Lager zoeken"</string>
+    <string name="message_025" formatted="false">"Hoger zoeken  ▶"</string>
+    <string name="message_026" formatted="false">"Zoeken naar een zender op een lagere frequentie…"</string>
+    <string name="message_027" formatted="false">"Zoeken naar een zender op een hogere frequentie…"</string>
+    <string name="message_028" formatted="false">"Handmatig afstemmen"</string>
+    <string name="message_029" formatted="false">"Afstemmen"</string>
+    <string name="message_030" formatted="false">"Wacht tot de radio-informatie is geladen"</string>
+    <string name="message_031" formatted="false">"Afstemmen op "</string>
+    <string name="message_032" formatted="false">"Zoeken naar een zender…"</string>
+    <string name="message_033" formatted="false">"Afgestemd • "</string>
+    <string name="message_034" formatted="false">"Geen RDS-naam — luister om de ontvangst te beoordelen"</string>
+    <string name="message_035" formatted="false">"Toegevoegd aan zenderlijst"</string>
+    <string name="message_036" formatted="false">"Zenderlijst bijgewerkt"</string>
+    <string name="message_037" formatted="false">"Voer een frequentie in van 87,5 tot 108,0 in stappen van 100 kHz"</string>
+    <string name="message_038" formatted="false">"Voer een frequentie in van 522 tot 1620 in stappen van 9 kHz"</string>
+    <string name="message_039" formatted="false">"De radio reageert niet — er is niet afgestemd"</string>
+    <string name="message_040" formatted="false">"De radio reageert niet — probeer het opnieuw"</string>
+    <string name="message_041" formatted="false">"De radio reageert niet — automatisch zoeken is niet gestart"</string>
+    <string name="message_042" formatted="false">"Automatisch zoeken kon niet worden gestart"</string>
+    <string name="message_043" formatted="false">"Het volledige frequentiebereik doorzoeken…"</string>
+    <string name="message_044" formatted="false">"Automatisch zoeken gestopt voordat het begon"</string>
+    <string name="message_045" formatted="false">"Zoeken gestopt • %d zenders behouden • %d nieuwe"</string>
+    <string name="message_046" formatted="false">"Zenders een naam geven %d/%d…"</string>
+    <string name="message_047" formatted="false">"Naamgeving van zenders gestopt"</string>
+    <string name="message_048" formatted="false">"Naamgeving gestopt • gevonden zenders zijn behouden"</string>
+    <string name="message_049" formatted="false">"Zoeken voltooid • %d zenders • %d nieuwe"</string>
+    <string name="message_050" formatted="false">"Zoeken voltooid • zenderlijst kon niet worden gelezen"</string>
+    <string name="message_051" formatted="false">"Zoeken voltooid • geen zenders gevonden"</string>
+    <string name="message_052" formatted="false">"Voer een FM-frequentie in van 87,5 tot 108,0, bijvoorbeeld 101,7"</string>
+    <string name="message_053" formatted="false">"Voer een AM-frequentie in van 522 tot 1620 kHz"</string>
+    <string name="message_054" formatted="false">"Zenderlijst"</string>
+    <string name="message_055" formatted="false">"Geen opgeslagen zenders. Start eerst automatisch zoeken."</string>
+    <string name="message_056" formatted="false">"De opgeslagen zenderfrequentie is ongeldig"</string>
+    <string name="message_057" formatted="false">"Zender hernoemen"</string>
+    <string name="message_058" formatted="false">"Verwijderen uit favorieten"</string>
+    <string name="message_059" formatted="false">"Toevoegen aan favorieten"</string>
+    <string name="message_060" formatted="false">"Hernoemen"</string>
+    <string name="message_061" formatted="false">"Logo wijzigen"</string>
+    <string name="message_062" formatted="false">"Favorieten herschikken"</string>
+    <string name="message_063" formatted="false">"Zenders herschikken"</string>
+    <string name="message_064" formatted="false">"Toegevoegd aan favorieten"</string>
+    <string name="message_065" formatted="false">"Verwijderd uit favorieten"</string>
+    <string name="message_066" formatted="false">"Zenderlogo"</string>
+    <string name="message_067" formatted="false">"Eigen logo toevoegen vanaf apparaat…"</string>
+    <string name="message_068" formatted="false">"Logo verwijderen"</string>
+    <string name="message_069" formatted="false">"Automatisch logo op basis van zendernaam"</string>
+    <string name="message_070" formatted="false">"Logo verwijderd"</string>
+    <string name="message_071" formatted="false">"Automatisch logo ingeschakeld"</string>
+    <string name="message_072" formatted="false">"Logo gewijzigd"</string>
+    <string name="message_073" formatted="false">"Er is geen afbeeldingskiezer op het apparaat gevonden"</string>
+    <string name="message_074" formatted="false">"Favoriet verwijderen?"</string>
+    <string name="message_075" formatted="false">"Verwijderen"</string>
+    <string name="message_076" formatted="false">"Bijvoorbeeld Radio Nova"</string>
+    <string name="message_077" formatted="false">"Opslaan"</string>
+    <string name="message_078" formatted="false">"Voer een zendernaam in"</string>
+    <string name="message_079" formatted="false">"Automatisch zoeken gestopt doordat de radioverbinding is verbroken"</string>
+    <string name="message_080" formatted="false">"Selecteer een zender"</string>
+    <string name="message_081" formatted="false">"GEREED"</string>
+    <string name="message_082" formatted="false">"Gereed voor automatisch zoeken"</string>
+    <string name="message_083" formatted="false">"Automatisch zoeken"</string>
+    <string name="message_084" formatted="false">"Frequentiebereik doorzoeken"</string>
+    <string name="message_085" formatted="false">"Zender zoeken"</string>
+    <string name="message_086" formatted="false">"Afspelen"</string>
+    <string name="message_087" formatted="false">"Zoeken naar zenders…"</string>
+    <string name="message_088" formatted="false">"Sleep om de zendervolgorde te wijzigen"</string>
+    <string name="message_089" formatted="false">"Zendervolgorde opgeslagen"</string>
+    <string name="message_090" formatted="false">"Voorbeeldmodus"</string>
+    <string name="message_091" formatted="false">"Favorieten"</string>
+    <string name="message_092" formatted="false">"Favorieten opgeslagen in Radio+"</string>
+    <string name="message_093" formatted="false">"Alle gevonden zenders"</string>
+    <string name="message_094" formatted="false">"Radio afspelen op de achtergrond"</string>
+    <string name="message_095" formatted="false">"Laat de autoradio doorspelen wanneer de app op de achtergrond staat"</string>
+    <string name="message_096" formatted="false">"Vorige zender"</string>
+    <string name="message_097" formatted="false">"Pauzeren"</string>
+    <string name="message_098" formatted="false">"Afspelen"</string>
+    <string name="message_099" formatted="false">"Volgende zender"</string>
+    <string name="message_100" formatted="false">"Stoppen"</string>
+    <string name="message_101" formatted="false">"Radio speelt op de achtergrond"</string>
+    <string name="message_102" formatted="false">"Radio is gepauzeerd"</string>
+    <string name="message_103" formatted="false">"Radiohardware verbonden"</string>
+    <string name="message_104" formatted="false">"Verbinding met radiohardware verbroken"</string>
+    <string name="message_105" formatted="false">"Radiohardware wordt opnieuw gestart"</string>
+    <string name="message_106" formatted="false">"Radiohardware heeft geen besturingsinterface beschikbaar gesteld"</string>
+    <string name="message_107" formatted="false">"De tunerservice van de originele radio is niet gevonden"</string>
+    <string name="message_108" formatted="false">"De firmware blokkeert toegang tot de radiohardware"</string>
+    <string name="message_109" formatted="false">"Radiohardware is niet beschikbaar"</string>
+    <string name="message_110" formatted="false">"Radiohardware is niet verbonden"</string>
+    <string name="message_111" formatted="false">"Radiobesturing mislukt"</string>
+    <string name="message_112" formatted="false">"De afstemfrequentie is ongeldig"</string>
+    <string name="message_113" formatted="false">"De geselecteerde radioband kon niet worden geopend"</string>
+    <string name="message_114" formatted="false">"Radiostatus uitlezen mislukt"</string>
+    <string name="message_115" formatted="false">"ZENDERLIJST"</string>
+    <string name="message_116" formatted="false">"FAVORIETEN"</string>
+    <string name="message_117" formatted="false">"Nog geen zenders gevonden"</string>
+    <string name="message_118" formatted="false">"Nog geen favorieten"</string>
+</resources>

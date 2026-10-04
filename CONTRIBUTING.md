@@ -4,6 +4,15 @@ Please open a focused issue or pull request against this community repository.
 Changes to original project code are contributed under the MIT license. Do not
 submit third-party code or assets without the necessary rights and attribution.
 
+## Report device compatibility
+
+Use the [device compatibility form](https://github.com/edman01/radio-plus-open/issues/new?template=compatibility.yml)
+to share physical head-unit results, including partial or unsuccessful tests.
+Check [existing reports](https://github.com/edman01/radio-plus-open/issues?q=is%3Aissue%20label%3Acompatibility)
+first and add a comment for the same model and firmware. Mark untested features
+as Not tested and distinguish audible playback from UI or RDS updates. Community
+reports are not maintainer verification or guarantees for other devices.
+
 ## Report a bug
 
 Include the release version, Android version, non-unique head-unit model/firmware

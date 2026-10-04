@@ -1,0 +1,96 @@
+name: Device compatibility report
+description: Tell us which head unit you tested and what works or does not work.
+title: "[Compatibility] Brand and model"
+labels: ["compatibility"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Share results from your own head unit, including partial or unsuccessful results.
+        Search existing compatibility reports first; add a comment if the same model and firmware are already covered.
+        Reports are public community observations, not a guarantee for every unit with the same model name.
+        Test only while parked. Do not upload stock radio APKs, firmware, full logs or device dumps.
+        Do not include VINs, serial numbers, account details, locations or other personal information.
+  - type: input
+    id: model
+    attributes:
+      label: Head-unit brand and model
+      placeholder: "For example: Junsun V7 (include the variant if known)"
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: Radio+ version
+      description: Include the release name or version number you actually tested.
+      placeholder: "For example: community beta 3 / 0.16.1-beta20-play"
+    validations:
+      required: true
+  - type: input
+    id: android-version
+    attributes:
+      label: Android version
+      description: Enter the version shown by your unit, or Unknown. Manufacturer labels can be inaccurate.
+    validations:
+      required: true
+  - type: input
+    id: firmware
+    attributes:
+      label: Firmware and MCU version
+      description: Enter non-unique version strings if known, or Unknown. Do not include serial numbers or device IDs.
+    validations:
+      required: true
+  - type: dropdown
+    id: stock-radio
+    attributes:
+      label: Does the original stock radio play audible sound?
+      options:
+        - "Yes, it is installed and enabled"
+        - "No, it is installed but sound does not work"
+        - "It is missing or disabled"
+        - "Not tested / unknown"
+    validations:
+      required: true
+  - type: dropdown
+    id: result
+    attributes:
+      label: Overall Radio+ result
+      description: Judge actual sound and controls, not just station information appearing in the UI.
+      options:
+        - "Works for the features I tested"
+        - "Partially works"
+        - "Does not work"
+    validations:
+      required: true
+  - type: textarea
+    id: features
+    attributes:
+      label: Feature results
+      description: Replace each Not tested with Works, Partially works or Does not work, and add details where needed.
+      value: |
+        - FM audio and playback duration: Not tested
+        - AM audio: Not tested
+        - Automatic scan / manual tuning: Not tested
+        - Station names / RDS: Not tested
+        - Favorites / custom logos: Not tested
+        - Pause / resume / mute: Not tested
+        - Switching from another audio app: Not tested
+        - Steering-wheel next / previous / mute: Not tested
+        - Cold start / ACC sleep and wake: Not tested
+        - Home-screen widgets: Not tested
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Setup details and limitations
+      description: Mention any necessary settings, optional steering-button service, stock radio app name/version if known, and steps that trigger problems. Redact screenshots before attaching them.
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Before submitting
+      options:
+        - label: I tested this on a physical head unit, not only an emulator.
+          required: true
+        - label: I have removed personal data and device identifiers from this report and its attachments.
+          required: true

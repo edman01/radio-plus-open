@@ -15,7 +15,7 @@ function Read-Strings([string]$Directory) {
 }
 $resources = Join-Path $ProjectRoot 'app/src/main/res'
 $english = Read-Strings (Join-Path $resources 'values')
-foreach ($locale in @('fi','de','fr','es','pt','it')) {
+foreach ($locale in @('fi','de','fr','es','pt','it','sv','pl','nl','tr','cs')) {
     $localized = Read-Strings (Join-Path $resources "values-$locale")
     foreach ($key in $english.Keys) {
         if (-not $localized.ContainsKey($key)) { throw "$locale missing $key" }

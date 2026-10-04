@@ -10,8 +10,9 @@ import java.util.Locale;
 final class AppLanguage {
     static final String ENGLISH = "en";
     static final String FINNISH = "fi";
-    private static final String[] CODES = {"en", "fi", "de", "fr", "es", "pt", "it"};
-    private static final String[] NAMES = {"English", "Suomi", "Deutsch", "Français", "Español", "Português", "Italiano"};
+    private static final String[] CODES = {"en", "fi", "de", "fr", "es", "pt", "it", "sv", "pl", "nl", "tr", "cs"};
+    private static final String[] NAMES = {"English", "Suomi", "Deutsch", "Français", "Español", "Português", "Italiano",
+            "Svenska", "Polski", "Nederlands", "Türkçe", "Čeština"};
 
     static String[] codes() { return CODES.clone(); }
     static String[] names() { return NAMES.clone(); }

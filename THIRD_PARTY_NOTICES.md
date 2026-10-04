@@ -18,11 +18,14 @@ interoperability exceptions. The vendor's software remains separately licensed.
 ## Images and visual design
 
 The public app contains no station-logo collection or automatic logo download.
-The demonstration screenshot shows a privately populated preview. Station names
-and marks in it belong to their respective holders and are not MIT-licensed by
-this project. The AI-assisted head-unit composite incorporates a user-supplied
-frame reference and the emulator screenshot. It is illustrative, not an official
-product photograph, affiliation statement or hardware test result.
+The current public illustrations use fictional station names, geometric logos
+and track text; these are not bundled app content or claims of broadcaster
+endorsement. They are not claimed to be exclusive or trademark-cleared. Earlier
+real station artwork remains in Git history and is not licensed under this
+project's MIT license. See [image provenance](docs/images/README.md).
+The AI-assisted head-unit composite incorporates a user-supplied frame reference
+and an edited emulator image. It is illustrative, not an official product
+photograph, affiliation statement or hardware test result.
 
 The launcher artwork was supplied for this project. Its underlying rights and
 the OEM-inspired interface's visual/design rights have not received independent

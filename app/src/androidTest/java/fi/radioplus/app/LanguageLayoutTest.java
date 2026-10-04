@@ -30,8 +30,8 @@ public final class LanguageLayoutTest {
         Context context = instrumentation.getTargetContext();
         String previous = AppLanguage.get(context);
         try {
-            assertEquals(7, AppLanguage.codes().length);
-            assertEquals(7, AppLanguage.names().length);
+            assertEquals(12, AppLanguage.codes().length);
+            assertEquals(12, AppLanguage.names().length);
             for (String language : AppLanguage.codes()) {
                 AppLanguage.set(context, language);
                 assertEquals(language, AppLanguage.get(context));
@@ -79,7 +79,7 @@ public final class LanguageLayoutTest {
             current = instrumentation.startActivitySync(new Intent(context, MainActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK)
                     .putExtra("preview", true));
-            for (int index : new int[]{2, 3, 4, 5, 6, 1, 0}) {
+            for (int index : new int[]{2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 1, 0}) {
                 Activity old = current;
                     instrumentation.runOnMainSync(() -> invoke(old, "showLanguageDialog", new Class<?>[]{}));
                     instrumentation.waitForIdleSync();
@@ -90,7 +90,7 @@ public final class LanguageLayoutTest {
                             if (candidate != null) list = candidate;
                         }
                         assertNotNull("language list", list);
-                        assertEquals(7, list.getAdapter().getCount());
+                        assertEquals(12, list.getAdapter().getCount());
                         View row = list.getAdapter().getView(index, null, list);
                         list.performItemClick(row, index, list.getAdapter().getItemId(index));
                     });

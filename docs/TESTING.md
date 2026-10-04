@@ -2,7 +2,7 @@
 
 ## Physical device testing
 
-The maintainer reports Radio+ confirmed working on their physical **Junsun V7**.
+The maintainer reports Radio+ confirmed working on their physical **Junsun V7 running Android 13**.
 Other testing has been emulator-only; no other head-unit model is verified.
 This is a device-specific report, not a guarantee for every V7 firmware variant
 or proof that every feature and long-running scenario has passed. The checks
@@ -25,7 +25,8 @@ On 4 October 2026 the clean public project built with Gradle 8.11.1, Android SDK
 - Debug APK/AAB logo-isolation verification passed.
 - Unsigned release build passed; its DEX, binary manifest and resource table were
   compared with the signed distribution candidate and matched byte-for-byte.
-- Lint: 0 errors, 25 warnings, including dictionary warnings for the Radio+ brand.
+- Lint: 0 errors, 26 warnings, including dictionary warnings for the Radio+ brand
+  and the intentional Turkish expression "ayrı ayrı".
   Old target API/dependency-version checks are disabled
   explicitly; a clean lint result is not Play compliance or a security audit.
 - Android 13 emulator: six instrumentation tests passed. They cover English
@@ -43,12 +44,13 @@ ships without bundled station logos.
 ## Language and layout audit
 
 English remains the default; Finnish, German, French, Spanish, Portuguese
-(Portugal terminology) and Italian are selectable. Each locale covers all 172
+(Portugal terminology), Italian, Swedish, Polish, Dutch, Turkish and Czech are
+selectable. Each locale covers all 172
 translatable resource keys. The 119 legacy bilingual messages are mapped to
 resources; placeholder checks pass. Station names supplied by users or RDS are
 not translated.
 
-The Android 13 emulator checks eight views per language (56 per configuration):
+The Android 13 emulator checks eight views per language (96 per configuration):
 main screen, radio/general settings, station menu, language selection, reception
 mode, tuning choice and manual tuning. Checks passed at 1280×720 and 800×480 with
 normal font size, and at 1024×600 with 130% font size, at density 160. Dialogs can
@@ -58,7 +60,9 @@ tested through the actual picker, including persisted choice and activity recrea
 
 This is automated and AI-assisted translation review, not a native-speaker sign-off
 or verification on every screen size. Corrections from native speakers are welcome.
-All seven languages are packaged for offline switching; bundle language splitting
+The five new languages also received a separate meaning and terminology review;
+see [translation review and corrections](LOCALIZATION.md).
+All 12 languages are packaged for offline switching; bundle language splitting
 is disabled. Resource coverage can be checked with PowerShell:
 
 ```powershell
