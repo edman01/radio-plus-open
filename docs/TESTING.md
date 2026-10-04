@@ -16,54 +16,34 @@ the head unit, firmware and how button events are routed. Successful volume
 control does not guarantee that station switching or mute will work. Test these
 functions separately while parked; support is not guaranteed for every setup.
 
-## Verified for this source release
+## Automated test coverage
 
-On 4 October 2026 the clean public project built with Gradle 8.11.1, Android SDK
-33 and the local JDK 21 runtime (Java 17 source/target compatibility):
+Unit and emulator tests cover app logic, English as the default language,
+custom-image import and removal, logo-resource isolation, translation coverage,
+language selection and activity recreation, and translated screen layouts.
+Logo-isolation checks verify that the public build has no bundled station-logo
+collection. These checks do not verify radio hardware or audible playback.
 
-- 95 unit tests passed, with no failures or errors.
-- Debug APK/AAB logo-isolation verification passed.
-- Unsigned release build passed; its DEX, binary manifest and resource table were
-  compared with the signed distribution candidate and matched byte-for-byte.
-- Lint: 0 errors, 26 warnings, including dictionary warnings for the Radio+ brand
-  and the intentional Turkish expression "ayrı ayrı".
-  Old target API/dependency-version checks are disabled
-  explicitly; a clean lint result is not Play compliance or a security audit.
-- Android 13 emulator: six instrumentation tests passed. They cover English
-  default on a Finnish configuration, imported-image size/pixel preservation,
-  resource isolation and removal/recycled-card behavior, translation coverage,
-  language selection/recreation and translated screen layouts.
-- The signed APK contains no station-logo assets or embedded native/vendor libraries.
+The public images are AI-assisted illustrations with fictional stations, logos
+and track text, not screenshots or test evidence. The head-unit image is a
+synthetic composite, not a photograph of the app running in a vehicle.
+See [illustration provenance](images/README.md).
 
-The public images are AI-edited illustrations based on earlier emulator
-captures. Their stations, logos and track text are fictional. They are not raw
-screenshots or test evidence. The head-unit image is a synthetic composite, not
-a photograph of this release running in a physical vehicle. The public app
-ships without bundled station logos.
+## Languages and layout
 
-## Language and layout audit
+English is the default; Finnish, German, French, Spanish, Portuguese, Italian,
+Swedish, Polish, Dutch, Turkish and Czech are selectable. All 12 languages are
+packaged for offline switching. Station names supplied by users or RDS are not
+translated. Translations may contain mistakes; native-speaker corrections are
+welcome. See [languages and translations](LOCALIZATION.md).
 
-English remains the default; Finnish, German, French, Spanish, Portuguese
-(Portugal terminology), Italian, Swedish, Polish, Dutch, Turkish and Czech are
-selectable. Each locale covers all 172
-translatable resource keys. The 119 legacy bilingual messages are mapped to
-resources; placeholder checks pass. Station names supplied by users or RDS are
-not translated.
+Emulator layout tests cover the main screen, radio/general settings, station
+menu, language selection, reception mode, tuning choice and manual tuning.
+Dialogs can scroll where needed; long user-supplied station names may
+intentionally ellipsize. These tests do not guarantee that every screen size,
+font setting or manufacturer layout behaves identically.
 
-The Android 13 emulator checks eight views per language (96 per configuration):
-main screen, radio/general settings, station menu, language selection, reception
-mode, tuning choice and manual tuning. Checks passed at 1280×720 and 800×480 with
-normal font size, and at 1024×600 with 130% font size, at density 160. Dialogs can
-scroll where needed; long user-supplied station names may intentionally ellipsize.
-Representative captures were also visually inspected. Language selection was
-tested through the actual picker, including persisted choice and activity recreation.
-
-This is automated and AI-assisted translation review, not a native-speaker sign-off
-or verification on every screen size. Corrections from native speakers are welcome.
-The five new languages also received a separate meaning and terminology review;
-see [translation review and corrections](LOCALIZATION.md).
-All 12 languages are packaged for offline switching; bundle language splitting
-is disabled. Resource coverage can be checked with PowerShell:
+Resource coverage and formatting placeholders can be checked with PowerShell:
 
 ```powershell
 ./tools/verify-translations.ps1
@@ -114,4 +94,3 @@ adb shell am instrument -w -r fi.radioplus.app.play.debug.test/androidx.test.run
 
 If several devices are connected, select one with `adb -s <serial>`. These
 instrumentation tests use a separate debug package, not the release app.
-

@@ -45,4 +45,3 @@ that historical audio/steering issues are resolved on every device. See
 
 Station logos shown in the illustrations are not part of the APK.
 Import your own permitted images using [the logo guide](https://github.com/edman01/radio-plus-open/blob/main/docs/LOGOS.md).
-
