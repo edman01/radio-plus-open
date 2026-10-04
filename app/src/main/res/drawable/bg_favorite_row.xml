@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_selected="true">
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:endColor="#060912"
+                android:startColor="#293148" />
+            <stroke android:width="3dp" android:color="@color/accent" />
+            <corners android:radius="2dp" />
+        </shape>
+    </item>
+    <item android:state_pressed="true">
+        <shape android:shape="rectangle">
+            <solid android:color="#222A3F" />
+            <stroke android:width="2dp" android:color="@color/accent" />
+            <corners android:radius="2dp" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:endColor="#050811"
+                android:startColor="#252D42" />
+            <stroke android:width="1.5dp" android:color="@color/skoda_rail" />
+            <corners android:radius="2dp" />
+        </shape>
+    </item>
+</selector>

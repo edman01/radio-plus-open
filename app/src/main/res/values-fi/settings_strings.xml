@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_steering">Rattipainikkeet</string>
+    <string name="settings_steering_hint">Valinnainen näppäinohjaus radion ollessa näkyvissä.</string>
+    <string name="steering_service_name">Radio+ rattipainikkeet</string>
+    <string name="steering_open_settings">Avaa Android-asetukset</string>
+    <string name="steering_settings_unavailable">Avaa Android-asetusten Esteettömyys.</string>
+    <string name="steering_permission_description">Jos painikkeet ohjautuvat vakioradioon, ota Radio+ rattipainikkeet käyttöön Androidin esteettömyysasetuksissa. Tämä valinnainen palvelu käsittelee seuraava-, edellinen- ja mykistys/toistonäppäimet vain Radio+:n ollessa näkyvissä. Se ei lue näytön sisältöä eikä käsittele kirjoitettavaa tekstiä. Muita sovelluksia tai äänenvoimakkuuden +/−-painikkeita ei ohjata. Auton firmwaren suoraan käsittelemiä näppäimiä ei voi ohjata tällä tavalla. Android 13:ssa voit joutua ensin sallimaan rajoitetut asetukset sovellustietojen valikosta. Ota käyttöön vain auton ollessa pysäköitynä.</string>
+    <string name="settings_close">Sulje</string>
+    <string name="settings_radio">Radio</string>
+    <string name="settings_general">Yleiset</string>
+    <string name="settings_playback">Toisto ja viritys</string>
+    <string name="settings_playback_hint">Valitse, miten radio käynnistyy ja hakee asemat.</string>
+    <string name="settings_auto_start_hint">Avaa Radio+ laitteen käynnistyessä tai herätessä.</string>
+    <string name="settings_general_hint">Muokkaa sovellus itsellesi sopivaksi.</string>
+    <string name="settings_finnish">Suomi</string>
+    <string name="settings_english">English</string>
+    <string name="settings_auto_start">Automaattikäynnistys</string>
+    <string name="settings_language">Kieli</string>
+    <string name="settings_sensitivity">Hakuherkkyys</string>
+    <string name="settings_local">Vain vahvat asemat</string>
+    <string name="settings_dx">Myös heikot asemat</string>
+    <string name="settings_unknown">Ei tietoa</string>
+</resources>

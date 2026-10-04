@@ -1,0 +1,106 @@
+plugins {
+    id "com.android.application"
+}
+
+def externalBuildDirectory = System.getenv("RADIO_PLUS_BUILD_DIR")
+if (externalBuildDirectory) layout.buildDirectory.set(file(externalBuildDirectory))
+def generatedLauncherResources = layout.buildDirectory.dir("generated/launcherIcon/res")
+def launcherIconSource = file(System.getenv("RADIO_PLUS_LAUNCHER_ICON")
+        ?: rootProject.file("assets/ic_radio_launcher_art.png"))
+
+tasks.register("prepareLauncherIcon") {
+    inputs.file(launcherIconSource)
+    outputs.dir(generatedLauncherResources)
+    doLast {
+        if (!launcherIconSource.isFile()) throw new GradleException("Missing launcher artwork")
+        copy {
+            from launcherIconSource
+            into generatedLauncherResources.get().dir("drawable-nodpi").asFile
+            rename { "ic_radio_launcher_art.png" }
+        }
+    }
+}
+
+android {
+    namespace "fi.radioplus.app"
+    compileSdk 33
+    defaultConfig {
+        applicationId "fi.radioplus.app"
+        minSdk 27
+        targetSdk 33
+        versionCode 78
+        versionName "0.16.1-beta18"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+    buildFeatures {
+        aidl true
+        buildConfig true
+    }
+    // The historical flavor name does not imply publication on Google Play.
+    flavorDimensions "distribution"
+    productFlavors {
+        play {
+            dimension "distribution"
+            applicationIdSuffix ".play"
+            versionNameSuffix "-play"
+            buildConfigField "boolean", "BUNDLED_STATION_LOGOS", "false"
+        }
+    }
+    sourceSets.main.res.srcDir(generatedLauncherResources)
+    signingConfigs {
+        releaseKey {
+            def keyPath = System.getenv("RADIO_PLUS_KEYSTORE")
+            if (keyPath) {
+                storeFile file(keyPath)
+                storePassword System.getenv("RADIO_PLUS_STORE_PASSWORD")
+                keyAlias System.getenv("RADIO_PLUS_KEY_ALIAS") ?: "radio-plus-release"
+                keyPassword System.getenv("RADIO_PLUS_KEY_PASSWORD")
+            }
+        }
+    }
+    buildTypes {
+        debug {
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
+        release {
+            minifyEnabled false
+            shrinkResources false
+            if (System.getenv("RADIO_PLUS_KEYSTORE")) signingConfig signingConfigs.releaseKey
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    lint {
+        // This GitHub hardware beta has not completed a newer target migration.
+        disable "OldTargetApi", "GradleDependency"
+    }
+}
+
+dependencies {
+    testImplementation "junit:junit:4.13.2"
+    androidTestImplementation "androidx.test:runner:1.3.0"
+    androidTestImplementation "junit:junit:4.13.2"
+}
+
+tasks.named("preBuild").configure { dependsOn("prepareLauncherIcon") }
+
+tasks.register("verifyPlayLogoIsolation") {
+    description = "Reject station-logo assets in the public APK and AAB."
+    dependsOn("assemblePlayDebug", "bundlePlayDebug")
+    doLast {
+        ["outputs/apk/play/debug/app-play-debug.apk",
+         "outputs/bundle/playDebug/app-play-debug.aab"].each { relative ->
+            def archive = new java.util.zip.ZipFile(layout.buildDirectory.file(relative).get().asFile)
+            try {
+                def logos = archive.entries().findAll {
+                    it.name ==~ /(?i).*(^|\/)logo_[^\/]+\.(png|jpg|jpeg|webp|xml)/
+                }
+                if (!logos.isEmpty()) throw new GradleException("Unexpected station logo assets: " + logos)
+            } finally { archive.close() }
+        }
+    }
+}

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_steering">Steering-wheel buttons</string>
+    <string name="settings_steering_hint">Optional key routing while Radio+ is visible.</string>
+    <string name="steering_service_name">Radio+ steering-wheel buttons</string>
+    <string name="steering_open_settings">Open Android settings</string>
+    <string name="steering_settings_unavailable">Open Accessibility in Android settings.</string>
+    <string name="steering_permission_description">If the stock radio receives your buttons, enable Radio+ steering-wheel buttons in Android Accessibility settings. This optional service handles next, previous and mute/play keys only while Radio+ is visible. It does not read screen content or handle typed text. Other apps and volume up/down are not controlled. Keys intercepted inside the car firmware cannot be redirected this way. On Android 13, you may first need to allow restricted settings in the app info menu. Enable this only while parked.</string>
+    <string name="settings_close">Close</string>
+    <string name="settings_radio">Radio</string>
+    <string name="settings_general">General</string>
+    <string name="settings_playback">Playback and tuning</string>
+    <string name="settings_playback_hint">Set how your radio starts and finds stations.</string>
+    <string name="settings_auto_start_hint">Start Radio+ when the device starts or wakes.</string>
+    <string name="settings_general_hint">Personalize the app to suit you.</string>
+    <string name="settings_finnish">Suomi</string>
+    <string name="settings_english">English</string>
+    <string name="settings_auto_start">Auto-start</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_sensitivity">Scan sensitivity</string>
+    <string name="settings_local">Strong stations only</string>
+    <string name="settings_dx">Weak stations too</string>
+    <string name="settings_unknown">Unavailable</string>
+</resources>

@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="@dimen/station_tile_height"
+    android:background="@drawable/bg_favorite_row"
+    android:duplicateParentState="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <FrameLayout
+            android:id="@+id/favorite_art"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_station_art">
+
+            <ImageView
+                android:id="@+id/favorite_logo"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:adjustViewBounds="true"
+                android:contentDescription="@null"
+                android:padding="8dp"
+                android:scaleType="fitCenter"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/favorite_monogram"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:fontFamily="sans-serif-condensed"
+                android:gravity="center"
+                android:letterSpacing="0.04"
+                android:textColor="@color/panel"
+                android:textSize="31sp"
+                android:textStyle="bold" />
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/favorite_name"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/station_label_height"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif-condensed"
+            android:gravity="center"
+            android:paddingHorizontal="9dp"
+            android:singleLine="true"
+            android:textAlignment="center"
+            android:textColor="@color/text_primary"
+            android:textSize="21sp" />
+
+        <TextView
+            android:id="@+id/favorite_frequency"
+            android:layout_width="1dp"
+            android:layout_height="1dp"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <ImageButton
+        android:id="@+id/favorite_toggle"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="top|end"
+        android:background="@android:color/transparent"
+        android:contentDescription="@string/content_add_favorite"
+        android:padding="10dp"
+        android:src="@drawable/ic_star_outline_skoda" />
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="1dp"
+        android:layout_gravity="top|end"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <ImageButton
+            android:id="@+id/favorite_edit"
+            android:layout_width="1dp"
+            android:layout_height="1dp"
+            android:contentDescription="@string/content_edit"
+            android:src="@drawable/ic_edit" />
+
+        <ImageButton
+            android:id="@+id/favorite_delete"
+            android:layout_width="1dp"
+            android:layout_height="1dp"
+            android:contentDescription="@string/content_delete"
+            android:src="@drawable/ic_delete" />
+    </LinearLayout>
+
+    <View
+        android:id="@+id/favorite_selected_outline"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_favorite_selected_outline"
+        android:clickable="false"
+        android:focusable="false"
+        android:importantForAccessibility="no"
+        android:visibility="gone" />
+
+</FrameLayout>

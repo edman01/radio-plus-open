@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Radio+</string>
+    <string name="stations_empty">Ei vielä löydettyjä asemia.\nKäynnistä automaattihaku Viritys-valikosta.</string>
+    <string name="favorites_empty">Ei vielä suosikkeja.\nPaina asemaa pitkään Asemalistassa ja valitse Lisää suosikiksi.</string>
+    <string name="content_edit">Nimeä asema uudelleen</string>
+    <string name="content_delete">Poista suosikki</string>
+    <string name="content_add_favorite">Lisää suosikiksi</string>
+    <string name="content_remove_favorite">Poista suosikeista</string>
+    <string name="content_seek_down">Hae seuraava asema alemmalta taajuudelta</string>
+    <string name="content_seek_up">Hae seuraava asema ylemmältä taajuudelta</string>
+    <string name="content_previous_favorite">Edellinen suosikki</string>
+    <string name="content_next_favorite">Seuraava suosikki</string>
+    <string name="content_more">Näytä radion asetukset</string>
+    <string name="station_waiting">Valitse asema</string>
+    <string name="service_ready">Aseman ja kappaleen tiedot näkyvät tässä</string>
+    <string name="action_auto_store">Viritys</string>
+    <string name="content_tuning">Valitse automaattinen haku tai manuaalinen viritys</string>
+    <string name="tuning_automatic">Automaattinen haku</string>
+    <string name="tuning_manual">Manuaalinen viritys</string>
+    <string name="action_band_short">FM</string>
+    <string name="content_switch_band">Vaihda taajuusaluetta. Aktiivinen %1$s</string>
+    <string name="action_stations">Asemalista</string>
+    <string name="action_saved">Suosikit</string>
+    <string name="action_setup">Asetukset</string>
+    <string name="frequency_hint" translatable="false">101.7</string>
+    <string name="station_meta">%1$s  •  %2$s</string>
+    <string name="station_page_description">Asemasivu %1$d / %2$d</string>
+    <string name="widget_name">Radio+ asemat</string>
+    <string name="widget_description">Näytä ja viritä Radio+:n suosikit tai asemalista kotinäytöltä.</string>
+    <string name="widget_configure_title">Valitse widgetin sisältö</string>
+    <string name="widget_configure_description">Valinnan voi tehdä erikseen jokaiselle Radio+‑widgetille.</string>
+    <string name="widget_favorites">Suosikit</string>
+    <string name="widget_station_list">Asemalista</string>
+    <string name="widget_cancel">Peruuta</string>
+</resources>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="screen_padding">0dp</dimen>
+    <dimen name="control_height">64dp</dimen>
+    <dimen name="dialog_input_padding">18dp</dimen>
+    <dimen name="header_block_height">190dp</dimen>
+    <dimen name="top_bar_height">56dp</dimen>
+    <dimen name="seek_button_width">98dp</dimen>
+    <dimen name="station_title_size">48sp</dimen>
+    <dimen name="radio_text_size">25sp</dimen>
+    <dimen name="bottom_bar_height">116dp</dimen>
+    <dimen name="station_tile_width">116dp</dimen>
+    <dimen name="station_tile_height">122dp</dimen>
+    <dimen name="station_tile_gap">12dp</dimen>
+    <dimen name="station_label_height">44dp</dimen>
+</resources>

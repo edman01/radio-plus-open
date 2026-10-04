@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="utf-8"?>
+<fi.radioplus.app.SkodaRootLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/app_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <FrameLayout
+        android:id="@+id/primary_pane"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/header_block_height">
+
+        <fi.radioplus.app.SkodaHeaderBackdropView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:importantForAccessibility="no" />
+
+        <ImageButton
+            android:id="@+id/seek_down_button"
+            android:layout_width="@dimen/seek_button_width"
+            android:layout_height="118dp"
+            android:layout_gravity="bottom|start"
+            android:layout_marginStart="34dp"
+            android:background="@drawable/bg_arrow_button"
+            android:contentDescription="@string/content_seek_down"
+            android:padding="17dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_arrow_previous_skoda" />
+
+        <LinearLayout
+            android:id="@+id/station_info"
+            android:layout_width="match_parent"
+            android:layout_height="128dp"
+            android:layout_gravity="bottom"
+            android:layout_marginStart="150dp"
+            android:layout_marginEnd="150dp"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingBottom="12dp">
+
+            <TextView
+                android:id="@+id/station_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:fontFamily="sans-serif-condensed"
+                android:gravity="center"
+                android:includeFontPadding="false"
+                android:singleLine="true"
+                android:text="@string/station_waiting"
+                android:textColor="@color/text_primary"
+                android:textSize="@dimen/station_title_size"
+                android:textStyle="normal" />
+
+            <TextView
+                android:id="@+id/radio_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:ellipsize="end"
+                android:fontFamily="sans-serif-condensed"
+                android:gravity="center"
+                android:includeFontPadding="false"
+                android:maxLines="2"
+                android:textColor="@color/text_secondary"
+                android:textSize="@dimen/radio_text_size"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/seek_up_button"
+            android:layout_width="@dimen/seek_button_width"
+            android:layout_height="118dp"
+            android:layout_gravity="bottom|end"
+            android:layout_marginEnd="34dp"
+            android:background="@drawable/bg_arrow_button"
+            android:contentDescription="@string/content_seek_up"
+            android:padding="17dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_arrow_next_skoda" />
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/stations_pane"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="2dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <GridView
+                android:id="@+id/favorites_list"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:clipToPadding="false"
+                android:columnWidth="@dimen/station_tile_width"
+                android:gravity="center"
+                android:horizontalSpacing="@dimen/station_tile_gap"
+                android:listSelector="@android:color/transparent"
+                android:numColumns="6"
+                android:overScrollMode="never"
+                android:scrollbars="none"
+                android:stretchMode="none"
+                android:verticalSpacing="@dimen/station_tile_gap"
+                tools:listitem="@layout/row_favorite" />
+
+            <LinearLayout
+                android:id="@+id/station_page_indicator"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:translationY="-70dp"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/empty_favorites"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:text="@string/stations_empty"
+            android:textColor="@color/text_secondary"
+            android:textSize="25sp" />
+    </FrameLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/bottom_bar_height"
+        android:layout_marginBottom="0dp">
+
+        <fi.radioplus.app.SkodaNavBackdropView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:importantForAccessibility="no" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:baselineAligned="false"
+            android:divider="@drawable/bg_nav_divider"
+            android:orientation="horizontal"
+            android:showDividers="middle">
+
+            <Button
+                android:id="@+id/band_button"
+                style="@style/RadioButton.SkodaNav"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:text="@string/action_band_short" />
+
+            <Button
+                android:id="@+id/stations_button"
+                style="@style/RadioButton.SkodaNav"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:drawableTop="@drawable/ic_station_list_skoda"
+                android:text="@string/action_stations" />
+
+            <Button
+                android:id="@+id/saved_button"
+                style="@style/RadioButton.SkodaNav.Selected"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:drawableTop="@drawable/ic_star_skoda"
+                android:text="@string/action_saved" />
+
+            <FrameLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1">
+
+                <Button
+                    android:id="@+id/auto_scan_button"
+                    style="@style/RadioButton.SkodaNav"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:contentDescription="@string/content_tuning"
+                    android:drawableTop="@drawable/ic_frequency_skoda"
+                    android:text="@string/action_auto_store" />
+
+                <ProgressBar
+                    android:id="@+id/scan_progress"
+                    style="?android:attr/progressBarStyleSmall"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="top|end"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginEnd="10dp"
+                    android:indeterminateTint="@color/accent"
+                    android:visibility="gone" />
+            </FrameLayout>
+
+            <Button
+                android:id="@+id/more_button"
+                style="@style/RadioButton.SkodaNav"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:contentDescription="@string/content_more"
+                android:drawableTop="@drawable/ic_settings_skoda"
+                android:text="@string/action_setup" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- Vendor bridge controls and diagnostics remain available to Java logic.
+         The Škoda home screen exposes these through the five large tabs. -->
+    <TextView android:id="@+id/connection_status" android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone" />
+    <View android:id="@+id/connection_dot" android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone" />
+    <TextView android:id="@+id/brand_subtitle" android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone" />
+    <TextView android:id="@+id/band_text" android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone" />
+    <TextView android:id="@+id/frequency_text" android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone" />
+    <TextView android:id="@+id/frequency_unit" android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone" />
+    <TextView android:id="@+id/rds_status_text" android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone" />
+    <TextView android:id="@+id/stereo_text" android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone" />
+    <TextView android:id="@+id/reception_text" android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone" />
+    <TextView android:id="@+id/activity_text" android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone" />
+    <TextView android:id="@+id/station_count" android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone" />
+    <TextView android:id="@+id/scan_summary" android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone" />
+
+    <EditText
+        android:id="@+id/manual_frequency"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:hint="@string/frequency_hint"
+        android:importantForAutofill="no"
+        android:inputType="numberDecimal"
+        android:visibility="gone" />
+
+    <Button android:id="@+id/step_down_button" android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone" />
+    <Button android:id="@+id/step_up_button" android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone" />
+    <Button android:id="@+id/tune_button" android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone" />
+    <Button android:id="@+id/scan_button" android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone" />
+    <Button android:id="@+id/local_button" android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone" />
+    <Button android:id="@+id/play_button" android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone" />
+    <Button android:id="@+id/manual_menu_button" android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone" />
+
+    <fi.radioplus.app.TunerBackdropView
+        android:id="@+id/tuner_backdrop"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:importantForAccessibility="no"
+        android:visibility="gone" />
+</fi.radioplus.app.SkodaRootLayout>

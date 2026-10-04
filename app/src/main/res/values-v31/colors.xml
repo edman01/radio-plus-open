@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Keep the car display palette fixed instead of inheriting a phone wallpaper. -->
+    <color name="background">#070B0E</color>
+    <color name="panel">#111820</color>
+    <color name="panel_elevated">#18232D</color>
+    <color name="panel_selected">#25343D</color>
+    <color name="panel_stroke_soft">#3C4A52</color>
+    <color name="accent">#9FE33B</color>
+    <color name="text_primary">#F4F7F8</color>
+    <color name="text_secondary">#C5CFD4</color>
+    <color name="text_muted">#87959D</color>
+</resources>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Radio+</string>
+    <string name="stations_empty">No stations found yet.\nStart an automatic scan from the Tuning menu.</string>
+    <string name="favorites_empty">No favorites yet.\nHold a station in the station list and choose Add to favorites.</string>
+    <string name="content_edit">Rename station</string>
+    <string name="content_delete">Remove favorite</string>
+    <string name="content_add_favorite">Add to favorites</string>
+    <string name="content_remove_favorite">Remove from favorites</string>
+    <string name="content_seek_down">Find the next station on a lower frequency</string>
+    <string name="content_seek_up">Find the next station on a higher frequency</string>
+    <string name="content_more">Show radio settings</string>
+    <string name="content_previous_favorite">Previous favorite</string>
+    <string name="content_next_favorite">Next favorite</string>
+    <string name="station_waiting">Select a station</string>
+    <string name="service_ready">Station and track information appears here</string>
+    <string name="action_auto_store">Tuning</string>
+    <string name="content_tuning">Select automatic scan or manual tuning</string>
+    <string name="tuning_automatic">Automatic scan</string>
+    <string name="tuning_manual">Manual tuning</string>
+    <string name="action_band_short">FM</string>
+    <string name="content_switch_band">Switch band. Active: %1$s</string>
+    <string name="action_stations">Stations</string>
+    <string name="action_saved">Favorites</string>
+    <string name="action_setup">Settings</string>
+    <string name="frequency_hint" translatable="false">101.7</string>
+    <string name="station_meta">%1$s  •  %2$s</string>
+    <string name="station_page_description">Station page %1$d of %2$d</string>
+    <string name="widget_name">Radio+ stations</string>
+    <string name="widget_description">View and tune Radio+ favorites or the station list from the home screen.</string>
+    <string name="widget_configure_title">Select widget content</string>
+    <string name="widget_configure_description">You can choose separately for each Radio+ widget.</string>
+    <string name="widget_favorites">Favorites</string>
+    <string name="widget_station_list">Station list</string>
+    <string name="widget_cancel">Cancel</string>
+</resources>

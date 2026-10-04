@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fixed infotainment palette: high contrast and predictable in a car display. -->
+    <color name="background">#010207</color>
+    <color name="panel">#070B13</color>
+    <color name="panel_elevated">#101728</color>
+    <color name="panel_selected">#1A2339</color>
+    <color name="panel_stroke_soft">#A8B0C8</color>
+    <color name="accent">#A9F536</color>
+    <color name="danger">#FF8C82</color>
+    <color name="text_primary">#F4F7F8</color>
+    <color name="text_secondary">#D2D4E2</color>
+    <color name="text_muted">#858CA2</color>
+    <color name="status_connected">#A9F536</color>
+    <color name="skoda_rail">#CDD2E2</color>
+    <color name="skoda_gold">#FFCB4A</color>
+    <color name="page_dot">#BEBBD2</color>
+    <color name="launcher_icon_blue">#087CFA</color>
+</resources>
