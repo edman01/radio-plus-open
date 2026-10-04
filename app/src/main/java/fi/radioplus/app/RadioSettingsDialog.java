@@ -88,7 +88,8 @@ final class RadioSettingsDialog extends Dialog {
         close.setElevation(0f);
         close.setBackground(interactive());
         close.setOnClickListener(v -> dismiss());
-        header.addView(close, new LinearLayout.LayoutParams(dp(112), dp(52)));
+        close.setMinimumWidth(dp(112));
+        header.addView(close, new LinearLayout.LayoutParams(-2, dp(52)));
         root.addView(header);
         LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(-1, dp(1));
         dividerParams.topMargin = dp(16);
@@ -159,7 +160,7 @@ final class RadioSettingsDialog extends Dialog {
         } else {
             section(R.string.settings_general, R.string.settings_general_hint);
             addAction(R.id.settings_language, R.string.settings_language,
-                    AppLanguage.isFinnish(activity) ? R.string.settings_finnish : R.string.settings_english,
+                    AppLanguage.displayName(activity),
                     listener::onLanguage);
             addAction(R.id.settings_steering, R.string.settings_steering,
                     R.string.settings_steering_hint, listener::onSteeringKeys);
@@ -197,10 +198,16 @@ final class RadioSettingsDialog extends Dialog {
     }
 
     private void addAction(int id, int title, int subtitle, Runnable callback) {
+        addAction(id, title, activity.getString(subtitle), callback);
+    }
+
+    private void addAction(int id, int title, String subtitle, Runnable callback) {
         LinearLayout row = card();
         row.setId(id);
         row.setFocusable(true);
-        row.addView(label(title, subtitle), new LinearLayout.LayoutParams(0, -2, 1));
+        LinearLayout labels = label(title, 0);
+        ((TextView) labels.getChildAt(1)).setText(subtitle);
+        row.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
         TextView chevron = text(0, 34, MUTED);
         chevron.setText("›");
         chevron.setGravity(Gravity.CENTER);

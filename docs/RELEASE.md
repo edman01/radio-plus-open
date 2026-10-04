@@ -1,4 +1,4 @@
-# First public community beta
+# Community beta 2
 
 This is a free, MIT-licensed source release of Radio+'s original code, with a
 signed installable Android beta. It is not a Google Play release or a manufacturer
@@ -10,7 +10,7 @@ approved app. Third-party rights are excluded as explained in the notices.
 - `SHA256SUMS.txt`: SHA-256 checksum for that exact APK.
 - GitHub's source archives: source code for this release.
 
-Android version name: `0.16.1-beta18-play`, version code `78`.
+Android version name: `0.16.1-beta19-play`, version code `79`.
 Package: `fi.radioplus.app.play`. This installs beside the personal version and
 does not replace the manufacturer's stock radio. The historical `play` suffix
 does not imply distribution on Google Play.
@@ -21,11 +21,13 @@ as real tuners. Test while parked at a low safe volume.
 
 ## Included
 
-- English default, Finnish option, station/favorites lists and long-press editing.
+- English default plus Finnish, German, French, Spanish, Portuguese and Italian.
+- Improved text wrapping and scrolling for smaller screens and larger font settings.
+- Station/favorites lists and long-press editing.
 - User-selected PNG/JPEG import and logo removal, without a bundled logo collection
   or background logo search.
-- Source/build instructions, Finnish usage guide, privacy notes and test limitations.
-- An actual emulator screenshot and a clearly marked AI-assisted head-unit demo.
+- English installation/build instructions, privacy notes and test limitations.
+- AI-assisted illustrations using fictional station names and original geometric logos.
 
 ## Limits
 
@@ -34,6 +36,6 @@ and have not been verified by the emulator tests. This beta is not a guarantee
 that historical audio/steering issues are resolved on every device. See
 [testing](https://github.com/edman01/radio-plus-open/blob/main/docs/TESTING.md) before reporting an issue.
 
-Station logos shown in demo images are illustrative and not part of the APK.
+Station logos shown in the illustrations are not part of the APK.
 Import your own permitted images using [the logo guide](https://github.com/edman01/radio-plus-open/blob/main/docs/LOGOS.md).
 

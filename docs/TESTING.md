@@ -17,18 +17,45 @@ On 4 October 2026 the clean public project built with Gradle 8.11.1, Android SDK
 - Debug APK/AAB logo-isolation verification passed.
 - Unsigned release build passed; its DEX, binary manifest and resource table were
   compared with the signed distribution candidate and matched byte-for-byte.
-- Lint: 0 errors, 12 warnings. Old target API/dependency-version checks are disabled
+- Lint: 0 errors, 25 warnings, including dictionary warnings for the Radio+ brand.
+  Old target API/dependency-version checks are disabled
   explicitly; a clean lint result is not Play compliance or a security audit.
-- Android 13 emulator: three instrumentation tests passed. They cover English
+- Android 13 emulator: six instrumentation tests passed. They cover English
   default on a Finnish configuration, imported-image size/pixel preservation,
-  resource isolation and removal/recycled-card behavior.
+  resource isolation and removal/recycled-card behavior, translation coverage,
+  language selection/recreation and translated screen layouts.
 - The signed APK contains no station-logo assets or embedded native/vendor libraries.
 
-The public demo images are AI-edited illustrations based on earlier emulator
+The public images are AI-edited illustrations based on earlier emulator
 captures. Their stations, logos and track text are fictional. They are not raw
 screenshots or test evidence. The head-unit image is a synthetic composite, not
 a photograph of this release running in a physical vehicle. The public app
 ships without bundled station logos.
+
+## Language and layout audit
+
+English remains the default; Finnish, German, French, Spanish, Portuguese
+(Portugal terminology) and Italian are selectable. Each locale covers all 172
+translatable resource keys. The 119 legacy bilingual messages are mapped to
+resources; placeholder checks pass. Station names supplied by users or RDS are
+not translated.
+
+The Android 13 emulator checks eight views per language (56 per configuration):
+main screen, radio/general settings, station menu, language selection, reception
+mode, tuning choice and manual tuning. Checks passed at 1280×720 and 800×480 with
+normal font size, and at 1024×600 with 130% font size, at density 160. Dialogs can
+scroll where needed; long user-supplied station names may intentionally ellipsize.
+Representative captures were also visually inspected. Language selection was
+tested through the actual picker, including persisted choice and activity recreation.
+
+This is automated and AI-assisted translation review, not a native-speaker sign-off
+or verification on every screen size. Corrections from native speakers are welcome.
+All seven languages are packaged for offline switching; bundle language splitting
+is disabled. Resource coverage can be checked with PowerShell:
+
+```powershell
+./tools/verify-translations.ps1
+```
 
 ## Not proven by automated tests
 

@@ -41,7 +41,8 @@ final class StationOptionsDialog extends Dialog {
         header.addView(titles, new LinearLayout.LayoutParams(0, -2, 1));
         Button close = button(activity.getString(R.string.settings_close), 0xfff0f3f7);
         close.setOnClickListener(v -> dismiss());
-        header.addView(close, new LinearLayout.LayoutParams(dp(112), dp(52)));
+        close.setMinimumWidth(dp(112));
+        header.addView(close, new LinearLayout.LayoutParams(-2, dp(52)));
         root.addView(header, new LinearLayout.LayoutParams(-1, -2));
         View divider = new View(activity);
         divider.setBackgroundColor(0xff303c4b);
@@ -57,7 +58,8 @@ final class StationOptionsDialog extends Dialog {
                 final int action = j;
                 Button control = button(actions[j], j == 0 ? (favorite ? 0xffff9292 : accent) : 0xfff0f3f7);
                 control.setOnClickListener(v -> { dismiss(); listener.selected(action); });
-                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(72), 1);
+                control.setMinHeight(dp(72));
+                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, -2, 1);
                 if (j == i) params.rightMargin = dp(12);
                 pair.addView(control, params);
             }

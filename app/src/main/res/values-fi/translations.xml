@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="message_000" formatted="false">"Oma asema"</string>
+    <string name="message_001" formatted="false">"Nimeä "</string>
+    <string name="message_002" formatted="false">"Tyhjä"</string>
+    <string name="message_003" formatted="false">", suosikki."</string>
+    <string name="message_004" formatted="false">", ei suosikki."</string>
+    <string name="message_005" formatted="false">" Napauta kuunnellaksesi ja nimetäksesi."</string>
+    <string name="message_006" formatted="false">" Paina pitkään muokataksesi."</string>
+    <string name="message_007" formatted="false">"Oma logo tallennettu"</string>
+    <string name="message_008" formatted="false">"Kuvaa ei voitu käyttää logona"</string>
+    <string name="message_009" formatted="false">"Ei suosikkeja"</string>
+    <string name="message_010" formatted="false">"LOCAL vain vahvat asemat"</string>
+    <string name="message_011" formatted="false">"DX myös heikot"</string>
+    <string name="message_012" formatted="false">"Hakuherkkyys"</string>
+    <string name="message_013" formatted="false">"Sulje"</string>
+    <string name="message_014" formatted="false">"Automaattikäynnistys päällä. Valitse Junsunin Startup application -asetukseksi Empty."</string>
+    <string name="message_015" formatted="false">"Automaattikäynnistys pois päältä"</string>
+    <string name="message_016" formatted="false">"Kieli"</string>
+    <string name="message_017" formatted="false">"Peruuta"</string>
+    <string name="message_018" formatted="false">"Viimeistellään asemalistaa…"</string>
+    <string name="message_019" formatted="false">"Pysäytetään automaattihakua…"</string>
+    <string name="message_020" formatted="false">"Pysäytä automaattihaku"</string>
+    <string name="message_021" formatted="false">"Lopeta asemien nimeäminen"</string>
+    <string name="message_022" formatted="false">"Viritetyt asemat tallennetaan asemalistaan."</string>
+    <string name="message_023" formatted="false">"LOCAL vahvat asemat"</string>
+    <string name="message_024" formatted="false">"◀  Etsi alempi"</string>
+    <string name="message_025" formatted="false">"Etsi ylempi  ▶"</string>
+    <string name="message_026" formatted="false">"Etsitään alempaa asemaa…"</string>
+    <string name="message_027" formatted="false">"Etsitään ylempää asemaa…"</string>
+    <string name="message_028" formatted="false">"Manuaaliviritys"</string>
+    <string name="message_029" formatted="false">"Viritä"</string>
+    <string name="message_030" formatted="false">"Odota radiotietojen latautumista"</string>
+    <string name="message_031" formatted="false">"Viritetään "</string>
+    <string name="message_032" formatted="false">"Etsitään asemaa…"</string>
+    <string name="message_033" formatted="false">"Viritetty • "</string>
+    <string name="message_034" formatted="false">"Ei RDS-nimeä — kuuntele vastaanottoa"</string>
+    <string name="message_035" formatted="false">"Lisätty asemalistaan"</string>
+    <string name="message_036" formatted="false">"Asemalista päivitetty"</string>
+    <string name="message_037" formatted="false">"Anna 100 kHz askel väliltä 87.5–108.0"</string>
+    <string name="message_038" formatted="false">"Anna 9 kHz askel väliltä 522–1620"</string>
+    <string name="message_039" formatted="false">"Radio ei vastaa — viritystä ei tehty"</string>
+    <string name="message_040" formatted="false">"Radio ei vastaa — yritä uudelleen"</string>
+    <string name="message_041" formatted="false">"Radio ei vastaa — automaattihakua ei käynnistetty"</string>
+    <string name="message_042" formatted="false">"Automaattihakua ei voitu käynnistää"</string>
+    <string name="message_043" formatted="false">"Etsitään koko taajuusalueelta…"</string>
+    <string name="message_044" formatted="false">"Automaattihaku keskeytyi ennen käynnistymistä"</string>
+    <string name="message_045" formatted="false">"Haku pysäytetty • %d asemaa säilytettiin • %d uutta"</string>
+    <string name="message_046" formatted="false">"Nimetään asemia %d/%d…"</string>
+    <string name="message_047" formatted="false">"Asemien nimeäminen lopetettiin"</string>
+    <string name="message_048" formatted="false">"Asemien nimeäminen lopetettiin • löydetyt asemat säilytettiin"</string>
+    <string name="message_049" formatted="false">"Haku valmis • %d asemaa • %d uutta"</string>
+    <string name="message_050" formatted="false">"Haku valmis • asemalistaa ei voitu lukea"</string>
+    <string name="message_051" formatted="false">"Haku valmis • asemia ei löytynyt"</string>
+    <string name="message_052" formatted="false">"Anna FM-taajuus väliltä 87.5–108.0, esimerkiksi 101.7"</string>
+    <string name="message_053" formatted="false">"Anna AM-taajuus väliltä 522–1620 kHz"</string>
+    <string name="message_054" formatted="false">"Asemalista"</string>
+    <string name="message_055" formatted="false">"Ei tallennettuja asemia. Käynnistä automaattihaku Viritys-valikosta."</string>
+    <string name="message_056" formatted="false">"Tallennetun aseman taajuus ei ole kelvollinen"</string>
+    <string name="message_057" formatted="false">"Nimeä asema uudelleen"</string>
+    <string name="message_058" formatted="false">"Poista suosikeista"</string>
+    <string name="message_059" formatted="false">"Lisää suosikiksi"</string>
+    <string name="message_060" formatted="false">"Nimeä uudelleen"</string>
+    <string name="message_061" formatted="false">"Vaihda logo"</string>
+    <string name="message_062" formatted="false">"Järjestä suosikkeja"</string>
+    <string name="message_063" formatted="false">"Järjestä asemia"</string>
+    <string name="message_064" formatted="false">"Lisätty suosikkeihin"</string>
+    <string name="message_065" formatted="false">"Poistettu suosikeista"</string>
+    <string name="message_066" formatted="false">"Aseman logo"</string>
+    <string name="message_067" formatted="false">"Lisää oma logo laitteelta…"</string>
+    <string name="message_068" formatted="false">"Poista logo"</string>
+    <string name="message_069" formatted="false">"Automaattinen logo aseman nimestä"</string>
+    <string name="message_070" formatted="false">"Logo poistettu"</string>
+    <string name="message_071" formatted="false">"Automaattinen logo käytössä"</string>
+    <string name="message_072" formatted="false">"Logo vaihdettu"</string>
+    <string name="message_073" formatted="false">"Laitteesta ei löytynyt kuvanvalitsinta"</string>
+    <string name="message_074" formatted="false">"Poistetaanko suosikki?"</string>
+    <string name="message_075" formatted="false">"Poista"</string>
+    <string name="message_076" formatted="false">"Esim. Radio Nova"</string>
+    <string name="message_077" formatted="false">"Tallenna"</string>
+    <string name="message_078" formatted="false">"Anna asemalle nimi"</string>
+    <string name="message_079" formatted="false">"Automaattihaku keskeytyi radioyhteyden katketessa"</string>
+    <string name="message_080" formatted="false">"Valitse asema"</string>
+    <string name="message_081" formatted="false">"VALMIS"</string>
+    <string name="message_082" formatted="false">"Valmis automaattihakuun"</string>
+    <string name="message_083" formatted="false">"Autohaku"</string>
+    <string name="message_084" formatted="false">"Skannaus"</string>
+    <string name="message_085" formatted="false">"Haku"</string>
+    <string name="message_086" formatted="false">"Toistetaan"</string>
+    <string name="message_087" formatted="false">"Etsitään asemia…"</string>
+    <string name="message_088" formatted="false">"Järjestä kanavia vetämällä"</string>
+    <string name="message_089" formatted="false">"Kanavajärjestys tallennettu"</string>
+    <string name="message_090" formatted="false">"Esikatselutila"</string>
+    <string name="message_091" formatted="false">"Suosikit"</string>
+    <string name="message_092" formatted="false">"Radio+:aan tallennetut suosikit"</string>
+    <string name="message_093" formatted="false">"Kaikki löydetyt asemat"</string>
+    <string name="message_094" formatted="false">"Radion taustatoisto"</string>
+    <string name="message_095" formatted="false">"Pitää autoradion äänen käynnissä sovelluksen taustalla"</string>
+    <string name="message_096" formatted="false">"Edellinen asema"</string>
+    <string name="message_097" formatted="false">"Tauko"</string>
+    <string name="message_098" formatted="false">"Toista"</string>
+    <string name="message_099" formatted="false">"Seuraava asema"</string>
+    <string name="message_100" formatted="false">"Lopeta"</string>
+    <string name="message_101" formatted="false">"Radio soi taustalla"</string>
+    <string name="message_102" formatted="false">"Radio on tauolla"</string>
+    <string name="message_103" formatted="false">"Radiolaitteisto yhdistetty"</string>
+    <string name="message_104" formatted="false">"Radiolaitteiston yhteys katkesi"</string>
+    <string name="message_105" formatted="false">"Radiolaitteisto käynnistyy uudelleen"</string>
+    <string name="message_106" formatted="false">"Radiolaitteisto ei tarjonnut ohjausrajapintaa"</string>
+    <string name="message_107" formatted="false">"Vakioradion viritinpalvelua ei löytynyt"</string>
+    <string name="message_108" formatted="false">"ROM esti radiolaitteiston käytön"</string>
+    <string name="message_109" formatted="false">"Radiolaitteisto ei ole käytettävissä"</string>
+    <string name="message_110" formatted="false">"Radiolaitteisto ei ole yhdistetty"</string>
+    <string name="message_111" formatted="false">"Radio-ohjaus epäonnistui"</string>
+    <string name="message_112" formatted="false">"Viritystaajuus ei ole kelvollinen"</string>
+    <string name="message_113" formatted="false">"Valittua radiokaistaa ei voitu avata"</string>
+    <string name="message_114" formatted="false">"Radiotilan lukeminen epäonnistui"</string>
+    <string name="message_115" formatted="false">"ASEMALISTA"</string>
+    <string name="message_116" formatted="false">"SUOSIKIT"</string>
+    <string name="message_117" formatted="false">"Ei vielä löydettyjä asemia"</string>
+    <string name="message_118" formatted="false">"Ei vielä suosikkeja"</string>
+</resources>

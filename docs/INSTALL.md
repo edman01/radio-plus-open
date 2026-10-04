@@ -19,7 +19,9 @@ Ordinary phones/tablets do not gain an FM tuner from this app.
 4. Hold a station card to add/remove a favorite, rename, change/remove its logo
    or reorder the list. [Import a logo](LOGOS.md).
 
-English is the default. Finnish is available under **Settings → General → Language**.
+English is the default. Finnish, German, French, Spanish, Portuguese and Italian
+are available under **Settings → General → Language**. All languages are included
+in the APK; changing language needs no download.
 RDS station names and radio text appear when supplied by the stock service. You
 can rename a station yourself if its name is missing. Configure only while parked.
 

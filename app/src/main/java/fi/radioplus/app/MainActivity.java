@@ -701,14 +701,13 @@ public final class MainActivity extends Activity implements
     }
 
     private void showLanguageDialog() {
-        String[] languages = {"English", "Suomi"};
-        int selected = AppLanguage.isFinnish(this) ? 1 : 0;
+        String[] languages = AppLanguage.names();
+        String[] codes = AppLanguage.codes();
+        int selected = AppLanguage.selectedIndex(this);
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle(tr("Kieli", "Language"))
                 .setSingleChoiceItems(languages, selected, (choiceDialog, which) -> {
-                    String language = which == 1
-                            ? AppLanguage.FINNISH
-                            : AppLanguage.ENGLISH;
+                    String language = codes[which];
                     boolean changed = AppLanguage.set(this, language);
                     choiceDialog.dismiss();
                     if (changed) {
@@ -873,6 +872,7 @@ public final class MainActivity extends Activity implements
         content.addView(saveHint);
         RadioGroup bandChoices = new RadioGroup(this);
         bandChoices.setOrientation(LinearLayout.HORIZONTAL);
+        bandChoices.setBaselineAligned(false);
         bandChoices.setPadding(padding, dp(2), padding, 0);
         manualFmChoice = createManualChoice("FM");
         manualAmChoice = createManualChoice("AM");
@@ -885,6 +885,7 @@ public final class MainActivity extends Activity implements
 
         RadioGroup sensitivityChoices = new RadioGroup(this);
         sensitivityChoices.setOrientation(LinearLayout.HORIZONTAL);
+        sensitivityChoices.setBaselineAligned(false);
         sensitivityChoices.setPadding(padding, 0, padding, 0);
         manualLocalChoice = createManualChoice(tr(
                 "LOCAL vahvat asemat",
@@ -910,13 +911,15 @@ public final class MainActivity extends Activity implements
         Button lower = new Button(this);
         lower.setText("−");
         lower.setTextSize(26f);
-        row.addView(lower, new LinearLayout.LayoutParams(dp(58), dp(52)));
+        lower.setMinHeight(dp(52));
+        row.addView(lower, new LinearLayout.LayoutParams(dp(58), -2));
 
         EditText input = new EditText(this);
         input.setGravity(Gravity.CENTER);
         input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
         input.setSingleLine(true);
         input.setTextSize(24f);
+        input.setMinHeight(dp(52));
         input.setSelectAllOnFocus(true);
         String currentValue = currentState == null
                 ? (fm ? "101.7" : "999")
@@ -926,7 +929,7 @@ public final class MainActivity extends Activity implements
         input.setText(currentValue);
         LinearLayout.LayoutParams inputParams = new LinearLayout.LayoutParams(
                 0,
-                dp(52),
+                ViewGroup.LayoutParams.WRAP_CONTENT,
                 1f
         );
         inputParams.setMargins(dp(8), 0, dp(8), 0);
@@ -935,7 +938,8 @@ public final class MainActivity extends Activity implements
         Button higher = new Button(this);
         higher.setText("+");
         higher.setTextSize(26f);
-        row.addView(higher, new LinearLayout.LayoutParams(dp(58), dp(52)));
+        higher.setMinHeight(dp(52));
+        row.addView(higher, new LinearLayout.LayoutParams(dp(58), -2));
 
         content.addView(row, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -959,18 +963,20 @@ public final class MainActivity extends Activity implements
         Button seekLower = new Button(this);
         seekLower.setText(tr("◀  Etsi alempi", "◀  Seek lower"));
         seekLower.setTextSize(16f);
+        seekLower.setMinHeight(dp(48));
         Button seekHigher = new Button(this);
         seekHigher.setText(tr("Etsi ylempi  ▶", "Seek higher  ▶"));
         seekHigher.setTextSize(16f);
+        seekHigher.setMinHeight(dp(48));
         LinearLayout.LayoutParams seekButtonParams = new LinearLayout.LayoutParams(
                 0,
-                dp(48),
+                ViewGroup.LayoutParams.WRAP_CONTENT,
                 1f
         );
         seekRow.addView(seekLower, seekButtonParams);
         LinearLayout.LayoutParams higherSeekParams = new LinearLayout.LayoutParams(
                 0,
-                dp(48),
+                ViewGroup.LayoutParams.WRAP_CONTENT,
                 1f
         );
         higherSeekParams.setMarginStart(dp(10));
@@ -1031,7 +1037,7 @@ public final class MainActivity extends Activity implements
 
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle(tr("Manuaalinen viritys", "Manual tuning"))
-                .setView(content)
+                .setView(scrollableManualContent(content))
                 .setNegativeButton(tr("Sulje", "Close"), null)
                 .setPositiveButton(tr("Viritä", "Tune"), null)
                 .create();
@@ -1082,8 +1088,14 @@ public final class MainActivity extends Activity implements
         return choice;
     }
 
+    private android.widget.ScrollView scrollableManualContent(View content) {
+        android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        scroll.addView(content);
+        return scroll;
+    }
+
     private RadioGroup.LayoutParams manualChoiceLayoutParams() {
-        return new RadioGroup.LayoutParams(0, dp(48), 1f);
+        return new RadioGroup.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
     }
 
     private void switchManualTuningBand(boolean selectFm) {

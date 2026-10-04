@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="message_000" formatted="false">"La mia stazione"</string>
+    <string name="message_001" formatted="false">"Nome: "</string>
+    <string name="message_002" formatted="false">"Vuoto"</string>
+    <string name="message_003" formatted="false">", preferito."</string>
+    <string name="message_004" formatted="false">", non è un preferito."</string>
+    <string name="message_005" formatted="false">" Tocca per ascoltare e dare un nome alla stazione."</string>
+    <string name="message_006" formatted="false">" Tieni premuto per modificare."</string>
+    <string name="message_007" formatted="false">"Logo personalizzato salvato"</string>
+    <string name="message_008" formatted="false">"Impossibile usare l’immagine come logo"</string>
+    <string name="message_009" formatted="false">"Nessun preferito"</string>
+    <string name="message_010" formatted="false">"LOCAL solo stazioni forti"</string>
+    <string name="message_011" formatted="false">"DX anche stazioni deboli"</string>
+    <string name="message_012" formatted="false">"Sensibilità di ricerca"</string>
+    <string name="message_013" formatted="false">"Chiudi"</string>
+    <string name="message_014" formatted="false">"Avvio automatico attivato. Imposta «Startup application» di Junsun su «Empty»."</string>
+    <string name="message_015" formatted="false">"Avvio automatico disattivato"</string>
+    <string name="message_016" formatted="false">"Lingua"</string>
+    <string name="message_017" formatted="false">"Annulla"</string>
+    <string name="message_018" formatted="false">"Completamento dell’elenco stazioni…"</string>
+    <string name="message_019" formatted="false">"Arresto della ricerca automatica…"</string>
+    <string name="message_020" formatted="false">"Ferma ricerca automatica"</string>
+    <string name="message_021" formatted="false">"Ferma assegnazione dei nomi"</string>
+    <string name="message_022" formatted="false">"Le stazioni sintonizzate vengono salvate nell’elenco."</string>
+    <string name="message_023" formatted="false">"LOCAL stazioni forti"</string>
+    <string name="message_024" formatted="false">"◀  Cerca in basso"</string>
+    <string name="message_025" formatted="false">"Cerca in alto  ▶"</string>
+    <string name="message_026" formatted="false">"Ricerca di una stazione su frequenza inferiore…"</string>
+    <string name="message_027" formatted="false">"Ricerca di una stazione su frequenza superiore…"</string>
+    <string name="message_028" formatted="false">"Sintonia manuale"</string>
+    <string name="message_029" formatted="false">"Sintonizza"</string>
+    <string name="message_030" formatted="false">"Attendi il caricamento delle informazioni radio"</string>
+    <string name="message_031" formatted="false">"Sintonizzazione su "</string>
+    <string name="message_032" formatted="false">"Ricerca di una stazione…"</string>
+    <string name="message_033" formatted="false">"Sintonizzata • "</string>
+    <string name="message_034" formatted="false">"Nessun nome RDS — verifica la ricezione ascoltando"</string>
+    <string name="message_035" formatted="false">"Aggiunta all’elenco stazioni"</string>
+    <string name="message_036" formatted="false">"Elenco stazioni aggiornato"</string>
+    <string name="message_037" formatted="false">"Inserisci una frequenza tra 87,5 e 108,0 a passi di 100 kHz"</string>
+    <string name="message_038" formatted="false">"Inserisci una frequenza tra 522 e 1620 a passi di 9 kHz"</string>
+    <string name="message_039" formatted="false">"La radio non risponde — sintonia non eseguita"</string>
+    <string name="message_040" formatted="false">"La radio non risponde — riprova"</string>
+    <string name="message_041" formatted="false">"La radio non risponde — ricerca automatica non avviata"</string>
+    <string name="message_042" formatted="false">"Impossibile avviare la ricerca automatica"</string>
+    <string name="message_043" formatted="false">"Ricerca su tutta la banda…"</string>
+    <string name="message_044" formatted="false">"Ricerca automatica fermata prima dell’avvio"</string>
+    <string name="message_045" formatted="false">"Ricerca fermata • %d stazioni mantenute • %d nuove"</string>
+    <string name="message_046" formatted="false">"Assegnazione dei nomi %d/%d…"</string>
+    <string name="message_047" formatted="false">"Assegnazione dei nomi fermata"</string>
+    <string name="message_048" formatted="false">"Assegnazione dei nomi fermata • stazioni trovate mantenute"</string>
+    <string name="message_049" formatted="false">"Ricerca completata • %d stazioni • %d nuove"</string>
+    <string name="message_050" formatted="false">"Ricerca completata • impossibile leggere l’elenco"</string>
+    <string name="message_051" formatted="false">"Ricerca completata • nessuna stazione trovata"</string>
+    <string name="message_052" formatted="false">"Inserisci una frequenza FM tra 87,5 e 108,0, ad esempio 101,7"</string>
+    <string name="message_053" formatted="false">"Inserisci una frequenza AM tra 522 e 1620 kHz"</string>
+    <string name="message_054" formatted="false">"Elenco stazioni"</string>
+    <string name="message_055" formatted="false">"Nessuna stazione salvata. Avvia prima una ricerca automatica."</string>
+    <string name="message_056" formatted="false">"La frequenza salvata non è valida"</string>
+    <string name="message_057" formatted="false">"Rinomina stazione"</string>
+    <string name="message_058" formatted="false">"Rimuovi dai preferiti"</string>
+    <string name="message_059" formatted="false">"Aggiungi ai preferiti"</string>
+    <string name="message_060" formatted="false">"Rinomina"</string>
+    <string name="message_061" formatted="false">"Cambia logo"</string>
+    <string name="message_062" formatted="false">"Ordina preferiti"</string>
+    <string name="message_063" formatted="false">"Ordina stazioni"</string>
+    <string name="message_064" formatted="false">"Aggiunta ai preferiti"</string>
+    <string name="message_065" formatted="false">"Rimossa dai preferiti"</string>
+    <string name="message_066" formatted="false">"Logo della stazione"</string>
+    <string name="message_067" formatted="false">"Importa logo dal dispositivo…"</string>
+    <string name="message_068" formatted="false">"Rimuovi logo"</string>
+    <string name="message_069" formatted="false">"Logo automatico dal nome della stazione"</string>
+    <string name="message_070" formatted="false">"Logo rimosso"</string>
+    <string name="message_071" formatted="false">"Logo automatico attivato"</string>
+    <string name="message_072" formatted="false">"Logo cambiato"</string>
+    <string name="message_073" formatted="false">"Nessun selettore di immagini trovato sul dispositivo"</string>
+    <string name="message_074" formatted="false">"Rimuovere il preferito?"</string>
+    <string name="message_075" formatted="false">"Elimina"</string>
+    <string name="message_076" formatted="false">"Ad esempio, Radio Nova"</string>
+    <string name="message_077" formatted="false">"Salva"</string>
+    <string name="message_078" formatted="false">"Inserisci il nome della stazione"</string>
+    <string name="message_079" formatted="false">"Ricerca automatica fermata per perdita della connessione radio"</string>
+    <string name="message_080" formatted="false">"Scegli una stazione"</string>
+    <string name="message_081" formatted="false">"PRONTO"</string>
+    <string name="message_082" formatted="false">"Pronto per la ricerca automatica"</string>
+    <string name="message_083" formatted="false">"Ricerca auto"</string>
+    <string name="message_084" formatted="false">"Scansione"</string>
+    <string name="message_085" formatted="false">"Ricerca"</string>
+    <string name="message_086" formatted="false">"Riproduzione"</string>
+    <string name="message_087" formatted="false">"Ricerca delle stazioni…"</string>
+    <string name="message_088" formatted="false">"Trascina per ordinare le stazioni"</string>
+    <string name="message_089" formatted="false">"Ordine delle stazioni salvato"</string>
+    <string name="message_090" formatted="false">"Anteprima"</string>
+    <string name="message_091" formatted="false">"Preferiti"</string>
+    <string name="message_092" formatted="false">"Preferiti salvati in Radio+"</string>
+    <string name="message_093" formatted="false">"Tutte le stazioni trovate"</string>
+    <string name="message_094" formatted="false">"Radio in background"</string>
+    <string name="message_095" formatted="false">"Mantiene la radio in riproduzione quando l’app è in background"</string>
+    <string name="message_096" formatted="false">"Stazione precedente"</string>
+    <string name="message_097" formatted="false">"Pausa"</string>
+    <string name="message_098" formatted="false">"Riproduci"</string>
+    <string name="message_099" formatted="false">"Stazione successiva"</string>
+    <string name="message_100" formatted="false">"Ferma"</string>
+    <string name="message_101" formatted="false">"La radio suona in background"</string>
+    <string name="message_102" formatted="false">"La radio è in pausa"</string>
+    <string name="message_103" formatted="false">"Hardware radio connesso"</string>
+    <string name="message_104" formatted="false">"Connessione all’hardware radio persa"</string>
+    <string name="message_105" formatted="false">"Riavvio dell’hardware radio"</string>
+    <string name="message_106" formatted="false">"L’hardware radio non ha fornito un’interfaccia di controllo"</string>
+    <string name="message_107" formatted="false">"Servizio del sintonizzatore della radio originale non trovato"</string>
+    <string name="message_108" formatted="false">"La ROM ha bloccato l’accesso all’hardware radio"</string>
+    <string name="message_109" formatted="false">"Hardware radio non disponibile"</string>
+    <string name="message_110" formatted="false">"Hardware radio non connesso"</string>
+    <string name="message_111" formatted="false">"Controllo della radio non riuscito"</string>
+    <string name="message_112" formatted="false">"Frequenza di sintonia non valida"</string>
+    <string name="message_113" formatted="false">"Impossibile aprire la banda selezionata"</string>
+    <string name="message_114" formatted="false">"Lettura dello stato della radio non riuscita"</string>
+    <string name="message_115" formatted="false">"ELENCO STAZIONI"</string>
+    <string name="message_116" formatted="false">"PREFERITI"</string>
+    <string name="message_117" formatted="false">"Nessuna stazione trovata"</string>
+    <string name="message_118" formatted="false">"Ancora nessun preferito"</string>
+    <string name="app_name">"Radio+"</string>
+    <string name="stations_empty">"Nessuna stazione trovata.\nAvvia una ricerca automatica dal menu «Sintonia»."</string>
+    <string name="favorites_empty">"Ancora nessun preferito.\nTieni premuta una stazione e scegli «Aggiungi ai preferiti»."</string>
+    <string name="content_edit">"Rinomina stazione"</string>
+    <string name="content_delete">"Rimuovi preferito"</string>
+    <string name="content_add_favorite">"Aggiungi ai preferiti"</string>
+    <string name="content_remove_favorite">"Rimuovi dai preferiti"</string>
+    <string name="content_seek_down">"Trova la stazione successiva su una frequenza inferiore"</string>
+    <string name="content_seek_up">"Trova la stazione successiva su una frequenza superiore"</string>
+    <string name="content_more">"Mostra impostazioni radio"</string>
+    <string name="content_previous_favorite">"Preferito precedente"</string>
+    <string name="content_next_favorite">"Preferito successivo"</string>
+    <string name="station_waiting">"Scegli una stazione"</string>
+    <string name="service_ready">"Qui appaiono le informazioni su stazione e brano"</string>
+    <string name="action_auto_store">"Sintonia"</string>
+    <string name="content_tuning">"Scegli ricerca automatica o sintonia manuale"</string>
+    <string name="tuning_automatic">"Ricerca automatica"</string>
+    <string name="tuning_manual">"Sintonia manuale"</string>
+    <string name="action_band_short">"FM"</string>
+    <string name="content_switch_band">"Cambia banda. Attiva: %1$s"</string>
+    <string name="action_stations">"Stazioni"</string>
+    <string name="action_saved">"Preferiti"</string>
+    <string name="action_setup">"Impostazioni"</string>
+    <string name="station_meta">"%1$s  •  %2$s"</string>
+    <string name="station_page_description">"Pagina stazioni %1$d di %2$d"</string>
+    <string name="widget_name">"Stazioni Radio+"</string>
+    <string name="widget_description">"Visualizza e sintonizza i preferiti di Radio+ o l’elenco stazioni dalla schermata iniziale."</string>
+    <string name="widget_configure_title">"Scegli il contenuto del widget"</string>
+    <string name="widget_configure_description">"Puoi scegliere separatamente per ogni widget Radio+."</string>
+    <string name="widget_favorites">"Preferiti"</string>
+    <string name="widget_station_list">"Elenco stazioni"</string>
+    <string name="widget_cancel">"Annulla"</string>
+    <string name="settings_steering">"Tasti al volante"</string>
+    <string name="settings_steering_hint">"Inoltro facoltativo dei tasti quando Radio+ è visibile."</string>
+    <string name="steering_service_name">"Tasti al volante Radio+"</string>
+    <string name="steering_open_settings">"Apri impostazioni Android"</string>
+    <string name="steering_settings_unavailable">"Apri Accessibilità nelle impostazioni Android."</string>
+    <string name="steering_permission_description">"Se la radio originale riceve i comandi, attiva i tasti al volante Radio+ nelle impostazioni di accessibilità Android. Questo servizio facoltativo gestisce i tasti successivo, precedente e muto/riproduzione solo quando Radio+ è visibile. Non legge il contenuto dello schermo né il testo digitato. Non controlla altre app né i tasti del volume. I tasti intercettati dal firmware del veicolo non possono essere reindirizzati in questo modo. Su Android 13 potrebbe essere necessario consentire prima le impostazioni con limitazioni nelle informazioni dell’app. Attiva il servizio solo a veicolo parcheggiato."</string>
+    <string name="settings_close">"Chiudi"</string>
+    <string name="settings_radio">"Radio"</string>
+    <string name="settings_general">"Generali"</string>
+    <string name="settings_playback">"Riproduzione e sintonia"</string>
+    <string name="settings_playback_hint">"Scegli come avviare la radio e cercare le stazioni."</string>
+    <string name="settings_auto_start_hint">"Apri Radio+ all’avvio o al risveglio del dispositivo."</string>
+    <string name="settings_general_hint">"Personalizza l’app."</string>
+    <string name="settings_finnish">"Suomi"</string>
+    <string name="settings_english">"English"</string>
+    <string name="settings_auto_start">"Avvio automatico"</string>
+    <string name="settings_language">"Lingua"</string>
+    <string name="settings_sensitivity">"Sensibilità di ricerca"</string>
+    <string name="settings_local">"Solo stazioni forti"</string>
+    <string name="settings_dx">"Anche stazioni deboli"</string>
+    <string name="settings_unknown">"Non disponibile"</string>
+</resources>

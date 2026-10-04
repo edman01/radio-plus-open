@@ -24,12 +24,16 @@ tasks.register("prepareLauncherIcon") {
 android {
     namespace "fi.radioplus.app"
     compileSdk 33
+    // Language switching must work offline even when installed from an app bundle.
+    bundle {
+        language { enableSplit = false }
+    }
     defaultConfig {
         applicationId "fi.radioplus.app"
         minSdk 27
         targetSdk 33
-        versionCode 78
-        versionName "0.16.1-beta18"
+        versionCode 79
+        versionName "0.16.1-beta19"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     buildFeatures {

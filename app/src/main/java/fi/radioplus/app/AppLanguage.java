@@ -10,6 +10,17 @@ import java.util.Locale;
 final class AppLanguage {
     static final String ENGLISH = "en";
     static final String FINNISH = "fi";
+    private static final String[] CODES = {"en", "fi", "de", "fr", "es", "pt", "it"};
+    private static final String[] NAMES = {"English", "Suomi", "Deutsch", "Français", "Español", "Português", "Italiano"};
+
+    static String[] codes() { return CODES.clone(); }
+    static String[] names() { return NAMES.clone(); }
+    static int selectedIndex(Context context) {
+        String current = get(context);
+        for (int i = 0; i < CODES.length; i++) if (CODES[i].equals(current)) return i;
+        return 0;
+    }
+    static String displayName(Context context) { return NAMES[selectedIndex(context)]; }
 
     private static final String PREFERENCES = "radio_plus_ui";
     private static final String KEY_LANGUAGE = "app_language";
@@ -52,7 +63,11 @@ final class AppLanguage {
     }
 
     static String text(Context context, String finnish, String english) {
-        return isFinnish(context) ? finnish : english;
+        String language = get(context);
+        if (FINNISH.equals(language)) return finnish;
+        if (ENGLISH.equals(language)) return english;
+        int id = TranslationCatalog.resourceFor(english);
+        return id == 0 ? english : wrap(context).getString(id);
     }
 
     static String stationName(Context context, String name) {
@@ -63,6 +78,9 @@ final class AppLanguage {
     }
 
     private static String normalize(String language) {
-        return FINNISH.equalsIgnoreCase(language) ? FINNISH : ENGLISH;
+        if (language == null) return ENGLISH;
+        String base = Locale.forLanguageTag(language.replace('_', '-')).getLanguage();
+        for (String code : CODES) if (code.equalsIgnoreCase(base)) return code;
+        return ENGLISH;
     }
 }

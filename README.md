@@ -6,7 +6,7 @@ compatibility with those devices has not been verified.
 
 **[Download beta APK](https://github.com/edman01/radio-plus-open/releases)**
 
-![Radio+ head-unit demo](docs/images/radio-plus-head-unit-demo.png)
+![Radio+ on a head unit](docs/images/radio-plus-head-unit-demo.png)
 
 *AI-assisted illustration with fictional stations and logos. Logos are not included in the app.*
 
@@ -21,6 +21,9 @@ other models and firmware variants are not verified. [Test details](docs/TESTING
 ## Using Radio+
 
 Open **Tuning** to find stations. Hold a station to manage favorites, rename it or change its logo.
+
+Languages: English (default), Finnish, German, French, Spanish, Portuguese and Italian.
+Choose yours in **Settings → General → Language**.
 
 To import a logo: **Change logo → Add custom logo from device…** → choose a PNG/JPEG from USB or your device.
 Use images you have permission to use. [Logo guide](docs/LOGOS.md).

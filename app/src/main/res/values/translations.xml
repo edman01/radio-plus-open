@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="message_000" formatted="false">"My station"</string>
+    <string name="message_001" formatted="false">"Name "</string>
+    <string name="message_002" formatted="false">"Empty"</string>
+    <string name="message_003" formatted="false">", favorite."</string>
+    <string name="message_004" formatted="false">", not a favorite."</string>
+    <string name="message_005" formatted="false">" Tap to listen and name the station."</string>
+    <string name="message_006" formatted="false">" Touch and hold to edit."</string>
+    <string name="message_007" formatted="false">"Custom logo saved"</string>
+    <string name="message_008" formatted="false">"The image could not be used as a logo"</string>
+    <string name="message_009" formatted="false">"No favorites"</string>
+    <string name="message_010" formatted="false">"LOCAL strong stations only"</string>
+    <string name="message_011" formatted="false">"DX weak stations too"</string>
+    <string name="message_012" formatted="false">"Scan sensitivity"</string>
+    <string name="message_013" formatted="false">"Close"</string>
+    <string name="message_014" formatted="false">"Auto-start enabled. Set Junsun Startup application to Empty."</string>
+    <string name="message_015" formatted="false">"Auto-start disabled"</string>
+    <string name="message_016" formatted="false">"Language"</string>
+    <string name="message_017" formatted="false">"Cancel"</string>
+    <string name="message_018" formatted="false">"Finalizing station list…"</string>
+    <string name="message_019" formatted="false">"Stopping automatic scan…"</string>
+    <string name="message_020" formatted="false">"Stop automatic scan"</string>
+    <string name="message_021" formatted="false">"Stop naming stations"</string>
+    <string name="message_022" formatted="false">"Tuned stations are saved to the station list."</string>
+    <string name="message_023" formatted="false">"LOCAL strong stations"</string>
+    <string name="message_024" formatted="false">"◀  Seek lower"</string>
+    <string name="message_025" formatted="false">"Seek higher  ▶"</string>
+    <string name="message_026" formatted="false">"Seeking a lower station…"</string>
+    <string name="message_027" formatted="false">"Seeking a higher station…"</string>
+    <string name="message_028" formatted="false">"Manual tuning"</string>
+    <string name="message_029" formatted="false">"Tune"</string>
+    <string name="message_030" formatted="false">"Wait for the radio information to load"</string>
+    <string name="message_031" formatted="false">"Tuning "</string>
+    <string name="message_032" formatted="false">"Seeking a station…"</string>
+    <string name="message_033" formatted="false">"Tuned • "</string>
+    <string name="message_034" formatted="false">"No RDS name — listen to the reception"</string>
+    <string name="message_035" formatted="false">"Added to station list"</string>
+    <string name="message_036" formatted="false">"Station list updated"</string>
+    <string name="message_037" formatted="false">"Enter a 100 kHz step between 87.5 and 108.0"</string>
+    <string name="message_038" formatted="false">"Enter a 9 kHz step between 522 and 1620"</string>
+    <string name="message_039" formatted="false">"The radio is not responding — tuning was not performed"</string>
+    <string name="message_040" formatted="false">"The radio is not responding — try again"</string>
+    <string name="message_041" formatted="false">"The radio is not responding — automatic scan was not started"</string>
+    <string name="message_042" formatted="false">"Automatic scan could not be started"</string>
+    <string name="message_043" formatted="false">"Scanning the full frequency range…"</string>
+    <string name="message_044" formatted="false">"Automatic scan stopped before it started"</string>
+    <string name="message_045" formatted="false">"Scan stopped • %d stations kept • %d new"</string>
+    <string name="message_046" formatted="false">"Naming stations %d/%d…"</string>
+    <string name="message_047" formatted="false">"Station naming stopped"</string>
+    <string name="message_048" formatted="false">"Station naming stopped • found stations were kept"</string>
+    <string name="message_049" formatted="false">"Scan complete • %d stations • %d new"</string>
+    <string name="message_050" formatted="false">"Scan complete • station list could not be read"</string>
+    <string name="message_051" formatted="false">"Scan complete • no stations found"</string>
+    <string name="message_052" formatted="false">"Enter an FM frequency between 87.5 and 108.0, for example 101.7"</string>
+    <string name="message_053" formatted="false">"Enter an AM frequency between 522 and 1620 kHz"</string>
+    <string name="message_054" formatted="false">"Station list"</string>
+    <string name="message_055" formatted="false">"No saved stations. Run an automatic scan first."</string>
+    <string name="message_056" formatted="false">"The saved station frequency is invalid"</string>
+    <string name="message_057" formatted="false">"Rename station"</string>
+    <string name="message_058" formatted="false">"Remove from favorites"</string>
+    <string name="message_059" formatted="false">"Add to favorites"</string>
+    <string name="message_060" formatted="false">"Rename"</string>
+    <string name="message_061" formatted="false">"Change logo"</string>
+    <string name="message_062" formatted="false">"Reorder favorites"</string>
+    <string name="message_063" formatted="false">"Reorder stations"</string>
+    <string name="message_064" formatted="false">"Added to favorites"</string>
+    <string name="message_065" formatted="false">"Removed from favorites"</string>
+    <string name="message_066" formatted="false">"Station logo"</string>
+    <string name="message_067" formatted="false">"Add custom logo from device…"</string>
+    <string name="message_068" formatted="false">"Remove logo"</string>
+    <string name="message_069" formatted="false">"Automatic logo from station name"</string>
+    <string name="message_070" formatted="false">"Logo removed"</string>
+    <string name="message_071" formatted="false">"Automatic logo enabled"</string>
+    <string name="message_072" formatted="false">"Logo changed"</string>
+    <string name="message_073" formatted="false">"No image picker was found on the device"</string>
+    <string name="message_074" formatted="false">"Remove favorite?"</string>
+    <string name="message_075" formatted="false">"Delete"</string>
+    <string name="message_076" formatted="false">"For example, Radio Nova"</string>
+    <string name="message_077" formatted="false">"Save"</string>
+    <string name="message_078" formatted="false">"Enter a station name"</string>
+    <string name="message_079" formatted="false">"Automatic scan stopped when the radio connection was lost"</string>
+    <string name="message_080" formatted="false">"Select a station"</string>
+    <string name="message_081" formatted="false">"READY"</string>
+    <string name="message_082" formatted="false">"Ready for automatic scan"</string>
+    <string name="message_083" formatted="false">"Auto scan"</string>
+    <string name="message_084" formatted="false">"Scanning"</string>
+    <string name="message_085" formatted="false">"Seeking"</string>
+    <string name="message_086" formatted="false">"Playing"</string>
+    <string name="message_087" formatted="false">"Scanning for stations…"</string>
+    <string name="message_088" formatted="false">"Drag to reorder stations"</string>
+    <string name="message_089" formatted="false">"Station order saved"</string>
+    <string name="message_090" formatted="false">"Preview mode"</string>
+    <string name="message_091" formatted="false">"Favorites"</string>
+    <string name="message_092" formatted="false">"Favorites saved in Radio+"</string>
+    <string name="message_093" formatted="false">"All found stations"</string>
+    <string name="message_094" formatted="false">"Radio background playback"</string>
+    <string name="message_095" formatted="false">"Keeps the car radio playing while the app is in the background"</string>
+    <string name="message_096" formatted="false">"Previous station"</string>
+    <string name="message_097" formatted="false">"Pause"</string>
+    <string name="message_098" formatted="false">"Play"</string>
+    <string name="message_099" formatted="false">"Next station"</string>
+    <string name="message_100" formatted="false">"Stop"</string>
+    <string name="message_101" formatted="false">"Radio is playing in the background"</string>
+    <string name="message_102" formatted="false">"Radio is paused"</string>
+    <string name="message_103" formatted="false">"Radio hardware connected"</string>
+    <string name="message_104" formatted="false">"Radio hardware connection lost"</string>
+    <string name="message_105" formatted="false">"Radio hardware is restarting"</string>
+    <string name="message_106" formatted="false">"Radio hardware did not provide a control interface"</string>
+    <string name="message_107" formatted="false">"The stock radio tuner service was not found"</string>
+    <string name="message_108" formatted="false">"The ROM blocked access to the radio hardware"</string>
+    <string name="message_109" formatted="false">"Radio hardware is unavailable"</string>
+    <string name="message_110" formatted="false">"Radio hardware is not connected"</string>
+    <string name="message_111" formatted="false">"Radio control failed"</string>
+    <string name="message_112" formatted="false">"The tuning frequency is invalid"</string>
+    <string name="message_113" formatted="false">"The selected radio band could not be opened"</string>
+    <string name="message_114" formatted="false">"Reading the radio state failed"</string>
+    <string name="message_115" formatted="false">"STATION LIST"</string>
+    <string name="message_116" formatted="false">"FAVORITES"</string>
+    <string name="message_117" formatted="false">"No stations found yet"</string>
+    <string name="message_118" formatted="false">"No favorites yet"</string>
+</resources>
