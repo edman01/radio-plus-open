@@ -76,7 +76,6 @@ Resource coverage and formatting placeholders can be checked with PowerShell:
 | AM and scanning | Available bands, scan cancellation, manual tuning and weak-station sensitivity |
 | RDS | Complete station names/radio text on the actual receiver and broadcast |
 | Sleep and boot | Cold boot, ACC sleep/wake and firmware background restrictions |
-| Widgets | Host launcher support; a locked manufacturer widget list may reject third-party widgets |
 
 An emulator has no analog tuner. UI tests and simulated radio data cannot verify
 reception or speaker audio on a head unit.

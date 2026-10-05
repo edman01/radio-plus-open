@@ -73,7 +73,7 @@ These profiles do not yet offer the full Junsun V7 feature set.
 Radio+'s tuning range remains FM 87.5–108.0 MHz in 100 kHz steps and AM
 522–1620 kHz in 9 kHz steps. Other regional ranges and spacings are not supported;
 TS tuning rejects a requested frequency if it is absent from the stock radio's grid.
-Xtrons and ATOTO support is not included. Widget support is not available yet.
+Xtrons and ATOTO support is not included.
 
 See [compatibility and limitations](https://github.com/edman01/radio-plus-open/blob/main/docs/COMPATIBILITY.md).
 

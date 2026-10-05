@@ -18,12 +18,23 @@ body:
       placeholder: "For example: Junsun V7 (include the variant if known)"
     validations:
       required: true
+  - type: dropdown
+    id: build-type
+    attributes:
+      label: Radio+ build
+      description: Which type of build did you test?
+      options:
+        - "Community beta"
+        - "Experimental"
+        - "Custom build / not sure"
+    validations:
+      required: true
   - type: input
     id: app-version
     attributes:
       label: Radio+ version
-      description: Include the release name or version number you actually tested.
-      placeholder: "For example: community beta 4 / 0.16.1-beta22-play"
+      description: Copy the full version number from Settings → General → About app.
+      placeholder: "For example: 0.16.1-beta22-play or 0.16.1-dev29-play"
     validations:
       required: true
   - type: input
@@ -77,7 +88,6 @@ body:
         - Switching from another audio app: Not tested
         - Steering-wheel next / previous / mute: Not tested
         - Cold start / ACC sleep and wake: Not tested
-        - Home-screen widgets: Not tested
     validations:
       required: true
   - type: textarea

@@ -11,7 +11,7 @@ installed stock radio service.
 The app has no internet permission, accounts or server. It includes no analytics,
 advertising, billing or remote crash-reporting SDK.
 
-Android media controls, notifications, widgets and compatible local media clients
+Android media controls, notifications and compatible local media clients
 can display playback information and station lists. Diagnostic events may appear
 in Android's local logcat. Radio+ does not automatically upload them.
 
