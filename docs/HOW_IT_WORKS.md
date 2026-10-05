@@ -21,7 +21,7 @@ The connection is defined in
 [RadioBackendContract](../app/src/main/java/fi/radioplus/app/RadioBackendContract.java)
 and the [service interface](../app/src/main/aidl/com/hcn/autoradio/IRadioServiceAPI.aidl).
 
-Development builds also include experimental support for selected older Junsun
+Experimental builds also include support for selected older Junsun
 radios and `com.ts.MainUI` versions. These have not been tested on real head units.
 See [supported models and limitations](COMPATIBILITY.md).
 

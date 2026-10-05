@@ -13,7 +13,9 @@ See [device details](../README.md#compatibility) and [known issues](TESTING.md#k
 ## Experimental support
 
 **Experimental support — not yet tested on a real head unit.**
-These additions are in development builds only, not the community beta 4 download.
+Available in [Experimental APK builds](https://github.com/edman01/radio-plus-open/releases/tag/v0.16.1-experimental1),
+not the community beta 4 download. Read the [installation notes](EXPERIMENTAL.md#download)
+before trying it.
 
 | Head unit / platform | Firmware version | Stock radio package |
 | --- | --- | --- |

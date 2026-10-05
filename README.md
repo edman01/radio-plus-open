@@ -4,7 +4,11 @@ Free, open-source FM/AM radio tested on the **Junsun V7 running Android 13**, wi
 May also work on other Chinese Android head units with a compatible stock radio service;
 compatibility with those devices has not been verified.
 
-**[Download beta APK](https://github.com/edman01/radio-plus-open/releases)**
+**[Download community beta APK](https://github.com/edman01/radio-plus-open/releases/tag/v0.16.1-community-beta4)**
+
+[Experimental APK builds](https://github.com/edman01/radio-plus-open/releases/tag/v0.16.1-experimental1)
+· [Supported models](docs/COMPATIBILITY.md#experimental-support).
+*Experimental radio support has not been tested on real head units.*
 
 ![Radio+ on a head unit](docs/images/radio-plus-head-unit-demo.png)
 
@@ -22,8 +26,8 @@ Radio+ **may** work, but the package name alone is not a guarantee. The firmware
 must still expose a compatible service/API.
 
 Additional Junsun models have **experimental support, not yet tested on real
-head units**, in development builds. These additions are not included in the
-community beta 4 download. [Supported models and limitations](docs/COMPATIBILITY.md).
+head units**, in the separate experimental download. These additions are not
+included in community beta 4. [Supported models and limitations](docs/COMPATIBILITY.md).
 
 **Check your stock radio's package name (no PC needed):**
 

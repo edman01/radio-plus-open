@@ -10,7 +10,7 @@ Install and configure only while parked.
 
 ## Install
 
-1. Download `RadioPlus-community-beta.apk` from [Releases](https://github.com/edman01/radio-plus-open/releases).
+1. Download `RadioPlus-community-beta.apk` from [community beta 4](https://github.com/edman01/radio-plus-open/releases/tag/v0.16.1-community-beta4).
    Its SHA-256 checksum is in `SHA256SUMS.txt` in the same release.
 2. Copy the APK to the head unit, for example using a USB drive. Open it in
    Android's file manager and allow installation from that source.
@@ -40,6 +40,10 @@ Updates must use the same package and signing key.
 
 The community package is `fi.radioplus.app.play`. It is separate from the stock
 radio app; the `play` suffix is an existing package identifier.
+
+For additional radio models, an [experimental build](EXPERIMENTAL.md) is available.
+Its radio support is unverified on real head units. It updates the same community
+app and has a higher version code; read its installation notes before switching.
 
 ## Problems?
 
