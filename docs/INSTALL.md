@@ -1,51 +1,49 @@
 # Install and update Radio+
 
-Radio+ is a hardware beta for compatible Android head units, not a universal radio
-app. It requires **Android 8.1 / API 27 or newer** and the stock
-`com.hcn.autoradio.service.FMPlugService`. Keep the stock radio installed and enabled.
-The maintainer has confirmed operation on their physical **Junsun V7 running Android 13**. Other
-testing has been emulator-only; other models are unverified. Android version or
-a “Junsun V7” label alone does not guarantee compatibility with every firmware.
-Ordinary phones/tablets do not gain an FM tuner from this app.
+Radio+ requires **Android 8.1 or newer** and a compatible stock radio service.
+The community beta has been tested on **Junsun V7 / Android 13**.
+Other models and firmware versions are not yet verified; see [compatibility](COMPATIBILITY.md).
+
+**Keep the original radio app installed and enabled.**
+Radio+ uses the head unit's built-in tuner; it does not add a tuner to a phone or tablet.
+Install and configure only while parked.
 
 ## Install
 
 1. Download `RadioPlus-community-beta.apk` from [Releases](https://github.com/edman01/radio-plus-open/releases).
-   Compare its SHA-256 with `SHA256SUMS.txt` from the same release.
-2. Copy the APK to the head unit, for example using a USB drive. Open it in Android's
-   file manager and allow installation from that source if you trust the release.
-3. Open **Radio+ → Tuning** to choose automatic scanning or manual tuning.
+   Its SHA-256 checksum is in `SHA256SUMS.txt` in the same release.
+2. Copy the APK to the head unit, for example using a USB drive. Open it in
+   Android's file manager and allow installation from that source.
+3. Open **Radio+ → Tuning** to scan for stations or enter a frequency manually.
    **Stations** shows the station list; **Favorites** shows your saved favorites.
-4. Hold a station card to add/remove a favorite, rename, change/remove its logo
-   or reorder the list. [Import a logo](LOGOS.md).
+4. Hold a station card to manage favorites, rename it, reorder it or
+   [change its logo](LOGOS.md).
 
-English is the default. Finnish, German, French, Spanish, Portuguese, Italian,
-Swedish, Polish, Dutch, Turkish and Czech are available under
-**Settings → General → Language**. All languages are included
-in the APK; changing language needs no download.
-RDS station names and radio text appear when supplied by the stock service. You
-can rename a station yourself if its name is missing. Configure only while parked.
+Choose your language in **Settings → General → Language**.
+All 12 languages are included and work offline. English is the default.
 
-Next/previous steering-wheel buttons work without an accessibility service on
-the tested Junsun V7. The **Steering-wheel buttons** setting provides an optional
-fallback for other compatible head units; enable it only if the buttons do not
-already work. It cannot intercept commands that the firmware does not expose.
+Station names and RDS text depend on reception and the stock radio service.
+You can rename a station if its name is missing.
+
+## Steering-wheel buttons
+
+Next/previous buttons work without an accessibility service on the tested Junsun V7.
+For other compatible head units, **Steering-wheel buttons** offers an optional
+fallback. Enable it only if the buttons do not already work. It cannot receive
+commands that the firmware does not expose to Android.
 
 ## Update
 
-Release package: `fi.radioplus.app.play`. The `play` suffix is a legacy identifier,
-not a claim of Google Play availability. It installs alongside the stock radio and
-the older personal `fi.radioplus.app` package; personal app data is not migrated.
+Install the new community APK over the existing community app. Do not uninstall
+or clear app data: that removes your saved stations, logos and settings.
+Updates must use the same package and signing key.
 
-Future community updates must use the same package and signing key. Install the
-new community APK over the existing community app. Do not uninstall or clear app
-data to update a compatible installation: that removes local stations, logos and settings.
+The community package is `fi.radioplus.app.play`. It is separate from the stock
+radio app; the `play` suffix is an existing package identifier.
 
-## Before reporting a problem
+## Problems?
 
-Audio, muting, source switching, ACC wake-up, widgets and steering controls depend
-on the head unit and its firmware. See [known limitations and testing](TESTING.md)
-and [the bug-reporting guide](../CONTRIBUTING.md). Do not post personal data or
-full device logs. This beta has no trial limit, payment screen, subscription or ads.
+Check [known issues](TESTING.md#known-issues) or [report a bug](../CONTRIBUTING.md).
+Radio+ is free and ad-free. Do not post personal information or full device logs.
 
 [Back to Radio+](../README.md)

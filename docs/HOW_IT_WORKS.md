@@ -72,17 +72,11 @@ The tested Junsun V7 does not need this accessibility service: its next/previous
 buttons work through Android media controls without it. Enable the optional
 service only if the buttons do not work on your head unit.
 
-Starting radio playback registers Radio+ for Android media controls. Changing
-to an adjacent station while radio playback is already active avoids repeating
-that handoff, which prevents the brief audio interruption after a station change
-on the tested Junsun V7.
-Selecting another station on the screen now also reuses active radio playback.
-Reopening the screen preserves ongoing playback or an intentional pause; merely
-showing the interface is not treated as a Play command. Explicitly starting from
-pause or selecting a station from a widget still allows a fresh audio takeover
-when needed. Tuner hardware may
-briefly mute while changing frequency; this is separate from a delayed audio
-handoff after the new station has started.
+Starting playback registers Radio+ for Android media controls. Changing stations
+during playback reuses the active radio source to avoid an unnecessary audio
+interruption. Opening the app is not treated as a Play command; playback or an
+intentional pause should continue. Tuner hardware may still briefly mute while
+changing frequency. See [testing and known issues](TESTING.md).
 
 ## Station information
 

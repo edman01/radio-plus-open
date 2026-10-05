@@ -13,6 +13,10 @@ first and add a comment for the same model and firmware. Mark untested features
 as Not tested and distinguish audible playback from UI or RDS updates. Community
 reports are not maintainer verification or guarantees for other devices.
 
+To request support for another model, include an official firmware download
+link if available, or mention whether you have the original radio APK.
+See [requesting support](docs/COMPATIBILITY.md#request-support).
+
 ## Report a bug
 
 Include the release version, Android version, non-unique head-unit model/firmware
@@ -26,7 +30,7 @@ log snippets. Do not upload the stock radio APK or firmware to this repository.
 
 ## Before a pull request
 
-Run unit tests, lint and logo-isolation verification from the README. Add a
+Run unit tests, lint and logo-isolation checks in the [build guide](docs/BUILD.md). Add a
 regression test for logic changes. For UI changes describe the screen size and
 font scale tested. Do not claim that emulator-only tests verify analog FM audio,
 CAN commands, physical steering buttons or ACC wake-up.

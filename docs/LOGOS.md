@@ -38,12 +38,7 @@ Prefer a clean PNG with a transparent background when available. JPEG also works
 The UI centers imported logos without stretching their aspect ratio or enlarging
 small images. A small source may occupy less of a large card; the importer cannot
 reconstruct detail that is not in the original. SVG, PDF and ZIP/RAR are not logo
-formats for this workflow. Other Android-decodable image formats are not part of
-the documented PNG/JPEG compatibility guarantee.
-
-Some manufacturer download packs contain 160×120 PNGs. Those dimensions are
-supported, but the download site's license still controls permitted use. Do not
-assume a free download permits redistribution with an app or in a logo collection.
+formats for this workflow. Use PNG or JPEG for reliable importing.
 
 ## Change or remove
 

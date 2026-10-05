@@ -1,15 +1,14 @@
-# Illustration provenance
+# Illustrations
 
-These three PNGs are AI-assisted edits of earlier emulator-based illustrations,
-not raw screenshots, test evidence or photographs of a verified installation.
+The images in this folder are AI-assisted illustrations, not photographs or
+screenshots proving hardware compatibility.
 
-- `radio-plus-head-unit-demo.png`: synthetic dashboard composite using the
-  user-supplied head-unit frame reference.
-- `radio-plus-emulator.png`: flat, edited illustration of the app.
-- `logo-import-menu.png`: edited illustration of logo import/removal.
+- `radio-plus-head-unit-demo.png`: an illustrative head-unit view.
+- `radio-plus-emulator.png`: an illustrative app view.
+- `logo-import-menu.png`: an illustration of the logo import menu.
 
-The fictional stations are Auralis, Solivo, Vireon, Velora, Kivora and Lunavo.
-The track is **Elian Vale — Open Skies**. Their geometric marks and names are
-illustrative, not bundled app content or claims of broadcaster endorsement.
-They are not claimed to be exclusive or trademark-cleared. The hardware reference
-is not relicensed under the MIT code license.
+The station names, geometric logos and track text are fictional.
+Station logos shown here are not included in the app. You can
+[import your own permitted images](../LOGOS.md).
+
+See [third-party notices](../../THIRD_PARTY_NOTICES.md) for artwork licensing.

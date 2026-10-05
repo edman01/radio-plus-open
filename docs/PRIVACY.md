@@ -1,44 +1,43 @@
-# Radio+ community beta privacy
+# Privacy
 
-Updated 4 October 2026. This describes the free GitHub community build.
+Updated 5 October 2026. This describes the GitHub community build.
 
-## Data on the device
+## Local data
 
-Radio+ stores station frequencies and names, favorites and their order, imported
-logo copies, language and settings in app-private storage. It reads tuner state
-and RDS information from the existing stock radio service. It has no INTERNET
-permission and includes no analytics, advertising, billing or remote crash-report
-SDK. There is no Radio+ account or Radio+ server in this build.
+Radio+ stores stations, favorites, imported logo copies, language and settings
+in app-private storage. It reads tuner state and RDS information from the
+installed stock radio service.
 
-Android's media session, notification, widgets and media browser expose playback
-information and station/favorite lists to compatible local system surfaces or
-media clients. This is local integration, not a promise that other local apps
-cannot access any station information. Diagnostic events can appear in Android's
-local logcat; Radio+ does not automatically upload them.
+The app has no internet permission, accounts or server. It includes no analytics,
+advertising, billing or remote crash-reporting SDK.
 
-## Optional steering key service
+Android media controls, notifications, widgets and compatible local media clients
+can display playback information and station lists. Diagnostic events may appear
+in Android's local logcat. Radio+ does not automatically upload them.
 
-The accessibility service is off unless you enable it in Android settings. It
-handles supported next/previous/play/pause/mute key events while Radio+ is visible.
-It does not request screen-content access or read typed text. Disable it in
-Android accessibility settings at any time. Firmware can prevent key delivery.
+## Optional steering-button service
 
-## Images and deletion
+The accessibility service is off unless you enable it in Android settings.
+It handles supported next/previous/play/pause/mute keys while Radio+ is visible.
+It does not request screen-content access or read typed text. You can disable it
+in Android accessibility settings at any time.
 
-Android's document picker supplies the image you choose. A cloud provider may
-download it according to that provider's policies. Radio+ imports a local copy
-and does not retain the original document URI. Remove it through the station's
-**Change logo → Remove logo** menu; the original image is unaffected. Clearing
-app data or uninstalling removes local app data. Android backup is disabled in
-the manifest; manufacturer migration tools may have separate behavior.
+## Imported images and deletion
 
-## GitHub and support
+You choose images through Android's document picker. A cloud storage provider
+may download the chosen file according to its own policies. Radio+ keeps a local
+copy, not the original document URI.
 
-The repository, releases and issue tracker are hosted by GitHub. GitHub handles
-account, access and download data under its own [privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement).
-Public issue posts, attachments and contributions can be read by anyone. The
-maintainers can read what you submit. Do not post names, email addresses, account
-identifiers, location, vehicle identifiers, credentials or unredacted logs.
+Use **Change logo → Remove logo** to delete the imported copy; the original file
+is unaffected. Uninstalling or clearing app data removes saved stations, logos
+and settings. Android backup is disabled for this app; manufacturer transfer
+tools may behave differently.
 
-Use the repository's issue tracker for non-sensitive questions. See
-[SECURITY.md](../SECURITY.md) for private vulnerability reporting where available.
+## GitHub
+
+GitHub hosts the repository, downloads and issue tracker under its
+[privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement).
+Issues and their attachments are public. Remove personal information, account
+details, device identifiers and credentials before posting.
+
+For security concerns, see [private reporting instructions](../SECURITY.md).

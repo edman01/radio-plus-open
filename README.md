@@ -71,6 +71,10 @@ or [browse user reports](https://github.com/edman01/radio-plus-open/issues?q=is%
 Include the model, firmware and what works or does not. Reports are user-submitted,
 not a compatibility guarantee for every unit or firmware version.
 
+Want support for another head unit? Its original radio APK or matching firmware
+can help us investigate. Share an official download link or mention which files
+are available; [see the support-request guide](docs/COMPATIBILITY.md#request-support).
+
 ## Known issues
 
 Next/previous steering-wheel controls are fixed and confirmed working on the

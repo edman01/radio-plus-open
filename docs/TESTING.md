@@ -10,9 +10,7 @@ The optional accessibility service was not needed for these next/previous button
 On-screen station selection was also confirmed without the delayed interruption.
 Playback continuity when reopening the app still needs verification on the head unit.
 Other testing has been emulator-only; no other head-unit model is verified.
-This is a device-specific report, not a guarantee for every V7 firmware variant
-or proof that every feature and long-running scenario has passed. The checks
-below distinguish automated evidence from hardware-dependent regression testing.
+Results apply to this tested unit; other firmware versions may behave differently.
 
 ## Known issues
 
@@ -41,10 +39,7 @@ from pause, explicit audio takeover, and preserving playback or pause when
 reopening the app. About-app tests cover the displayed version, project link,
 and visible Back navigation between settings and its subdialogs.
 
-The public images are AI-assisted illustrations with fictional stations, logos
-and track text, not screenshots or test evidence. The head-unit image is a
-synthetic composite, not a photograph of the app running in a vehicle.
-See [illustration provenance](images/README.md).
+Documentation images are [illustrations](images/README.md), not hardware test evidence.
 
 ## Languages and layout
 
@@ -79,14 +74,8 @@ Resource coverage and formatting placeholders can be checked with PowerShell:
 | Sleep and boot | Cold boot, ACC sleep/wake and firmware background restrictions |
 | Widgets | Host launcher support; a locked manufacturer widget list may reject third-party widgets |
 
-An emulator has no stock FMPlugService or analog tuner. A responsive UI and
-simulated metadata do not demonstrate audible playback. Missing vendor responses
-must not be treated as evidence that a physical device will work.
-
-Previously reported audio dropouts, fluctuating volume and physical steering-key
-problems require regression testing in a real head unit before they can be
-declared resolved across devices. Please do not infer universal compatibility
-from the model name or minimum Android version.
+An emulator has no analog tuner. UI tests and simulated radio data cannot verify
+reception or speaker audio on a head unit.
 
 ## Suggested parked-device test
 

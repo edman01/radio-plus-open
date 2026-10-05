@@ -23,7 +23,7 @@ body:
     attributes:
       label: Radio+ version
       description: Include the release name or version number you actually tested.
-      placeholder: "For example: community beta 3 / 0.16.1-beta20-play"
+      placeholder: "For example: community beta 4 / 0.16.1-beta22-play"
     validations:
       required: true
   - type: input

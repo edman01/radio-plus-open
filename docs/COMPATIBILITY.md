@@ -39,11 +39,23 @@ audio playback, pause/resume and physical steering buttons still need device tes
 Support has not been added for these models. Their original radio APK or matching
 firmware is needed to continue. Do not install another model's firmware to try Radio+.
 
+## Request support
+
+An original stock radio APK or firmware for your exact model can help us
+identify how to control its tuner. This helps us investigate; it does not
+guarantee that support can be added.
+
+Open an issue with your model, firmware version and stock radio package.
+Include an official firmware download link if available, or say whether you
+have the original radio APK. Do not attach manufacturer APKs, firmware or device
+dumps to a public issue; ask how to provide the relevant files separately.
+
 ## Report your results
 
 [Report compatibility](https://github.com/edman01/radio-plus-open/issues/new?template=compatibility.yml)
 with your head unit model, firmware, Radio+ version, stock radio package/version,
-and what works or does not. **Settings → About** shows the app and radio details.
+and what works or does not. Development builds show the detected radio under
+**Settings → General → About app**.
 Do not include device identifiers or account information.
 
 [Back to Radio+](../README.md)

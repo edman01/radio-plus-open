@@ -1,37 +1,29 @@
-# Third party notices and scope of the license
+# Third-party notices
 
-The MIT license covers the project's original code and documentation to the
-extent the contributors can license it. It does not grant rights to manufacturers'
-software, visual designs, station artwork, trademarks or the underlying subject
-matter shown in demonstration images.
+The [MIT license](LICENSE) applies to Radio+'s original code and documentation.
+It does not grant rights to manufacturer software, third-party artwork,
+visual designs or trademarks. Radio+ is an independent project, not an official
+Junsun or Škoda product.
 
-## Hardware interoperability
+## Radio services
 
-`com.hcn.autoradio`, `FMPlugService`, AIDL interface names and vendor class names
-are compatibility identifiers. The app uses the installed vendor service; no
-vendor service implementation, manufacturer APK, native tuner library, firmware
-or system signing key is bundled here. Two AIDL files describe the compatible
-service/callback contracts. Those contracts are based on the existing interface;
-their presence is not a claim of vendor permission or a legal opinion about
-interoperability exceptions. The vendor's software remains separately licensed.
+Package names, service names and AIDL interfaces identify compatible radio
+services. Radio+ uses the software already installed on the head unit.
+Manufacturer APKs, tuner drivers, native libraries, firmware and system signing
+keys are not included. Manufacturer software remains separately licensed.
 
-## Images and visual design
+## Artwork
 
-The public app contains no station-logo collection or automatic logo download.
-The current public illustrations use fictional station names, geometric logos
-and track text; these are not bundled app content or claims of broadcaster
-endorsement. They are not claimed to be exclusive or trademark-cleared. Earlier
-real station artwork remains in Git history and is not licensed under this
-project's MIT license. See [image provenance](docs/images/README.md).
-The AI-assisted head-unit composite incorporates a user-supplied frame reference
-and an edited emulator image. It is illustrative, not an official product
-photograph, affiliation statement or hardware test result.
+The public app has no bundled station-logo collection or automatic logo download.
+Use images you have permission to use when importing custom logos.
 
-The launcher artwork was supplied for this project. Its underlying rights and
-the OEM-inspired interface's visual/design rights have not received independent
-legal clearance. Publishing the source or charging no money does not resolve
-third-party rights. Redistributors must assess their intended use separately;
-do not market this as an official or authorized Junsun or Škoda product.
+The documentation uses illustrations with fictional station names and geometric
+logos. They do not show a verified installation or imply broadcaster endorsement.
+See [the illustration guide](docs/images/README.md).
+
+Third-party artwork, including artwork in earlier revisions, is not covered by
+the project's MIT license. The code license does not grant rights to the launcher
+artwork or head-unit reference image.
 
 ## Build and test dependencies
 
@@ -40,6 +32,4 @@ do not market this as an official or authorized Junsun or Škoda product.
 - Gradle is an external build tool, not an included runtime component.
 - The Android SDK is separately supplied under its own terms.
 
-Test dependencies are not packaged as runtime dependencies in the release APK.
-No third-party station-logo license is conveyed by linking a download source or
-by allowing a user to select a file.
+Test dependencies are not included in the release APK.
