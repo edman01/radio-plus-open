@@ -20,6 +20,11 @@ Finding `com.hcn.autoradio` on your head unit is a promising compatibility clue:
 Radio+ **may** work, but the package name alone is not a guarantee. The firmware
 must still expose a compatible service/API.
 
+Development source now selects an inspected radio contract per installed stock
+APK; unknown APKs are blocked instead of trying potentially wrong commands.
+The V1 Pro C MT8163 adapter is experimental and is **not** included in the
+community beta 4 download. [Backend selection and research candidates](docs/COMPATIBILITY.md).
+
 **Check your stock radio's package name (no PC needed):**
 
 1. Open Android **Settings → Apps**, show all apps or system apps, then select

@@ -114,6 +114,8 @@ final class RadioServiceClient {
     private volatile IRadioServiceAPI service;
     private volatile boolean closed;
     private boolean bound;
+    private boolean inspecting;
+    private int connectionGeneration;
     private boolean shouldBeBound;
     private int cachedMetadataBand = -1;
     private int cachedMetadataFrequency = -1;
@@ -143,16 +145,28 @@ final class RadioServiceClient {
             }
             mainHandler.removeCallbacks(rebindRunnable);
             mainHandler.removeCallbacks(connectionWatchdog);
-            service = IRadioServiceAPI.Stub.asInterface(binder);
-            notifyConnection(true, tr(
-                    "Radiolaitteisto yhdistetty",
-                    "Radio hardware connected"
-            ));
-            startPolling();
+            service = null;
+            stopPolling();
+            int generation = ++connectionGeneration;
+            RadioApiFactory.resolve(context, binder, (api, detection) -> {
+                if (closed || !shouldBeBound || !bound || generation != connectionGeneration) return;
+                if (api == null) {
+                    service = null;
+                    String message = RadioApiFactory.unsupportedMessage(context);
+                    notifyConnection(false, message);
+                    notifyError(message);
+                    return;
+                }
+                service = api;
+                notifyConnection(true, tr("Radiolaitteisto yhdistetty", "Radio hardware connected")
+                        + " (" + detection.profile.label + ")");
+                startPolling();
+            });
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
+            connectionGeneration++;
             service = null;
             stopPolling();
             notifyConnection(false, tr(
@@ -165,6 +179,7 @@ final class RadioServiceClient {
 
         @Override
         public void onBindingDied(ComponentName name) {
+            connectionGeneration++;
             service = null;
             stopPolling();
             notifyConnection(false, tr(
@@ -176,6 +191,7 @@ final class RadioServiceClient {
 
         @Override
         public void onNullBinding(ComponentName name) {
+            connectionGeneration++;
             service = null;
             stopPolling();
             notifyConnection(false, tr(
@@ -195,9 +211,26 @@ final class RadioServiceClient {
     }
 
     private void bindInternal() {
-        if (closed || !shouldBeBound || bound) {
+        if (closed || !shouldBeBound || bound || inspecting) {
             return;
         }
+        inspecting = true;
+        int generation = ++connectionGeneration;
+        RadioApiFactory.detect(context, detection -> {
+            if (generation != connectionGeneration) return;
+            inspecting = false;
+            if (closed || !shouldBeBound) return;
+            if (detection.profile == RadioBackendProfile.UNKNOWN) {
+                String message = RadioApiFactory.unsupportedMessage(context);
+                notifyConnection(false, message);
+                notifyError(message);
+                return;
+            }
+            bindRecognizedRadio();
+        });
+    }
+
+    private void bindRecognizedRadio() {
         Intent intent = new Intent(RadioBackendContract.SERVICE_ACTION);
         intent.setComponent(RadioBackendContract.SERVICE_COMPONENT);
         try {
@@ -235,6 +268,8 @@ final class RadioServiceClient {
     }
 
     void unbind() {
+        connectionGeneration++;
+        inspecting = false;
         shouldBeBound = false;
         mainHandler.removeCallbacks(rebindRunnable);
         mainHandler.removeCallbacks(connectionWatchdog);
@@ -263,6 +298,8 @@ final class RadioServiceClient {
             return;
         }
         mainHandler.removeCallbacks(connectionWatchdog);
+        connectionGeneration++;
+        inspecting = false;
         stopPolling();
         service = null;
         if (bound) {

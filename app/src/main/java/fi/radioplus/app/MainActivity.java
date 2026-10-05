@@ -679,7 +679,7 @@ public final class MainActivity extends Activity implements
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle(R.string.about_title)
                 .setMessage(getString(R.string.about_version, BuildConfig.VERSION_NAME)
-                        + "\n\n" + PROJECT_URL)
+                        + "\n\n" + PROJECT_URL + "\n\n" + RadioApiFactory.description(this))
                 .setPositiveButton(R.string.about_open_github, null)
                 .setNegativeButton(R.string.settings_back, null)
                 .create();
@@ -2167,13 +2167,17 @@ public final class MainActivity extends Activity implements
             stationStore.save(station);
             favoriteStore.save(station);
             if (currentlyPlaying && !currentState.oemFavorite) {
-                runRadio(remote -> remote.favoriteCurrentFreq());
+                runRadio(remote -> {
+                    if (RadioApiFactory.supportsOemFavorites(remote)) remote.favoriteCurrentFreq();
+                });
             }
             toast(tr("Lisätty suosikkeihin", "Added to favorites"));
         } else {
             favoriteStore.delete(favorite);
             if (currentlyPlaying && currentState.oemFavorite) {
-                runRadio(remote -> remote.favoriteCurrentFreq());
+                runRadio(remote -> {
+                    if (RadioApiFactory.supportsOemFavorites(remote)) remote.favoriteCurrentFreq();
+                });
             }
             toast(tr("Poistettu suosikeista", "Removed from favorites"));
         }

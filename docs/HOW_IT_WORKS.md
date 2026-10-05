@@ -21,6 +21,11 @@ The connection is defined in
 [RadioBackendContract](../app/src/main/java/fi/radioplus/app/RadioBackendContract.java)
 and the [service interface](../app/src/main/aidl/com/hcn/autoradio/IRadioServiceAPI.aidl).
 
+Development builds select the inspected control contract from the installed
+stock APK before binding. The older HCN API has different command numbers even
+though its service and descriptor have the same names. Unknown APKs are not
+controlled. See [backend selection and experimental compatibility](COMPATIBILITY.md).
+
 ## Tuning and audio playback
 
 Selecting a station involves two separate operations:

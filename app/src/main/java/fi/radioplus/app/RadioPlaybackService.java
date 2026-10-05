@@ -123,6 +123,8 @@ public final class RadioPlaybackService extends MediaBrowserService {
     private final MediaKeyEventDeduplicator mediaKeyEvents = new MediaKeyEventDeduplicator();
     private volatile IRadioServiceAPI radio;
     private IBinder radioBinder;
+    private boolean inspectingBackend;
+    private int backendGeneration;
     private long rebindDelayMs = MIN_REBIND_DELAY_MS;
     private FavoriteStore favoriteStore;
     private StationStore stationStore;
@@ -195,7 +197,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
             mainHandler.removeCallbacks(oemBindWatchdogTask);
             rebindDelayMs = MIN_REBIND_DELAY_MS;
             radioBinder = binder;
-            radio = IRadioServiceAPI.Stub.asInterface(binder);
+            radio = null;
             oemRouteActive = false;
             oemFocusState.onServiceConnected();
             try {
@@ -204,6 +206,21 @@ public final class RadioPlaybackService extends MediaBrowserService {
                 handleOemConnectionLoss("binder died while connecting");
                 return;
             }
+            int generation = ++backendGeneration;
+            RadioApiFactory.resolve(RadioPlaybackService.this, binder, (api, detection) -> {
+                if (stopping || !bound || radioBinder != binder || generation != backendGeneration) return;
+                if (api == null) {
+                    Log.w(TAG, "Stock radio contract not recognized; no control calls sent");
+                    setPlaybackRequested(false);
+                    return;
+                }
+                radio = api;
+                Log.i(TAG, "Selected stock radio profile: " + detection.profile.label);
+                onRecognizedRadioConnected();
+            });
+        }
+
+        private void onRecognizedRadioConnected() {
             if (pendingWidgetStation != null) {
                 tunePendingWidgetStation();
             } else if (pendingRadioCommand != null) {
@@ -544,10 +561,28 @@ public final class RadioPlaybackService extends MediaBrowserService {
     }
 
     private void bindOemRadio() {
-        if (stopping || bound) {
+        if (stopping || bound || radio != null || inspectingBackend) {
             return;
         }
         mainHandler.removeCallbacks(rebindTask);
+        inspectingBackend = true;
+        int generation = ++backendGeneration;
+        RadioApiFactory.detect(this, detection -> {
+            if (generation != backendGeneration) return;
+            inspectingBackend = false;
+            // A connection may have become usable while APK inspection ran.
+            // Never let an obsolete detection replace an established backend.
+            if (stopping || bound || radio != null) return;
+            if (detection.profile == RadioBackendProfile.UNKNOWN) {
+                Log.w(TAG, "Stock radio APK not recognized; binding and control blocked");
+                setPlaybackRequested(false);
+                return;
+            }
+            bindRecognizedOemRadio();
+        });
+    }
+
+    private void bindRecognizedOemRadio() {
         Intent intent = new Intent(RadioBackendContract.SERVICE_ACTION);
         intent.setComponent(RadioBackendContract.SERVICE_COMPONENT);
         try {
@@ -569,6 +604,8 @@ public final class RadioPlaybackService extends MediaBrowserService {
     }
 
     private void releaseBinding() {
+        backendGeneration++;
+        inspectingBackend = false;
         mainHandler.removeCallbacks(oemBindWatchdogTask);
         IBinder binder = radioBinder;
         if (binder != null) {
@@ -596,6 +633,8 @@ public final class RadioPlaybackService extends MediaBrowserService {
             return;
         }
         Log.w(TAG, "Stock radio connection lost: " + reason);
+        backendGeneration++;
+        inspectingBackend = false;
         radio = null;
         resetOemPlaybackOwnership();
         // Leave the ServiceConnection callback before unbinding. Several
@@ -721,7 +760,8 @@ public final class RadioPlaybackService extends MediaBrowserService {
         SteeringDiagnosticTrace.get().event("playback", "pause-release requested=" + playbackRequested);
         executeRadioCommand("pause", current -> {
             if (stopping || playbackRequested) return;
-            if (!oemFocusState.wasFocusReleasedByRadioPlus()) {
+            if (RadioApiFactory.supportsSeparateAudioFocus(current)
+                    && !oemFocusState.wasFocusReleasedByRadioPlus()) {
                 current.releaseAudioFocus();
                 oemFocusState.markFocusReleasedByRadioPlus();
             }
@@ -740,7 +780,8 @@ public final class RadioPlaybackService extends MediaBrowserService {
             throws RemoteException {
         long epoch = playbackEpoch;
         if (!isCurrentPlayback(epoch, current)) return;
-        if (OemFocusInteropPolicy.shouldReplaceFocusRequest(
+        boolean separateFocus = RadioApiFactory.supportsSeparateAudioFocus(current);
+        if (separateFocus && OemFocusInteropPolicy.shouldReplaceFocusRequest(
                 explicitTakeover,
                 oemFocusState.wasFocusReleasedByRadioPlus()
         )) {
@@ -759,7 +800,10 @@ public final class RadioPlaybackService extends MediaBrowserService {
                 snapshot.radioOwnsSource(),
                 snapshot.muteKnown,
                 snapshot.muted
-        );
+        ) || (!separateFocus && explicitTakeover);
+        // Legacy HCN has no separate focus endpoint. An explicit Play/takeover
+        // must still request its audio route and attempt optional unmute, even
+        // if the delayed pause cleanup has not yet reset oemRouteActive.
         if (OemFocusInteropPolicy.shouldRequestRoute(oemRouteActive, requestFocus)) {
             // Match the stock RadioAppManager: select the analog radio source
             // before asking FMPlugService to unmute it through audio focus.
@@ -774,13 +818,17 @@ public final class RadioPlaybackService extends MediaBrowserService {
             // requestAudioFocus() is also the vendor's unmute operation. RDS
             // can keep updating while this step is missing, which is why a
             // metadata-only success must not be treated as active playback.
-            current.requestAudioFocus();
+            if (separateFocus) {
+                current.requestAudioFocus();
+            }
             if (!isCurrentPlayback(epoch, current)) return;
             playbackHealthReader.setMuted(false);
             oemFocusState.markFocusResumed();
-            Log.i(TAG, snapshot.muteKnown && snapshot.muted
-                    ? "Stock radio audio focus resumed from OEM mute"
-                    : "Stock radio audio focus activated for this session");
+            Log.i(TAG, !separateFocus
+                    ? "Legacy radio playback requested; optional unmute attempted"
+                    : snapshot.muteKnown && snapshot.muted
+                            ? "Stock radio audio focus resumed from OEM mute"
+                            : "Stock radio audio focus activated for this session");
         }
         // PLAYING/setActive alone does not register our UID in Android's audio
         // playback history. Wait for the stock focus handoff (including its

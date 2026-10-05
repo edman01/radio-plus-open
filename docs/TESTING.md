@@ -31,6 +31,12 @@ language selection and activity recreation, and translated screen layouts.
 Logo-isolation checks verify that the public build has no bundled station-logo
 collection. These checks do not verify radio hardware or audible playback.
 
+Development backend tests cover per-APK profile selection, current/legacy HCN
+transaction numbers and Parcel argument types, legacy state polling without a
+playback command, unsupported-capability guards and fail-closed handling of
+unknown contracts. These use synthetic Binders, not a physical V1 tuner.
+See [experimental backend status](COMPATIBILITY.md).
+
 Media-control tests cover station-list and favorites order, single-press handling,
 Android media-key routing, and avoiding a repeated audio handoff during adjacent
 station changes and direct on-screen station selection. They also cover resuming

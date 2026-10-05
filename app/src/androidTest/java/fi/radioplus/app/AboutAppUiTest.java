@@ -109,7 +109,8 @@ public final class AboutAppUiTest {
                 assertNotNull("Localized About title", title);
                 TextView message = about.findViewById(android.R.id.message);
                 assertEquals(activity.getString(R.string.about_version, BuildConfig.VERSION_NAME)
-                        + "\n\n" + PROJECT_URL, message.getText().toString());
+                        + "\n\n" + PROJECT_URL + "\n\n" + RadioApiFactory.description(activity),
+                        message.getText().toString());
                 assertTextFits(title);
                 assertTextFits(message); // Full measured text may live inside a scrolling viewport.
                 assertEquals(activity.getString(R.string.about_open_github),

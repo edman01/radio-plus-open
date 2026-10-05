@@ -13,6 +13,7 @@ import android.media.session.PlaybackState;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Parcel;
 import android.os.SystemClock;
 import android.view.KeyEvent;
 import android.view.ViewConfiguration;
@@ -233,6 +234,67 @@ public final class MediaControlsTest {
         awaitRoutingClaimCompleted(firstClaim, 3);
         expectSteadyAdjacentTune(() -> RadioPlaybackService.tuneStation(context, CHARLIE), CHARLIE);
         expectSteadyAdjacentTune(() -> RadioPlaybackService.tuneStation(context, ALPHA), ALPHA);
+    }
+
+    @Test public void connectedBackendIsNotReinspectedWhenSelectingAStation() throws Exception {
+        int generation = (Integer) field(RadioPlaybackService.class, "backendGeneration", service);
+        long firstClaim = routingClaimId();
+        expectTune(() -> RadioPlaybackService.tuneStation(context, BRAVO), BRAVO);
+        awaitRoutingClaimCompleted(firstClaim, 3);
+        assertEquals("Station selection must reuse the resolved backend", generation,
+                field(RadioPlaybackService.class, "backendGeneration", service));
+        assertEquals(false, field(RadioPlaybackService.class, "inspectingBackend", service));
+        assertTrue(RadioPlaybackService.isPlaybackRequested());
+    }
+
+    @Test public void legacyPlaybackSkipsAbsentOemFocusEndpoints() throws Exception {
+        List<Integer> transactions = new CopyOnWriteArrayList<>();
+        Binder legacy = new Binder() {
+            @Override protected boolean onTransact(int code, Parcel data, Parcel reply, int flags) {
+                data.enforceInterface(RadioApiFactory.DESCRIPTOR);
+                transactions.add(code);
+                reply.writeNoException();
+                switch (code) {
+                    case 5:
+                        synchronized (tuner) { tuner.band = (tuner.band + 1) % 4; }
+                        break;
+                    case 14:
+                        synchronized (tuner) {
+                            tuner.frequency = data.readInt();
+                            tuner.requestedTunes.add(tuner.current());
+                        }
+                        break;
+                    case 17: reply.writeInt(tuner.current().band); break;
+                    case 18: reply.writeInt(tuner.current().frequency); break;
+                    case 25:
+                        tuner.routeRequests++;
+                        reply.writeInt(1);
+                        break;
+                    default: throw new AssertionError("Unexpected legacy playback transaction " + code);
+                }
+                assertEquals(0, data.dataAvail());
+                return true;
+            }
+        };
+        legacy.attachInterface(null, RadioApiFactory.DESCRIPTOR);
+        instrumentation.runOnMainSync(() -> setField(service, "radio", new LegacyHcnRadioApi(legacy)));
+        long firstClaim = routingClaimId();
+        expectTune(() -> RadioPlaybackService.tuneStation(context, DELTA), DELTA);
+        awaitRoutingClaimCompleted(firstClaim, 3);
+        controls().pause();
+        await(() -> controller.getPlaybackState().getState() == PlaybackState.STATE_PAUSED,
+                "Legacy pause must update the media session");
+        drainServiceCommands();
+        long pausedClaim = routingClaimId();
+        int routesBeforeResume = tuner.routeRequests;
+        controls().play();
+        awaitRoutingClaimCompleted(pausedClaim, routesBeforeResume + 2);
+        assertTrue(transactions.contains(14));
+        assertTrue(transactions.contains(25));
+        assertFalse(transactions.contains(30));
+        assertFalse(transactions.contains(31));
+        assertEquals(0, tuner.focusRequests);
+        assertEquals(0, tuner.focusReleases);
     }
 
     @Test public void screenStationTapResumesAfterPauseThenReusesPlayback() throws Exception {
