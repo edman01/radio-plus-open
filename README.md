@@ -12,7 +12,8 @@ compatibility with those devices has not been verified.
 
 ## Compatibility
 
-Android 8.1+ and a compatible stock radio with **FMPlugService** are required.
+The community beta 4 download requires Android 8.1+ and a compatible stock radio
+with **FMPlugService**.
 **Keep the stock radio installed and enabled.** Radio+ does not replace it or change the firmware.
 
 Radio+ controls the stock `com.hcn.autoradio` app through its **FMPlugService**.
@@ -22,8 +23,10 @@ must still expose a compatible service/API.
 
 Development source now selects an inspected radio contract per installed stock
 APK; unknown APKs are blocked instead of trying potentially wrong commands.
-The V1 Pro C MT8163 adapter is experimental and is **not** included in the
-community beta 4 download. [Backend selection and research candidates](docs/COMPATIBILITY.md).
+The V1 Pro C MT8163 adapter and exact AC8259 / 825X / 8667Q `com.ts.MainUI`
+profiles are experimental and **not** included in the community beta 4 download.
+They have not been tested on physical units.
+[Backend selection, feature limits and research candidates](docs/COMPATIBILITY.md).
 
 **Check your stock radio's package name (no PC needed):**
 

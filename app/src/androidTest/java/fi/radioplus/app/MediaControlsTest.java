@@ -297,6 +297,39 @@ public final class MediaControlsTest {
         assertEquals(0, tuner.focusReleases);
     }
 
+    @Test public void tsPlaybackTunesOneStationAndPausesThroughItsOwnSourceApi() throws Exception {
+        TsRadioInteropTest.Endpoint ts = new TsRadioInteropTest.Endpoint();
+        IRadioServiceAPI api = ts.api();
+        instrumentation.runOnMainSync(() -> setField(service, "radio", api));
+        RadioPlaybackService.tuneStation(context, ALPHA);
+        await(() -> RadioPlaybackService.isPlaybackRequested() && ts.radioCalls.contains(34), "TS start");
+        drainServiceCommands();
+        int before = Collections.frequency(ts.radioCalls, 34);
+        controls().skipToNext();
+        await(() -> ts.rawBand == 1 && ts.rawFrequency == 10170, "TS next favorite");
+        drainServiceCommands();
+        assertEquals(before + 1, Collections.frequency(ts.radioCalls, 34));
+        controls().skipToPrevious();
+        await(() -> ts.rawBand == 0 && ts.rawFrequency == 9810, "TS previous favorite");
+        drainServiceCommands();
+        assertEquals(before + 2, Collections.frequency(ts.radioCalls, 34));
+        controls().pause();
+        await(() -> ts.mode == 0, "TS source exits on pause");
+        controls().play();
+        await(() -> ts.mode == 1, "TS source selected on resume");
+        drainServiceCommands();
+        assertTrue(RadioPlaybackService.isPlaybackRequested());
+        SystemClock.sleep(900L);
+        assertEquals("The HCN PCM handoff is not verified on TS", "not-requested",
+                field(RadioPlaybackService.class, "routingPulseStatus", service));
+        assertFalse(ts.commonCalls.contains(2)); // Never global mute.
+        assertFalse(ts.commonCalls.contains(1)); // Never open the stock UI.
+        assertFalse(ts.radioCalls.contains(36)); // Never factory reset.
+        assertFalse(ts.radioCalls.contains(38));
+        assertEquals(0, tuner.focusRequests);
+        assertEquals(0, tuner.focusReleases);
+    }
+
     @Test public void screenStationTapResumesAfterPauseThenReusesPlayback() throws Exception {
         long firstClaim = routingClaimId();
         expectTune(() -> RadioPlaybackService.tuneStation(context, BRAVO), BRAVO);

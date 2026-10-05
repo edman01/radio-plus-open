@@ -32,9 +32,12 @@ Logo-isolation checks verify that the public build has no bundled station-logo
 collection. These checks do not verify radio hardware or audible playback.
 
 Development backend tests cover per-APK profile selection, current/legacy HCN
-transaction numbers and Parcel argument types, legacy state polling without a
+and TS transaction numbers and Parcel argument types, nested TS descriptor
+validation, FM/AM frequency conversion, bank cycling, state polling without a
 playback command, unsupported-capability guards and fail-closed handling of
-unknown contracts. These use synthetic Binders, not a physical V1 tuner.
+unknown contracts. TS playback tests exercise the actual background service's
+one-station next/previous callbacks and source-based pause/resume. These use
+synthetic Binders, not physical V1/TS tuners or audible playback.
 See [experimental backend status](COMPATIBILITY.md).
 
 Media-control tests cover station-list and favorites order, single-press handling,
@@ -101,7 +104,9 @@ from the model name or minimum Android version.
    Also leave and reopen Radio+ while its radio is playing, and repeat while
    intentionally paused. Reopening should preserve that state without a new
    audio interruption.
-4. Test manual FM and AM tuning, scan cancellation, saving/renaming and app restart.
+4. Test manual FM and AM tuning, saving/renaming and app restart. Test scanning
+   only where enabled; experimental TS profiles intentionally disable scanning
+   and LOCAL/DX controls.
 5. Import a PNG/JPEG from USB, disconnect the USB drive and restart. Test removal.
 6. Test physical steering buttons and ACC wake separately. Record UI state and
    actual audio separately. Do not configure or debug while driving.

@@ -18,6 +18,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.HashMap;
+import java.util.Map;
 
 /** Selects a known contract by inspecting the installed stock APK, without loading its code. */
 final class RadioApiFactory {
@@ -26,8 +28,8 @@ final class RadioApiFactory {
     private static final ExecutorService INSPECTOR = Executors.newSingleThreadExecutor();
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static volatile Detection latest;
-    private static String cachedIdentity;
-    private static Detection cached;
+    private static final Map<String, String> cachedIdentities = new HashMap<>();
+    private static final Map<String, Detection> cachedDetections = new HashMap<>();
 
     interface Callback { void onResolved(IRadioServiceAPI api, Detection detection); }
     interface DetectionCallback { void onDetected(Detection detection); }
@@ -37,9 +39,15 @@ final class RadioApiFactory {
         final String stockVersion;
         final String sha256;
         final String problem;
+        final String stockPackage;
 
         Detection(RadioBackendProfile profile, String version, String hash, String problem) {
+            this(profile, profile.stockPackage(), version, hash, problem);
+        }
+
+        Detection(RadioBackendProfile profile, String stockPackage, String version, String hash, String problem) {
             this.profile = profile;
+            this.stockPackage = stockPackage;
             this.stockVersion = version;
             this.sha256 = hash;
             this.problem = problem;
@@ -58,15 +66,24 @@ final class RadioApiFactory {
     }
 
     static void resolve(Context context, IBinder binder, Callback callback) {
+        resolve(context, null, binder, callback);
+    }
+
+    static void resolve(Context context, Detection expected, IBinder binder, Callback callback) {
         Context application = context.getApplicationContext();
         INSPECTOR.execute(() -> {
             Detection detection = inspectInstalled(application);
             IRadioServiceAPI api = null;
+            if (expected != null && (expected.profile != detection.profile
+                    || !expected.sha256.equals(detection.sha256))) {
+                detection = new Detection(RadioBackendProfile.UNKNOWN, detection.stockPackage,
+                        detection.stockVersion, detection.sha256, "The stock APK changed while binding; reopen Radio+");
+            }
             if (detection.profile != RadioBackendProfile.UNKNOWN) {
                 try {
                     api = create(detection.profile, binder);
                 } catch (RemoteException | RuntimeException error) {
-                    detection = new Detection(RadioBackendProfile.UNKNOWN, detection.stockVersion,
+                    detection = new Detection(RadioBackendProfile.UNKNOWN, detection.stockPackage, detection.stockVersion,
                             detection.sha256, "The stock radio Binder does not match its APK");
                 }
             }
@@ -83,6 +100,7 @@ final class RadioApiFactory {
         if (profile == null || profile == RadioBackendProfile.UNKNOWN) {
             throw new RemoteException("Unrecognized stock radio contract");
         }
+        if (profile.isTs()) return new TsRadioApi(binder);
         if (binder == null || !DESCRIPTOR.equals(binder.getInterfaceDescriptor())) {
             throw new RemoteException("Unexpected stock radio Binder descriptor");
         }
@@ -91,44 +109,71 @@ final class RadioApiFactory {
     }
 
     private static Detection inspectInstalled(Context context) {
+        Detection recognized = null;
+        Detection lastUnknown = null;
+        for (String stockPackage : new String[]{RadioBackendContract.PACKAGE_NAME, "com.ts.MainUI"}) {
+            Detection candidate = inspectPackage(context, stockPackage);
+            if (candidate == null) continue;
+            if (candidate.profile == RadioBackendProfile.UNKNOWN) {
+                lastUnknown = candidate;
+            } else if (recognized != null) {
+                return unknown("", "Multiple verified stock radio backends are installed; automatic control blocked");
+            } else {
+                recognized = candidate;
+            }
+        }
+        if (recognized != null) return recognized;
+        return lastUnknown != null ? lastUnknown
+                : unknown("", "No supported stock radio package was found");
+    }
+
+    private static Detection inspectPackage(Context context, String stockPackage) {
         try {
             PackageInfo info = context.getPackageManager().getPackageInfo(
-                    RadioBackendContract.PACKAGE_NAME, 0);
+                    stockPackage, 0);
             ApplicationInfo application = info.applicationInfo;
             String version = info.versionName == null ? "" : info.versionName;
             if (application == null || application.sourceDir == null
                     || (application.splitSourceDirs != null && application.splitSourceDirs.length > 0)) {
-                return unknown(version, "The stock radio APK layout is not recognized");
+                return unknown(stockPackage, version, "The stock radio APK layout is not recognized");
             }
             File apk = new File(application.sourceDir);
             long length = apk.length();
             long modified = apk.lastModified();
             String identity = apk.getCanonicalPath() + ":" + info.lastUpdateTime
                     + ":" + length + ":" + modified;
-            if (identity.equals(cachedIdentity) && cached != null) return cached;
+            if (identity.equals(cachedIdentities.get(stockPackage))) {
+                Detection cached = cachedDetections.get(stockPackage);
+                if (cached != null) return cached;
+            }
             if (!apk.isFile() || length <= 0 || length > MAX_APK_BYTES) {
-                return unknown(version, "The stock radio APK could not be inspected");
+                return unknown(stockPackage, version, "The stock radio APK could not be inspected");
             }
             String hash = sha256(apk);
             if (length != apk.length() || modified != apk.lastModified()) {
-                return unknown(version, "The stock radio changed during inspection; reopen Radio+");
+                return unknown(stockPackage, version, "The stock radio changed during inspection; reopen Radio+");
             }
             RadioBackendProfile profile = RadioBackendProfile.forApkSha256(hash);
-            Detection detection = new Detection(profile, version, hash,
+            if (!stockPackage.equals(profile.stockPackage())) profile = RadioBackendProfile.UNKNOWN;
+            Detection detection = new Detection(profile, stockPackage, version, hash,
                     profile == RadioBackendProfile.UNKNOWN
                             ? "This stock radio APK has not yet been verified" : "");
-            cachedIdentity = identity;
-            cached = detection;
+            cachedIdentities.put(stockPackage, identity);
+            cachedDetections.put(stockPackage, detection);
             return detection;
         } catch (PackageManager.NameNotFoundException error) {
-            return unknown("", "The stock com.hcn.autoradio package was not found");
+            return null;
         } catch (IOException | RuntimeException | NoSuchAlgorithmException error) {
-            return unknown("", "The stock radio APK could not be inspected");
+            return unknown(stockPackage, "", "The stock radio APK could not be inspected");
         }
     }
 
     private static Detection unknown(String version, String problem) {
         return new Detection(RadioBackendProfile.UNKNOWN, version, "", problem);
+    }
+
+    private static Detection unknown(String stockPackage, String version, String problem) {
+        return new Detection(RadioBackendProfile.UNKNOWN, stockPackage, version, "", problem);
     }
 
     private static String sha256(File apk) throws IOException, NoSuchAlgorithmException {
@@ -152,12 +197,20 @@ final class RadioApiFactory {
     }
 
     static boolean supportsOemFavorites(IRadioServiceAPI api) {
-        return api != null && !(api instanceof LegacyHcnRadioApi);
+        return api != null && !(api instanceof LegacyHcnRadioApi) && !(api instanceof TsRadioApi);
     }
 
     static boolean supportsSeparateAudioFocus(IRadioServiceAPI api) {
-        return api != null && !(api instanceof LegacyHcnRadioApi);
+        return api != null && !(api instanceof LegacyHcnRadioApi) && !(api instanceof TsRadioApi);
     }
+
+    static boolean supportsScanning(IRadioServiceAPI api) { return api != null && !(api instanceof TsRadioApi); }
+    static boolean supportsLocalMode(IRadioServiceAPI api) { return api != null && !(api instanceof TsRadioApi); }
+
+    static boolean selectedSupportsScanning() {
+        return latest == null || !latest.profile.isTs();
+    }
+    static boolean selectedSupportsLocalMode() { return selectedSupportsScanning(); }
 
     static String unsupportedMessage(Context context) {
         return AppLanguage.text(context,
@@ -173,7 +226,7 @@ final class RadioApiFactory {
                 "Vakioradion tunnistus: odottaa yhteyttä", "Stock radio detection: awaiting connection");
         String details = AppLanguage.text(context, "Radion ohjaus: ", "Radio control: ")
                 + detection.profile.label;
-        if (!detection.stockVersion.isEmpty()) details += "\ncom.hcn.autoradio " + detection.stockVersion;
+        if (!detection.stockVersion.isEmpty()) details += "\n" + detection.stockPackage + " " + detection.stockVersion;
         if (!detection.sha256.isEmpty()) details += "\nAPK SHA-256: " + detection.sha256;
         if (!detection.problem.isEmpty()) details += "\n" + detection.problem;
         return details;

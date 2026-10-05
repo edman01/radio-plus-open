@@ -124,6 +124,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
     private volatile IRadioServiceAPI radio;
     private IBinder radioBinder;
     private boolean inspectingBackend;
+    private RadioApiFactory.Detection boundDetection;
     private int backendGeneration;
     private long rebindDelayMs = MIN_REBIND_DELAY_MS;
     private FavoriteStore favoriteStore;
@@ -207,7 +208,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
                 return;
             }
             int generation = ++backendGeneration;
-            RadioApiFactory.resolve(RadioPlaybackService.this, binder, (api, detection) -> {
+            RadioApiFactory.resolve(RadioPlaybackService.this, boundDetection, binder, (api, detection) -> {
                 if (stopping || !bound || radioBinder != binder || generation != backendGeneration) return;
                 if (api == null) {
                     Log.w(TAG, "Stock radio contract not recognized; no control calls sent");
@@ -578,13 +579,13 @@ public final class RadioPlaybackService extends MediaBrowserService {
                 setPlaybackRequested(false);
                 return;
             }
-            bindRecognizedOemRadio();
+            bindRecognizedOemRadio(detection);
         });
     }
 
-    private void bindRecognizedOemRadio() {
-        Intent intent = new Intent(RadioBackendContract.SERVICE_ACTION);
-        intent.setComponent(RadioBackendContract.SERVICE_COMPONENT);
+    private void bindRecognizedOemRadio(RadioApiFactory.Detection detection) {
+        boundDetection = detection;
+        Intent intent = RadioBackendContract.serviceIntent(detection.profile);
         try {
             bound = bindService(intent, connection, Context.BIND_AUTO_CREATE);
             if (!bound) {
@@ -671,6 +672,12 @@ public final class RadioPlaybackService extends MediaBrowserService {
         SteeringDiagnosticTrace.get().event("playback", "pause-request");
         setPlaybackRequested(false);
         long pauseEpoch = playbackEpoch;
+        if (usesTsBackend()) {
+            // TS exits the radio source and abandons its own focus through one
+            // verified source command. HCN's focus/mute handoff does not apply.
+            releasePlaybackFocus();
+            return;
+        }
         // FMPlugService.releaseAudioFocus() only abandons the stock request; it
         // does not call RadioPlayer.setMute(true). Taking media focus first
         // makes the stock focus listener run its real mute path, exactly as it
@@ -678,7 +685,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
         boolean focusTaken = takePauseAudioFocus();
         // Direct framework mute is independent of the asynchronous OEM Binder
         // connection, so a tap also stops audio during service reconnection.
-        boolean directMuteSent = playbackHealthReader.setMuted(true);
+        boolean directMuteSent = setTunerMuted(true);
         if (focusTaken) {
             // Give the stock process time to handle AUDIOFOCUS_LOSS before the
             // fallback release. Calling release first bypasses its mute code.
@@ -704,7 +711,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
         if (stopping || playbackRequested) {
             return;
         }
-        boolean muted = playbackHealthReader.setMuted(true);
+        boolean muted = setTunerMuted(true);
         Log.i(TAG, muted
                 ? "Stock radio pause reasserted"
                 : "Stock radio pause reassertion unavailable");
@@ -765,7 +772,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
                 current.releaseAudioFocus();
                 oemFocusState.markFocusReleasedByRadioPlus();
             }
-            boolean muted = playbackHealthReader.setMuted(true);
+            boolean muted = setTunerMuted(true);
             oemRouteActive = false;
             Log.i(TAG, muted
                     ? "Stock radio playback paused and tuner muted"
@@ -793,7 +800,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
             oemRouteActive = false;
             Log.i(TAG, "Stale OEM audio focus released for explicit radio takeover");
         }
-        RadioPlaybackHealthReader.Snapshot snapshot = playbackHealthReader.read();
+        RadioPlaybackHealthReader.Snapshot snapshot = readPlaybackHealth();
         if (!isCurrentPlayback(epoch, current)) return;
         boolean requestFocus = oemFocusState.shouldRequestFocus(
                 snapshot.sourceKnown,
@@ -822,7 +829,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
                 current.requestAudioFocus();
             }
             if (!isCurrentPlayback(epoch, current)) return;
-            playbackHealthReader.setMuted(false);
+            setTunerMuted(false);
             oemFocusState.markFocusResumed();
             Log.i(TAG, !separateFocus
                     ? "Legacy radio playback requested; optional unmute attempted"
@@ -837,7 +844,10 @@ public final class RadioPlaybackService extends MediaBrowserService {
         activatedPlaybackEpoch = epoch;
         if (explicitTakeover) {
             uiTakeoverRequired = false;
-            scheduleRoutingClaim(current, epoch);
+            // The V7 PCM routing handoff is hardware-tested only on HCN.
+            // On TS, Android PCM may itself switch the analog source to mode 0.
+            // Do not apply that workaround before a TS device test verifies it.
+            if (!(current instanceof TsRadioApi)) scheduleRoutingClaim(current, epoch);
         }
         scheduleStartupVolumePolicy(requestFocus);
     }
@@ -870,7 +880,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
                 if (!isCurrentPlayback(epoch, current) || routingClaimId != claim) return;
                 executeRadioCommand("media routing", connected -> {
                     if (!isCurrentPlayback(epoch, current) || routingClaimId != claim) return;
-                    RadioPlaybackHealthReader.Snapshot health = playbackHealthReader.read();
+                    RadioPlaybackHealthReader.Snapshot health = readPlaybackHealth();
                     if (health.sourceKnown && !isRadioOrOwnSource(health)) {
                         routingPulseStatus = "skipped-external-source";
                         return; // Never reclaim radio from another app in a delayed callback.
@@ -885,7 +895,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
                     // AudioTrack can affect a vendor analog path even with no
                     // focus request. It has been RELEASED before this one-time
                     // restore. Do not request focus again or change any volume.
-                    health = playbackHealthReader.read();
+                    health = readPlaybackHealth();
                     if (health.sourceKnown && !isRadioOrOwnSource(health)) return;
                     if (!isCurrentPlayback(epoch, current) || routingClaimId != claim) return;
                     oemRouteActive = current.requestPlayAudio();
@@ -902,7 +912,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
         if (current == null || stopping || !playbackRequested) return;
         long epoch = playbackEpoch;
         executeRadioCommand("playback ownership", connected -> {
-            RadioPlaybackHealthReader.Snapshot health = playbackHealthReader.read();
+            RadioPlaybackHealthReader.Snapshot health = readPlaybackHealth();
             mainHandler.post(() -> {
                 if (!isCurrentPlayback(epoch, current)) return;
                 if (!playbackOwnership.shouldYield(SystemClock.elapsedRealtime(),
@@ -949,7 +959,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
 
     private void activateForStationNavigation(IRadioServiceAPI current)
             throws RemoteException {
-        RadioPlaybackHealthReader.Snapshot health = playbackHealthReader.read();
+        RadioPlaybackHealthReader.Snapshot health = readPlaybackHealth();
         boolean takeover = OemFocusInteropPolicy.shouldTakeOverForTuning(
                 activatedPlaybackEpoch == playbackEpoch,
                 oemRouteActive,
@@ -970,6 +980,46 @@ public final class RadioPlaybackService extends MediaBrowserService {
         activatedPlaybackEpoch = -1L;
         oemRouteActive = false;
         oemFocusState.onServiceDisconnected();
+    }
+
+    private boolean usesTsBackend() {
+        return radio instanceof TsRadioApi
+                || (boundDetection != null && boundDetection.profile.isTs());
+    }
+
+    private RadioPlaybackHealthReader.Snapshot readPlaybackHealth() {
+        IRadioServiceAPI current = radio;
+        if (!(current instanceof TsRadioApi)) {
+            if (usesTsBackend()) return new RadioPlaybackHealthReader.Snapshot(false, "", false, false);
+            return playbackHealthReader.read();
+        }
+        try {
+            return ((TsRadioApi) current).readHealth();
+        } catch (RemoteException | RuntimeException error) {
+            Log.w(TAG, "TS source state unavailable", error);
+            return new RadioPlaybackHealthReader.Snapshot(false, "", false, false);
+        }
+    }
+
+    private boolean setTunerMuted(boolean muted) {
+        IRadioServiceAPI current = radio;
+        if (!(current instanceof TsRadioApi)) return !usesTsBackend() && playbackHealthReader.setMuted(muted);
+        // TS has a verified source exit but no verified idempotent tuner mute.
+        // Do not toggle global mute, run HCN reflection, or block the main thread.
+        if (!muted || playbackRequested) return false;
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            executeRadioCommand("pause TS source", connected -> {
+                if (!playbackRequested && connected instanceof TsRadioApi) {
+                    ((TsRadioApi) connected).pauseRadioSource();
+                }
+            });
+            return false;
+        }
+        try { return ((TsRadioApi) current).pauseRadioSource(); }
+        catch (RemoteException | RuntimeException error) {
+            Log.w(TAG, "TS source exit failed", error);
+            return false;
+        }
     }
 
     private void togglePlayback() {
@@ -1097,7 +1147,9 @@ public final class RadioPlaybackService extends MediaBrowserService {
         int currentBand = normalizeBand(current.getCurrentBand());
         if (!isCurrentPlayback(epoch, current)) return false;
         boolean commandIssued;
-        if (currentBand == normalizedTarget) {
+        if (current instanceof TsRadioApi) {
+            commandIssued = ((TsRadioApi) current).tuneToBand(normalizedTarget, target.frequency);
+        } else if (currentBand == normalizedTarget) {
             current.gotoFreq(target.frequency);
             commandIssued = true;
         } else {
@@ -1148,7 +1200,9 @@ public final class RadioPlaybackService extends MediaBrowserService {
                 Log.w(TAG, "Tuner did not confirm " + target.key()
                         + "; retry " + (attempt + 1)
                         + " (actual=" + observedBand + ":" + observedFrequency + ")");
-                if (!tunerMetadataReader.tuneToBand(
+                if (current instanceof TsRadioApi) {
+                    ((TsRadioApi) current).tuneToBand(normalizedTarget, target.frequency);
+                } else if (!tunerMetadataReader.tuneToBand(
                         normalizedTarget,
                         target.frequency
                 )) {

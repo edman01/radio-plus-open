@@ -731,6 +731,10 @@ public final class MainActivity extends Activity implements
     }
 
     private void showReceptionModeDialog() {
+        if (!RadioApiFactory.selectedSupportsLocalMode()) {
+            showUnverifiedBackendFeature();
+            return;
+        }
         int selected = currentState != null && currentState.localMode ? 0 : 1;
         String[] modes = {
                 tr("LOCAL vain vahvat asemat", "LOCAL strong stations only"),
@@ -953,6 +957,8 @@ public final class MainActivity extends Activity implements
                 "DX myös heikot",
                 "DX weak stations too"
         ));
+        manualLocalChoice.setEnabled(RadioApiFactory.selectedSupportsLocalMode());
+        manualDxChoice.setEnabled(RadioApiFactory.selectedSupportsLocalMode());
         sensitivityChoices.addView(manualLocalChoice, manualChoiceLayoutParams());
         sensitivityChoices.addView(manualDxChoice, manualChoiceLayoutParams());
         manualChoiceUiUpdating = true;
@@ -1180,6 +1186,10 @@ public final class MainActivity extends Activity implements
     }
 
     private void setReceptionMode(boolean localMode) {
+        if (!RadioApiFactory.selectedSupportsLocalMode()) {
+            showUnverifiedBackendFeature();
+            return;
+        }
         manualChoiceUiUpdating = true;
         if (manualLocalChoice != null && manualDxChoice != null) {
             (localMode ? manualLocalChoice : manualDxChoice).setChecked(true);
@@ -1493,6 +1503,10 @@ public final class MainActivity extends Activity implements
     }
 
     private void startAutoScan() {
+        if (!RadioApiFactory.selectedSupportsScanning()) {
+            showUnverifiedBackendFeature();
+            return;
+        }
         if (autoScanRequested
                 || autoScanFinalizing
                 || stationNameResolutionActive
@@ -2562,9 +2576,18 @@ public final class MainActivity extends Activity implements
                     || id == R.id.saved_button
                     || id == R.id.more_button;
             boolean controlEnabled = enabled || locallyAvailable;
+            if ((id == R.id.scan_button && !RadioApiFactory.selectedSupportsScanning())
+                    || (id == R.id.local_button && !RadioApiFactory.selectedSupportsLocalMode())) {
+                controlEnabled = false;
+            }
             control.setEnabled(controlEnabled);
             control.setAlpha(controlEnabled ? 1.0f : 0.42f);
         }
+    }
+
+    private void showUnverifiedBackendFeature() {
+        Toast.makeText(this, tr("Tätä toimintoa ei ole vielä varmistettu tälle vakioradiolle",
+                "This feature has not yet been verified for this stock radio"), Toast.LENGTH_SHORT).show();
     }
 
     private void showActiveFavorite(String stationKey, boolean followStationPage) {

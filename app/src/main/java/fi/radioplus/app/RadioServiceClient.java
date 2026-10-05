@@ -115,6 +115,7 @@ final class RadioServiceClient {
     private volatile boolean closed;
     private boolean bound;
     private boolean inspecting;
+    private RadioApiFactory.Detection boundDetection;
     private int connectionGeneration;
     private boolean shouldBeBound;
     private int cachedMetadataBand = -1;
@@ -148,7 +149,7 @@ final class RadioServiceClient {
             service = null;
             stopPolling();
             int generation = ++connectionGeneration;
-            RadioApiFactory.resolve(context, binder, (api, detection) -> {
+            RadioApiFactory.resolve(context, boundDetection, binder, (api, detection) -> {
                 if (closed || !shouldBeBound || !bound || generation != connectionGeneration) return;
                 if (api == null) {
                     service = null;
@@ -226,13 +227,13 @@ final class RadioServiceClient {
                 notifyError(message);
                 return;
             }
-            bindRecognizedRadio();
+            bindRecognizedRadio(detection);
         });
     }
 
-    private void bindRecognizedRadio() {
-        Intent intent = new Intent(RadioBackendContract.SERVICE_ACTION);
-        intent.setComponent(RadioBackendContract.SERVICE_COMPONENT);
+    private void bindRecognizedRadio(RadioApiFactory.Detection detection) {
+        boundDetection = detection;
+        Intent intent = RadioBackendContract.serviceIntent(detection.profile);
         try {
             bound = context.bindService(intent, connection, Context.BIND_AUTO_CREATE);
             if (!bound) {
@@ -365,6 +366,14 @@ final class RadioServiceClient {
             return;
         }
         perform(remote -> {
+            if (remote instanceof TsRadioApi) {
+                if (!((TsRadioApi) remote).tuneToBand(targetBand, frequency)) {
+                    notifyError(tr("Radiokaistaa ei voitu valita", "Could not select the radio band"));
+                    return;
+                }
+                remote.requestPlayAudio();
+                return;
+            }
             int currentBand = remote.getCurrentBand();
             int normalizedTarget = normalizeBand(targetBand);
             int guard = 0;
@@ -391,6 +400,10 @@ final class RadioServiceClient {
         }
         try {
             actionExecutor.submit(() -> {
+            if (service instanceof TsRadioApi || !RadioApiFactory.selectedSupportsScanning()) {
+                mainHandler.post(() -> { if (!closed) callback.onResult(band, new int[0], false); });
+                return;
+            }
             int[] raw = metadataReader.readPresets(band);
             int[] sanitized = sanitizePresets(band, raw);
             if (!closed) {
@@ -443,7 +456,8 @@ final class RadioServiceClient {
                 return;
             }
             String serviceRdsName = RadioMetadataReader.clean(current.getCurrentFreqRdsPs());
-            RadioMetadataReader.Metadata metadata = metadataReader.read();
+            RadioMetadataReader.Metadata metadata = current instanceof TsRadioApi
+                    ? null : metadataReader.read();
             if (band != cachedMetadataBand || frequency != cachedMetadataFrequency) {
                 cachedMetadataBand = band;
                 cachedMetadataFrequency = frequency;

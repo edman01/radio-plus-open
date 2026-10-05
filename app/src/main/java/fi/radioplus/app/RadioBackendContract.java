@@ -1,6 +1,7 @@
 package fi.radioplus.app;
 
 import android.content.ComponentName;
+import android.content.Intent;
 
 /**
  * Identifies the stock radio service already present in the Junsun ROM.
@@ -22,5 +23,17 @@ final class RadioBackendContract {
     );
 
     private RadioBackendContract() {
+    }
+
+    static Intent serviceIntent(RadioBackendProfile profile) {
+        if (profile.isTs()) {
+            return new Intent("android.intent.action.MAIN_UI").setComponent(
+                    new ComponentName("com.ts.MainUI", "com.ts.main.common.MainUI"));
+        }
+        if (profile == RadioBackendProfile.HCN_CURRENT_31
+                || profile == RadioBackendProfile.HCN_LEGACY_25) {
+            return new Intent(SERVICE_ACTION).setComponent(SERVICE_COMPONENT);
+        }
+        throw new IllegalArgumentException("Unrecognized radio endpoint");
     }
 }

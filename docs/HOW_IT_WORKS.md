@@ -26,6 +26,13 @@ stock APK before binding. The older HCN API has different command numbers even
 though its service and descriptor have the same names. Unknown APKs are not
 controlled. See [backend selection and experimental compatibility](COMPATIBILITY.md).
 
+Exact inspected AC8259 / 825X / 8667Q APKs also have an experimental TS adapter
+in development source. It binds `com.ts.MainUI`'s common service and its nested
+radio Binder, converts frequency units and selects the OEM audio source without
+using HCN commands. This is not included in the community beta 4 download, and
+physical playback or steering-key compatibility is not yet verified. Automatic
+scan and LOCAL/DX are disabled on these profiles pending further verification.
+
 ## Tuning and audio playback
 
 Selecting a station involves two separate operations:
