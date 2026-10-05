@@ -69,7 +69,7 @@ final class RadioPlaybackHealthReader {
                 invalidateSource("Junsun source state read failed", error);
             }
         }
-        if (ensurePlayerInitialized()) {
+        if (ensurePlayerInitialized() && getRadioMute != null) {
             try {
                 Object value = getRadioMute.invoke(radioPlayer);
                 if (value instanceof Boolean) {
@@ -184,24 +184,7 @@ final class RadioPlaybackHealthReader {
         try {
             Class<?> playerClass = Class.forName("android.radio.RadioPlayer");
             Method playerFactory = playerClass.getMethod("getRadioPlayer");
-            getRadioMute = playerClass.getMethod("getRadioMute");
-            try {
-                setRadioMute = playerClass.getMethod("setMute", boolean.class);
-            } catch (NoSuchMethodException ignored) {
-                // Older Junsun builds can still provide source/mute health
-                // reads even when direct tuner muting is unavailable.
-                setRadioMute = null;
-            }
-            try {
-                setHardwareRadioMute = playerClass.getMethod(
-                        "setRadioMute",
-                        boolean.class
-                );
-            } catch (NoSuchMethodException ignored) {
-                setHardwareRadioMute = null;
-            }
-            radioPlayer = playerFactory.invoke(null);
-            playerAvailable = radioPlayer != null;
+            configurePlayer(playerFactory.invoke(null));
             if (playerAvailable) {
                 playerFailureLogged = false;
                 Log.i(TAG, "Junsun radio mute bridge available");
@@ -210,6 +193,24 @@ final class RadioPlaybackHealthReader {
             invalidatePlayer("Junsun radio mute bridge unavailable", error);
         }
         return playerAvailable;
+    }
+
+    private void configurePlayer(Object player) {
+        radioPlayer = player;
+        Class<?> type = player == null ? null : player.getClass();
+        // The inspected MT8163 framework provides setMute but no getRadioMute.
+        // Absence of a health getter must not disable explicit pause/resume.
+        getRadioMute = optionalMethod(type, "getRadioMute");
+        setRadioMute = optionalMethod(type, "setMute", boolean.class);
+        setHardwareRadioMute = optionalMethod(type, "setRadioMute", boolean.class);
+        playerAvailable = player != null
+                && (getRadioMute != null || setRadioMute != null || setHardwareRadioMute != null);
+    }
+
+    private static Method optionalMethod(Class<?> type, String name, Class<?>... arguments) {
+        if (type == null) return null;
+        try { return type.getMethod(name, arguments); }
+        catch (NoSuchMethodException ignored) { return null; }
     }
 
     private void invalidateSource(String message, Throwable error) {

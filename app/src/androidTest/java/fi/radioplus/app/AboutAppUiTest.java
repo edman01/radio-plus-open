@@ -15,12 +15,14 @@ import android.view.ViewGroup;
 import android.view.inspector.WindowInspector;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.ListView;
 
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry;
 import androidx.test.runner.lifecycle.Stage;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -129,6 +131,80 @@ public final class AboutAppUiTest {
         assertNoPlayback();
     }
 
+    @Test public void unsupportedScanIsHiddenButTsManualTuningRemainsReachable() throws Exception {
+        Field latest = RadioApiFactory.class.getDeclaredField("latest"); latest.setAccessible(true);
+        Object before = latest.get(null);
+        try {
+            for (RadioBackendProfile profile : new RadioBackendProfile[]{RadioBackendProfile.TS_AC8259_V115,
+                    RadioBackendProfile.TS_825X_V27, RadioBackendProfile.TS_8667Q_V23,
+                    RadioBackendProfile.UNKNOWN}) {
+                latest.set(null, new RadioApiFactory.Detection(profile, "", "", ""));
+                instrumentation.runOnMainSync(() -> {
+                    try {
+                        Method update = MainActivity.class.getDeclaredMethod("updateScanUi", boolean.class, String.class);
+                        update.setAccessible(true); update.invoke(activity, false, "");
+                        assertEquals(profile.isTs(), activity.findViewById(R.id.auto_scan_button).isEnabled());
+                        activity.onStateChanged(new RadioServiceClient.RadioState(0, 98100, "", "", "",
+                                false, false, false, false, false, false, false));
+                        assertEquals(profile.isTs(), activity.findViewById(R.id.auto_scan_button).isEnabled());
+                        assertFalse(activity.findViewById(R.id.scan_button).isEnabled());
+                    } catch (ReflectiveOperationException e) { throw new AssertionError(e); }
+                });
+                if (profile.isTs()) {
+                    instrumentation.runOnMainSync(() -> activity.findViewById(R.id.auto_scan_button).performClick());
+                    instrumentation.waitForIdleSync();
+                    instrumentation.runOnMainSync(() -> {
+                        ListView choices = null;
+                        Button close = null;
+                        int listId = activity.getResources().getIdentifier("select_dialog_listview", "id", "android");
+                        for (View root : WindowInspector.getGlobalWindowViews()) {
+                            ListView candidate = root.findViewById(listId);
+                            if (candidate != null && candidate.isShown()) {
+                                choices = candidate;
+                                close = root.findViewById(android.R.id.button2);
+                            }
+                        }
+                        assertNotNull("Tuning choices remain available on TS", choices);
+                        assertEquals(1, choices.getAdapter().getCount());
+                        assertEquals(activity.getString(R.string.tuning_manual), choices.getAdapter().getItem(0));
+                        assertNotNull(close); assertTrue(close.performClick());
+                    });
+                    instrumentation.waitForIdleSync();
+                }
+            }
+        } finally { latest.set(null, before); }
+    }
+
+    @Test public void tsCommandsFollowTheDirectionRequestedByTheUi() throws Exception {
+        TsRadioInteropTest.Endpoint endpoint = new TsRadioInteropTest.Endpoint();
+        TsRadioApi api = endpoint.api();
+        Object client = field(MainActivity.class, "radioClient", activity);
+        Field service = RadioServiceClient.class.getDeclaredField("service"); service.setAccessible(true);
+        Field preview = MainActivity.class.getDeclaredField("debugPreview"); preview.setAccessible(true);
+        Object before = service.get(client);
+        Method seek = MainActivity.class.getDeclaredMethod("seekTunerFrequency", boolean.class);
+        Method lower = MainActivity.class.getDeclaredMethod("stepLowerFrequency");
+        Method higher = MainActivity.class.getDeclaredMethod("stepHigherFrequency");
+        seek.setAccessible(true); lower.setAccessible(true); higher.setAccessible(true);
+        try {
+            service.set(client, api); preview.setBoolean(activity, false);
+            instrumentation.runOnMainSync(() -> invokeUi(seek, true));
+            await(() -> endpoint.seekDirection == 1, "UI higher must send native seek-up");
+            instrumentation.runOnMainSync(() -> invokeUi(seek, false));
+            await(() -> endpoint.seekDirection == 0, "UI lower must send native seek-down");
+            instrumentation.runOnMainSync(() -> invokeUi(lower));
+            await(() -> endpoint.rawFrequency == 9800, "UI step-down must lower frequency");
+            instrumentation.runOnMainSync(() -> invokeUi(higher));
+            await(() -> endpoint.rawFrequency == 9810, "UI step-up must raise frequency");
+        } finally { service.set(client, before); preview.setBoolean(activity, true); }
+        assertNoPlayback();
+    }
+
+    private void invokeUi(Method method, Object... args) {
+        try { method.invoke(activity, args); }
+        catch (ReflectiveOperationException error) { throw new AssertionError(error); }
+    }
+
     @Test public void githubRequiresATapUsesCanonicalHttpsAndHandlesMissingBrowser() {
         browserMonitor = new BrowserMonitor();
         instrumentation.addMonitor(browserMonitor);
@@ -178,7 +254,7 @@ public final class AboutAppUiTest {
         assertNoPlayback();
     }
 
-    @Test public void visibleBackButtonsReturnToSettingsThenRadioWithoutStartingPlayback() {
+    @Test public void visibleBackButtonsReturnToSettingsThenRadioWithoutStartingPlayback() throws Exception {
         assumeTrue("Window inspection requires API 29+", android.os.Build.VERSION.SDK_INT >= 29);
         openAboutThroughSettings();
         RadioSettingsDialog settings = (RadioSettingsDialog) field(MainActivity.class,
@@ -197,8 +273,14 @@ public final class AboutAppUiTest {
             assertTrue(radio.performClick());
         });
         instrumentation.waitForIdleSync();
-        clickSettingsAction(settings, R.id.settings_sensitivity);
-        clickChildBack();
+        // LOCAL/DX is intentionally disabled until a supported HCN profile is detected.
+        Field latest = RadioApiFactory.class.getDeclaredField("latest"); latest.setAccessible(true);
+        Object previousProfile = latest.get(null);
+        try {
+            latest.set(null, new RadioApiFactory.Detection(RadioBackendProfile.HCN_CURRENT_31, "", "", ""));
+            clickSettingsAction(settings, R.id.settings_sensitivity);
+            clickChildBack();
+        } finally { latest.set(null, previousProfile); }
         assertTrue(settings.isShowing());
         assertNotNull("Radio category preserved", settings.findViewById(R.id.settings_sensitivity));
         instrumentation.runOnMainSync(() -> {

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="backend_feature_unverified">"Tätä toimintoa ei ole vielä varmistettu tälle vakioradiolle"</string>
+    <string name="backend_unrecognized">"Vakioradion ohjausrajapintaa ei tunnistettu. Ohjaus estettiin turvallisuussyistä. Avaa Asetukset → Yleiset → Tietoja sovelluksesta ja ilmoita radiomalli GitHubissa."</string>
+    <string name="backend_awaiting">"Vakioradion tunnistus: odottaa yhteyttä"</string>
+    <string name="backend_control_prefix">"Radion ohjaus: "</string>
+    <string name="backend_band_failed">"Radiokaistaa ei voitu valita"</string>
+</resources>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="backend_feature_unverified">"Tato funkce zatím nebyla ověřena pro toto původní rádio"</string>
+    <string name="backend_unrecognized">"Ovládací rozhraní původního rádia nebylo rozpoznáno. Ovládání bylo z bezpečnostních důvodů zablokováno. Otevřete Nastavení → Obecné → O aplikaci a nahlaste model rádia na GitHubu."</string>
+    <string name="backend_awaiting">"Rozpoznávání původního rádia: čekání na připojení"</string>
+    <string name="backend_control_prefix">"Ovládání rádia: "</string>
+    <string name="backend_band_failed">"Nepodařilo se vybrat rádiové pásmo"</string>
+</resources>

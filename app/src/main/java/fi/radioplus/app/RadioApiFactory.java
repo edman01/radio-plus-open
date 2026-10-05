@@ -208,9 +208,15 @@ final class RadioApiFactory {
     static boolean supportsLocalMode(IRadioServiceAPI api) { return api != null && !(api instanceof TsRadioApi); }
 
     static boolean selectedSupportsScanning() {
-        return latest == null || !latest.profile.isTs();
+        Detection detection = latest;
+        return detection != null && (detection.profile == RadioBackendProfile.HCN_CURRENT_31
+                || detection.profile == RadioBackendProfile.HCN_LEGACY_25);
     }
     static boolean selectedSupportsLocalMode() { return selectedSupportsScanning(); }
+    static boolean selectedSupportsTuning() {
+        Detection detection = latest;
+        return detection != null && detection.profile != RadioBackendProfile.UNKNOWN;
+    }
 
     static String unsupportedMessage(Context context) {
         return AppLanguage.text(context,

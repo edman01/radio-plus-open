@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="backend_feature_unverified">"Diese Funktion wurde für dieses Werksradio noch nicht überprüft"</string>
+    <string name="backend_unrecognized">"Die Steuerschnittstelle des Werksradios wurde nicht erkannt. Die Steuerung wurde aus Sicherheitsgründen gesperrt. Öffne Einstellungen → Allgemein → Über die App und melde dein Radiomodell auf GitHub."</string>
+    <string name="backend_awaiting">"Werksradio-Erkennung: Warten auf Verbindung"</string>
+    <string name="backend_control_prefix">"Radiosteuerung: "</string>
+    <string name="backend_band_failed">"Das Radioband konnte nicht ausgewählt werden"</string>
+</resources>

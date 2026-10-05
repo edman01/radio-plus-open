@@ -38,10 +38,16 @@ public final class StationNavigationUiTest {
     private final Map<String, Map<String, ?>> savedPreferences = new HashMap<>();
     private Context context;
     private MainActivity activity;
+    private Field detectionField;
+    private Object previousDetection;
 
-    @Before public void setUp() {
+    @Before public void setUp() throws Exception {
         assumeTrue("Preview requires a debug build", BuildConfig.DEBUG);
         assumeFalse("Use a stock Android emulator", hasVendorFramework());
+        detectionField = RadioApiFactory.class.getDeclaredField("latest");
+        detectionField.setAccessible(true);
+        previousDetection = detectionField.get(null);
+        detectionField.set(null, new RadioApiFactory.Detection(RadioBackendProfile.HCN_CURRENT_31, "", "", ""));
         context = instrumentation.getTargetContext();
         assertNull("Stop the test app before running UI instrumentation",
                 field(RadioPlaybackService.class, "runningInstance", null));
@@ -58,13 +64,14 @@ public final class StationNavigationUiTest {
         assertTrue((Boolean) field(MainActivity.class, "debugPreview", activity));
     }
 
-    @After public void tearDown() {
+    @After public void tearDown() throws Exception {
         try {
             if (activity != null) {
                 instrumentation.runOnMainSync(activity::finish);
                 instrumentation.waitForIdleSync();
             }
         } finally {
+            if (detectionField != null) detectionField.set(null, previousDetection);
             if (context != null) {
                 for (Map.Entry<String, Map<String, ?>> entry : savedPreferences.entrySet()) {
                     restorePreferences(entry.getKey(), entry.getValue());

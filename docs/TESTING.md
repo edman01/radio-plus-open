@@ -30,6 +30,10 @@ collection. These checks do not verify radio hardware or audible playback.
 
 Experimental radio support has automated tests for radio detection, frequency
 handling and playback commands. It has not been tested on real head units.
+Experimental 2 adds regression tests for TS frequency-to-step conversion,
+invalid or changing tuning grids, cancellation during band changes, on-screen
+seek and step directions, access to manual tuning when automatic scanning is
+unavailable, and older HCN frameworks with a mute setter but no getter.
 See [supported models and limitations](COMPATIBILITY.md).
 
 Media-control tests cover station-list and favorites order, single-press handling,

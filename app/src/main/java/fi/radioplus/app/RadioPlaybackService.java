@@ -931,6 +931,13 @@ public final class RadioPlaybackService extends MediaBrowserService {
         // delayed 500 ms focus callback. Restore normal gain once after that
         // route transition. There is no first-step attenuation anymore.
         mainHandler.removeCallbacks(startupVolumePolicyTask);
+        if (radioVolumeGuard != null) {
+            // The input-gain workaround belongs to the V7 HCN contract, not TS
+            // or an unidentified backend, even if similarly named classes exist.
+            radioVolumeGuard.setActive(playbackRequested
+                    && RadioApiFactory.supportsSeparateAudioFocus(radio));
+        }
+        if (!RadioApiFactory.supportsSeparateAudioFocus(radio)) return;
         if (focusRequested) {
             mainHandler.postDelayed(startupVolumePolicyTask, OEM_GAIN_SETTLE_MS);
         } else {
@@ -939,13 +946,15 @@ public final class RadioPlaybackService extends MediaBrowserService {
     }
 
     private void reassertRadioVolumePolicy() {
-        if (radioVolumeGuard != null && playbackRequested && !stopping) {
+        if (radioVolumeGuard != null && playbackRequested && !stopping
+                && RadioApiFactory.supportsSeparateAudioFocus(radio)) {
             radioVolumeGuard.reassertNow();
         }
     }
 
     private void applyRadioVolumePolicy() {
-        if (radioVolumeGuard != null && playbackRequested && !stopping) {
+        if (radioVolumeGuard != null && playbackRequested && !stopping
+                && RadioApiFactory.supportsSeparateAudioFocus(radio)) {
             radioVolumeGuard.applyNow();
         }
     }
@@ -989,6 +998,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
 
     private RadioPlaybackHealthReader.Snapshot readPlaybackHealth() {
         IRadioServiceAPI current = radio;
+        if (current == null) return new RadioPlaybackHealthReader.Snapshot(false, "", false, false);
         if (!(current instanceof TsRadioApi)) {
             if (usesTsBackend()) return new RadioPlaybackHealthReader.Snapshot(false, "", false, false);
             return playbackHealthReader.read();
@@ -1003,6 +1013,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
 
     private boolean setTunerMuted(boolean muted) {
         IRadioServiceAPI current = radio;
+        if (current == null) return false;
         if (!(current instanceof TsRadioApi)) return !usesTsBackend() && playbackHealthReader.setMuted(muted);
         // TS has a verified source exit but no verified idempotent tuner mute.
         // Do not toggle global mute, run HCN reflection, or block the main thread.
@@ -1148,7 +1159,8 @@ public final class RadioPlaybackService extends MediaBrowserService {
         if (!isCurrentPlayback(epoch, current)) return false;
         boolean commandIssued;
         if (current instanceof TsRadioApi) {
-            commandIssued = ((TsRadioApi) current).tuneToBand(normalizedTarget, target.frequency);
+            commandIssued = ((TsRadioApi) current).tuneToBand(normalizedTarget, target.frequency,
+                    () -> isCurrentPlayback(epoch, current));
         } else if (currentBand == normalizedTarget) {
             current.gotoFreq(target.frequency);
             commandIssued = true;
@@ -1201,7 +1213,8 @@ public final class RadioPlaybackService extends MediaBrowserService {
                         + "; retry " + (attempt + 1)
                         + " (actual=" + observedBand + ":" + observedFrequency + ")");
                 if (current instanceof TsRadioApi) {
-                    ((TsRadioApi) current).tuneToBand(normalizedTarget, target.frequency);
+                    ((TsRadioApi) current).tuneToBand(normalizedTarget, target.frequency,
+                            () -> isCurrentPlayback(epoch, current));
                 } else if (!tunerMetadataReader.tuneToBand(
                         normalizedTarget,
                         target.frequency
@@ -1807,7 +1820,8 @@ public final class RadioPlaybackService extends MediaBrowserService {
             pendingRadioCommand = null;
         }
         if (radioVolumeGuard != null) {
-            radioVolumeGuard.setActive(requested);
+            radioVolumeGuard.setActive(requested
+                    && RadioApiFactory.supportsSeparateAudioFocus(radio));
         }
         updatePlaybackState();
         if (foregroundStarted) {

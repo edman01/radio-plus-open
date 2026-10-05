@@ -128,6 +128,11 @@ final class TranslationCatalog {
         ids.put("FAVORITES", R.string.message_116);
         ids.put("No stations found yet", R.string.message_117);
         ids.put("No favorites yet", R.string.message_118);
+        ids.put("This feature has not yet been verified for this stock radio", R.string.backend_feature_unverified);
+        ids.put("Stock radio control interface not recognized. Control was blocked for safety. Open Settings → About and report your head unit model on GitHub.", R.string.backend_unrecognized);
+        ids.put("Stock radio detection: awaiting connection", R.string.backend_awaiting);
+        ids.put("Radio control: ", R.string.backend_control_prefix);
+        ids.put("Could not select the radio band", R.string.backend_band_failed);
         IDS = Collections.unmodifiableMap(ids);
     }
     private TranslationCatalog() {}

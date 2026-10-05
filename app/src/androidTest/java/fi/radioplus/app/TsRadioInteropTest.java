@@ -27,11 +27,17 @@ public final class TsRadioInteropTest {
         volatile int rawBand;
         volatile int rawFrequency = 9810;
         volatile int mode = 1;
-        int seekDirection = -1;
+        volatile int seekDirection = -1;
         int flags = 5;
         boolean reject;
         boolean denied;
         boolean stuckBand;
+        int fmMinimum = 8750;
+        int fmSpacing = 10;
+        int fmCount = 206;
+        int lastTuningIndex = -1;
+        boolean wrongRoundTrip;
+        boolean changeBandDuringGridRead;
         IBinder nested;
 
         Endpoint() {
@@ -47,6 +53,14 @@ public final class TsRadioInteropTest {
                     reply.writeNoException();
                     switch (code) {
                         case 3: reply.writeInt(rawBand); break;
+                        case 8: reply.writeInt(rawBand < 4 ? fmCount : 123); break;
+                        case 9:
+                            int index = data.readInt();
+                            reply.writeInt(rawBand < 4
+                                    ? fmMinimum + index * fmSpacing + (wrongRoundTrip && index > 1 ? 1 : 0)
+                                    : 522 + index * 9);
+                            if (changeBandDuringGridRead && index > 1) rawBand = 4;
+                            break;
                         case 14: if (!stuckBand) rawBand = 0; break;
                         case 15: if (!stuckBand) rawBand = 4; break;
                         case 19: if (!stuckBand) rawBand = rawBand == 2 ? 4 : rawBand >= 5 ? 0 : rawBand + 1; break;
@@ -55,7 +69,13 @@ public final class TsRadioInteropTest {
                         case 27: reply.writeInt(flags); break;
                         case 29: mode = data.readInt(); break;
                         case 30: reply.writeString("QA\u0000\u0000  "); break;
-                        case 34: rawFrequency = data.readInt(); break;
+                        case 34:
+                            lastTuningIndex = data.readInt();
+                            assertTrue("TuneFset takes a zero-based grid index", lastTuningIndex >= 0
+                                    && lastTuningIndex < (rawBand < 4 ? fmCount : 123));
+                            rawFrequency = rawBand < 4 ? fmMinimum + lastTuningIndex * fmSpacing
+                                    : 522 + lastTuningIndex * 9;
+                            break;
                         default: fail("Unverified TS radio transaction " + code);
                     }
                     assertEquals(0, data.dataAvail());
@@ -127,10 +147,10 @@ public final class TsRadioInteropTest {
 
     @Test public void directTuningStepsAndSeekUseOnlyInspectedCommands() throws Exception {
         Endpoint endpoint = new Endpoint(); TsRadioApi api = endpoint.api();
-        api.onManualUpEvent(); assertEquals(9820, endpoint.rawFrequency);
+        api.onManualUpEvent(); assertEquals(9800, endpoint.rawFrequency);
         api.onManualDownEvent(); assertEquals(9810, endpoint.rawFrequency);
-        api.onSeekDownEvent(); assertEquals(0, endpoint.seekDirection);
-        api.onSeekUpEvent(); assertEquals(1, endpoint.seekDirection);
+        api.onSeekDownEvent(); assertEquals(1, endpoint.seekDirection);
+        api.onSeekUpEvent(); assertEquals(0, endpoint.seekDirection);
         assertTrue(api.tuneToBand(3, 999)); assertEquals(4, endpoint.rawBand); assertEquals(999, endpoint.rawFrequency);
         assertTrue(api.tuneToBand(2, 98100)); assertEquals(2, endpoint.rawBand); assertEquals(9810, endpoint.rawFrequency);
         assertTrue("AM1 and AM2 aliases must not stop the OEM bank cycle", api.tuneToBand(0, 101700));
@@ -146,6 +166,47 @@ public final class TsRadioInteropTest {
         assertFalse(api.tuneToBand(3, 999));
         assertFalse(endpoint.radioCalls.contains(34));
         assertFalse(endpoint.radioCalls.contains(29));
+    }
+
+    @Test public void allTsProfilesUseOemStepIndicesAndVerifyTheRoundTrip() throws Exception {
+        for (RadioBackendProfile profile : new RadioBackendProfile[]{RadioBackendProfile.TS_AC8259_V115,
+                RadioBackendProfile.TS_825X_V27, RadioBackendProfile.TS_8667Q_V23}) {
+            Endpoint endpoint = new Endpoint();
+            TsRadioApi api = (TsRadioApi) RadioApiFactory.create(profile, endpoint);
+            api.gotoFreq(98100);
+            assertEquals(106, endpoint.lastTuningIndex);
+            assertEquals(Arrays.asList(3,8,9,9,9,3,34), endpoint.radioCalls);
+            endpoint.fmSpacing = 5; endpoint.fmCount = 411;
+            api.gotoFreq(98100); assertEquals(212, endpoint.lastTuningIndex);
+            assertEquals(9810, endpoint.rawFrequency);
+            api.gotoFreq(87500); assertEquals(0, endpoint.lastTuningIndex);
+            api.gotoFreq(108000); assertEquals(410, endpoint.lastTuningIndex);
+        }
+    }
+
+    @Test public void invalidChangingAndUnsupportedGridsDoNotWriteAnything() throws Exception {
+        for (int scenario = 0; scenario < 5; scenario++) {
+            Endpoint endpoint = new Endpoint(); TsRadioApi api = endpoint.api();
+            if (scenario == 0) endpoint.fmSpacing = 0;
+            if (scenario == 1) endpoint.fmCount = 0;
+            if (scenario == 2) endpoint.wrongRoundTrip = true;
+            if (scenario == 3) endpoint.changeBandDuringGridRead = true;
+            if (scenario == 4) { endpoint.fmMinimum = 7600; endpoint.fmCount = 141; }
+            assertThrows(RemoteException.class, () -> api.gotoFreq(98100));
+            assertFalse(endpoint.radioCalls.contains(34));
+            assertFalse(endpoint.radioCalls.contains(29));
+        }
+    }
+
+    @Test public void canceledPlaybackCannotTuneAfterABandTransition() throws Exception {
+        Endpoint endpoint = new Endpoint(); TsRadioApi api = endpoint.api();
+        assertFalse(api.tuneToBand(3, 999, () -> endpoint.rawBand == 0));
+        assertEquals(4, endpoint.rawBand);
+        assertFalse(endpoint.radioCalls.contains(34));
+        assertFalse(endpoint.radioCalls.contains(29));
+        endpoint.radioCalls.clear();
+        assertFalse(api.tuneToBand(0, 98100, () -> false));
+        assertTrue(endpoint.radioCalls.isEmpty());
     }
 
     @Test public void playPauseUsesSourceSelectionNotGlobalMuteOrOemUi() throws Exception {
@@ -191,6 +252,12 @@ public final class TsRadioInteropTest {
             latest.set(null, new RadioApiFactory.Detection(RadioBackendProfile.HCN_CURRENT_31, "", "", ""));
             assertTrue(RadioApiFactory.selectedSupportsScanning());
             assertTrue(RadioApiFactory.selectedSupportsLocalMode());
+            latest.set(null, new RadioApiFactory.Detection(RadioBackendProfile.UNKNOWN, "", "", ""));
+            assertFalse(RadioApiFactory.selectedSupportsScanning());
+            assertFalse(RadioApiFactory.selectedSupportsLocalMode());
+            latest.set(null, null);
+            assertFalse(RadioApiFactory.selectedSupportsScanning());
+            assertFalse(RadioApiFactory.selectedSupportsLocalMode());
         } finally { latest.set(null, before); }
     }
 

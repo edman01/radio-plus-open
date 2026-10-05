@@ -3,7 +3,25 @@
 An optional test build with support for additional Junsun radio implementations.
 **The additional radio support has not been tested on real head units.**
 
-## Changes in 0.16.1-dev28
+## Changes in 0.16.1-dev29 — Experimental 2
+
+- Fixed AC8259, 825X and 8667Q tuning: the stock command takes a tuning-step
+  index, not an absolute frequency. Radio+ now reads the stock frequency grid
+  and checks the conversion before sending a tuning command.
+- Canceled band changes no longer continue tuning after playback is stopped.
+- Fixed older HCN pause/resume when the framework provides a mute command
+  but no method for reading the mute state.
+- Restricted the V7 input-gain workaround to its HCN interface. It is not
+  applied to TS radios or before the stock radio has been identified.
+- Corrected TS seek and step directions to match the on-screen controls.
+- The TS tuning menu offers manual tuning without the unavailable automatic
+  scan option. Controls stay disabled until a supported radio is identified.
+- Added the missing radio-detection and compatibility messages in all 12 languages.
+
+This replaces Experimental 1 (`0.16.1-dev28`), which sent the wrong tuning
+parameter to TS radios. **TS testers should use Experimental 2.**
+
+## Radio interfaces added in Experimental 1
 
 - Added an experimental interface for the older `com.hcn.autoradio` version
   inspected on the Junsun V1 Pro C / MT8163.
@@ -18,10 +36,10 @@ verification on the listed head units.
 
 ## Download
 
-- `RadioPlus-experimental.apk`: signed APK without bundled station logos.
+- `RadioPlus-0.16.1-experimental2.apk`: signed APK without bundled station logos.
 - `SHA256SUMS.txt`: checksum for the APK.
 
-Installed version: `0.16.1-dev28-play` · version code: `90`.
+Installed version: `0.16.1-dev29-play` · version code: `91`.
 Package: `fi.radioplus.app.play`.
 
 Requires Android 8.1+ and a recognized stock radio app.
@@ -49,6 +67,12 @@ may remain unrecognized.
 Automatic scanning and LOCAL/DX are unavailable on the AC8259, 825X and 8667Q
 profiles. Manual tuning and Radio+'s favorites are implemented, but real audio,
 pause/resume and steering-button behavior still need device testing.
+The scan command has been identified, but reliable retrieval of all found
+frequencies is not yet implemented. A verified LOCAL/DX command is also missing.
+These profiles do not yet offer the full Junsun V7 feature set.
+Radio+'s tuning range remains FM 87.5–108.0 MHz in 100 kHz steps and AM
+522–1620 kHz in 9 kHz steps. Other regional ranges and spacings are not supported;
+TS tuning rejects a requested frequency if it is absent from the stock radio's grid.
 Xtrons and ATOTO support is not included. Widget support is not available yet.
 
 See [compatibility and limitations](https://github.com/edman01/radio-plus-open/blob/main/docs/COMPATIBILITY.md).

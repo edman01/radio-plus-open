@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="backend_feature_unverified">"This feature has not yet been verified for this stock radio"</string>
+    <string name="backend_unrecognized">"Stock radio control interface not recognized. Control was blocked for safety. Open Settings → General → About app and report your head unit model on GitHub."</string>
+    <string name="backend_awaiting">"Stock radio detection: awaiting connection"</string>
+    <string name="backend_control_prefix">"Radio control: "</string>
+    <string name="backend_band_failed">"Could not select the radio band"</string>
+</resources>

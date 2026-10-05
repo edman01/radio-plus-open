@@ -13,7 +13,7 @@ See [device details](../README.md#compatibility) and [known issues](TESTING.md#k
 ## Experimental support
 
 **Experimental support — not yet tested on a real head unit.**
-Available in [Experimental APK builds](https://github.com/edman01/radio-plus-open/releases/tag/v0.16.1-experimental1),
+Available in [Experimental APK builds](https://github.com/edman01/radio-plus-open/releases/tag/v0.16.1-experimental2),
 not the community beta 4 download. Read the [installation notes](EXPERIMENTAL.md#download)
 before trying it.
 
@@ -31,6 +31,8 @@ does not guarantee compatibility.
 Automatic scanning and LOCAL/DX controls are not yet available on the AC8259,
 825X and 8667Q versions. Manual tuning and Radio+'s own favorites are implemented;
 audio playback, pause/resume and physical steering buttons still need device testing.
+Use Experimental 2 (`0.16.1-dev29`) or newer: Experimental 1 had an incorrect
+TS tuning parameter. See the [changes and remaining limitations](EXPERIMENTAL.md).
 
 ## Under investigation
 

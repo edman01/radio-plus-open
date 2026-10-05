@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="backend_feature_unverified">"Deze functie is nog niet geverifieerd voor deze fabrieksradio"</string>
+    <string name="backend_unrecognized">"De besturingsinterface van de fabrieksradio is niet herkend. De bediening is om veiligheidsredenen geblokkeerd. Open Instellingen → Algemeen → Over de app en meld het radiomodel op GitHub."</string>
+    <string name="backend_awaiting">"Detectie van fabrieksradio: wachten op verbinding"</string>
+    <string name="backend_control_prefix">"Radiobesturing: "</string>
+    <string name="backend_band_failed">"De radioband kon niet worden geselecteerd"</string>
+</resources>

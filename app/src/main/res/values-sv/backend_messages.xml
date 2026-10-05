@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="backend_feature_unverified">"Den här funktionen har ännu inte verifierats för den här originalradion"</string>
+    <string name="backend_unrecognized">"Originalradions styrgränssnitt kändes inte igen. Styrningen blockerades av säkerhetsskäl. Öppna Inställningar → Allmänt → Om appen och ange radiomodellen på GitHub."</string>
+    <string name="backend_awaiting">"Identifiering av originalradio: väntar på anslutning"</string>
+    <string name="backend_control_prefix">"Radiostyrning: "</string>
+    <string name="backend_band_failed">"Det gick inte att välja radioband"</string>
+</resources>

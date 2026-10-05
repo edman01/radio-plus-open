@@ -367,11 +367,12 @@ final class RadioServiceClient {
         }
         perform(remote -> {
             if (remote instanceof TsRadioApi) {
-                if (!((TsRadioApi) remote).tuneToBand(targetBand, frequency)) {
+                if (!((TsRadioApi) remote).tuneToBand(targetBand, frequency,
+                        () -> !closed && service == remote)) {
                     notifyError(tr("Radiokaistaa ei voitu valita", "Could not select the radio band"));
                     return;
                 }
-                remote.requestPlayAudio();
+                if (!closed && service == remote) remote.requestPlayAudio();
                 return;
             }
             int currentBand = remote.getCurrentBand();

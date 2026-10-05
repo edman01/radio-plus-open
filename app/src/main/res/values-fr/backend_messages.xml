@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="backend_feature_unverified">"Cette fonction reste à vérifier sur cette radio d’origine"</string>
+    <string name="backend_unrecognized">"Interface de commande de la radio d’origine non reconnue. Les commandes sont bloquées par sécurité. Ouvrez Paramètres → Général → À propos et indiquez le modèle sur GitHub."</string>
+    <string name="backend_awaiting">"Détection de la radio d’origine : connexion en attente"</string>
+    <string name="backend_control_prefix">"Commande radio : "</string>
+    <string name="backend_band_failed">"Impossible de sélectionner la bande radio"</string>
+</resources>

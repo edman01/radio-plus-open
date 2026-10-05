@@ -854,6 +854,10 @@ public final class MainActivity extends Activity implements
     }
 
     private void showStationActionsDialog() {
+        if (!RadioApiFactory.selectedSupportsTuning()) {
+            showUnverifiedBackendFeature();
+            return;
+        }
         if (autoScanFinalizing) {
             toast(tr("Viimeistellään asemalistaa…", "Finalizing station list…"));
             return;
@@ -885,15 +889,16 @@ public final class MainActivity extends Activity implements
                     .setNegativeButton(tr("Sulje", "Close"), null));
             return;
         }
+        boolean supportsScan = RadioApiFactory.selectedSupportsScanning();
         showCarDialog(new AlertDialog.Builder(this)
                 .setTitle(R.string.action_auto_store)
                 .setItems(
-                        new String[]{
+                        supportsScan ? new String[]{
                                 getString(R.string.tuning_automatic),
                                 getString(R.string.tuning_manual)
-                        },
+                        } : new String[]{getString(R.string.tuning_manual)},
                         (ignored, which) -> {
-                            if (which == 0) {
+                            if (supportsScan && which == 0) {
                                 startAutoScan();
                             } else {
                                 showManualTuningDialog();
@@ -2534,7 +2539,8 @@ public final class MainActivity extends Activity implements
             updateScanUi(true, tr("Etsitään asemia…", "Scanning for stations…"));
         } else if (!stationNameResolutionActive) {
             scanProgress.setVisibility(View.GONE);
-            autoScanButton.setEnabled(radioConnected || debugPreview);
+            autoScanButton.setEnabled((radioConnected || debugPreview)
+                    && RadioApiFactory.selectedSupportsTuning());
             autoScanButton.setText(R.string.action_auto_store);
         }
     }
@@ -2555,6 +2561,7 @@ public final class MainActivity extends Activity implements
         autoScanButton.setText(R.string.action_auto_store);
         autoScanButton.setEnabled(
                 canControlRadio
+                        && RadioApiFactory.selectedSupportsTuning()
                         && !autoScanStopRequested
                         && !autoScanFinalizing
         );
@@ -2577,6 +2584,7 @@ public final class MainActivity extends Activity implements
                     || id == R.id.more_button;
             boolean controlEnabled = enabled || locallyAvailable;
             if ((id == R.id.scan_button && !RadioApiFactory.selectedSupportsScanning())
+                    || (id == R.id.auto_scan_button && !RadioApiFactory.selectedSupportsTuning())
                     || (id == R.id.local_button && !RadioApiFactory.selectedSupportsLocalMode())) {
                 controlEnabled = false;
             }

@@ -4,6 +4,7 @@ import android.os.IBinder;
 import android.os.Parcel;
 import android.os.RemoteException;
 import android.os.SystemClock;
+import java.util.function.BooleanSupplier;
 
 import com.hcn.autoradio.IRadioCallBack;
 import com.hcn.autoradio.IRadioServiceAPI;
@@ -72,33 +73,56 @@ final class TsRadioApi implements IRadioServiceAPI {
     @Override public int getCurrentBand() throws RemoteException { return appBand(nativeBand()); }
     @Override public int getCurrentFreq() throws RemoteException { return frequency(nativeBand()); }
     @Override public void gotoFreq(int khz) throws RemoteException {
+        tuneFrequency(khz, () -> true);
+    }
+    private boolean tuneFrequency(int khz, BooleanSupplier stillCurrent) throws RemoteException {
         int rawBand = nativeBand();
         int band = appBand(rawBand);
         if (!FrequencyRules.isValid(band, khz)) throw new RemoteException("Invalid TS frequency");
-        command(34, data -> data.writeInt(rawBand < 4 ? khz / 10 : khz));
+        int rawFrequency = rawBand < 4 ? khz / 10 : khz;
+        // TuneFset accepts a STEP INDEX, unlike GetDisp(1)'s absolute frequency.
+        // Read the stock grid rather than assuming a regional minimum or spacing.
+        int count = readInt(8, null);
+        int first = readInt(9, data -> data.writeInt(0));
+        int second = readInt(9, data -> data.writeInt(1));
+        int index = TsTuningGrid.indexFor(rawFrequency, first, second, count);
+        if (index < 0 || readInt(9, data -> data.writeInt(index)) != rawFrequency
+                || nativeBand() != rawBand) {
+            throw new RemoteException("TS tuning grid changed or does not contain this frequency");
+        }
+        if (!canContinue(stillCurrent)) return false;
+        command(34, data -> data.writeInt(index));
+        return true;
     }
     @Override public void gotoFreq2(String frequency) throws RemoteException {
         try { gotoFreq(Integer.parseInt(frequency)); }
         catch (NumberFormatException error) { throw new RemoteException("Invalid TS frequency"); }
     }
     @Override public void onBandEvent() throws RemoteException { command(19, null); }
-    @Override public void onSeekDownEvent() throws RemoteException { command(20, data -> data.writeInt(0)); }
-    @Override public void onSeekUpEvent() throws RemoteException { command(20, data -> data.writeInt(1)); }
+    // Preserve the HCN-facing interface used by MainActivity: Down means higher
+    // frequency and Up means lower. The TS wire direction is 1=higher, 0=lower.
+    @Override public void onSeekDownEvent() throws RemoteException { command(20, data -> data.writeInt(1)); }
+    @Override public void onSeekUpEvent() throws RemoteException { command(20, data -> data.writeInt(0)); }
     // The inspected OEM's TuneStep wrapper ignores its direction. Use validated direct tuning.
     private void step(int direction) throws RemoteException {
         int band = getCurrentBand();
         gotoFreq(FrequencyRules.stepFrom(band, getCurrentFreq(), direction));
     }
-    @Override public void onManualUpEvent() throws RemoteException { step(1); }
-    @Override public void onManualDownEvent() throws RemoteException { step(-1); }
+    @Override public void onManualUpEvent() throws RemoteException { step(-1); }
+    @Override public void onManualDownEvent() throws RemoteException { step(1); }
 
     boolean tuneToBand(int band, int khz) throws RemoteException {
+        return tuneToBand(band, khz, () -> true);
+    }
+    boolean tuneToBand(int band, int khz, BooleanSupplier stillCurrent) throws RemoteException {
         if (!FrequencyRules.isValid(band, khz)) throw new RemoteException("Invalid TS tuning target");
+        if (!canContinue(stillCurrent)) return false;
         int rawBand = nativeBand();
         int observed = appBand(rawBand);
         if (FrequencyRules.isFm(observed) != FrequencyRules.isFm(band)) {
+            if (!canContinue(stillCurrent)) return false;
             command(FrequencyRules.isFm(band) ? 14 : 15, null);
-            int changed = waitForNativeBandChange(rawBand);
+            int changed = waitForNativeBandChange(rawBand, stillCurrent);
             if (changed == rawBand) return false;
             rawBand = changed;
             observed = appBand(rawBand);
@@ -106,18 +130,22 @@ final class TsRadioApi implements IRadioServiceAPI {
         // Do not issue a frequency for the wrong bank. Some RDS configurations expose
         // only the combined FM bank; report failure instead of repeatedly retuning AM.
         for (int guard = 0; observed != band && guard < 6; guard++) {
+            if (!canContinue(stillCurrent)) return false;
             command(19, null);
-            int changed = waitForNativeBandChange(rawBand);
+            int changed = waitForNativeBandChange(rawBand, stillCurrent);
             if (changed == rawBand) return false;
             rawBand = changed;
             observed = appBand(rawBand);
         }
         if (observed != band) return false;
-        gotoFreq(khz);
-        return true;
+        return tuneFrequency(khz, stillCurrent);
     }
-    private int waitForNativeBandChange(int before) throws RemoteException {
+    private static boolean canContinue(BooleanSupplier stillCurrent) {
+        return !Thread.currentThread().isInterrupted() && stillCurrent.getAsBoolean();
+    }
+    private int waitForNativeBandChange(int before, BooleanSupplier stillCurrent) throws RemoteException {
         for (int attempt = 0; attempt < 8; attempt++) {
+            if (!canContinue(stillCurrent)) return before;
             // AM1 and AM2 share one app list, but are distinct steps in the OEM cycle.
             int band = nativeBand();
             if (band != before) return band;

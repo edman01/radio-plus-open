@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="backend_feature_unverified">"Ta funkcja nie została jeszcze zweryfikowana dla tego fabrycznego radia"</string>
+    <string name="backend_unrecognized">"Nie rozpoznano interfejsu sterowania fabrycznym radiem. Sterowanie zablokowano ze względów bezpieczeństwa. Otwórz Ustawienia → Ogólne → O aplikacji i zgłoś model radia na GitHubie."</string>
+    <string name="backend_awaiting">"Wykrywanie fabrycznego radia: oczekiwanie na połączenie"</string>
+    <string name="backend_control_prefix">"Sterowanie radiem: "</string>
+    <string name="backend_band_failed">"Nie udało się wybrać pasma radiowego"</string>
+</resources>

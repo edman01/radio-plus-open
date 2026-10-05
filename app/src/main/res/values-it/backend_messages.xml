@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="backend_feature_unverified">"Questa funzione non è ancora stata verificata su questa radio di serie"</string>
+    <string name="backend_unrecognized">"Interfaccia di controllo della radio di serie non riconosciuta. Il controllo è stato bloccato per sicurezza. Apri Impostazioni → Generali → Informazioni e indica il modello su GitHub."</string>
+    <string name="backend_awaiting">"Rilevamento della radio di serie: in attesa di connessione"</string>
+    <string name="backend_control_prefix">"Controllo radio: "</string>
+    <string name="backend_band_failed">"Impossibile selezionare la banda radio"</string>
+</resources>

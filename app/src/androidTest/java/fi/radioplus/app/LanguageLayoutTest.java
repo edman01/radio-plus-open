@@ -146,6 +146,9 @@ public final class LanguageLayoutTest {
         // Do not take ownership of, or stop, a service that predates this fixture.
         assertNull("Stop playback before running the layout fixture", runningPlaybackService());
         String previous = AppLanguage.get(context);
+        java.lang.reflect.Field detection = RadioApiFactory.class.getDeclaredField("latest");
+        detection.setAccessible(true);
+        Object previousDetection = detection.get(null);
         try {
             for (String language : AppLanguage.codes()) {
                 AppLanguage.set(context, language);
@@ -186,7 +189,15 @@ public final class LanguageLayoutTest {
                     for (String method : new String[]{"showAboutDialog", "showSteeringKeySetup", "showSteeringDiagnostics",
                             "showLanguageDialog", "showReceptionModeDialog",
                             "showStationActionsDialog", "showManualTuningDialog"}) {
-                        instrumentation.runOnMainSync(() -> invoke(activity, method, new Class<?>[]{}));
+                        instrumentation.runOnMainSync(() -> {
+                            // Show the supported HCN layout without connecting to hardware.
+                            // UNKNOWN correctly blocks tuning and sensitivity in the real app.
+                            try {
+                                detection.set(null, new RadioApiFactory.Detection(
+                                        RadioBackendProfile.HCN_CURRENT_31, "", "", ""));
+                            } catch (IllegalAccessException error) { throw new AssertionError(error); }
+                            invoke(activity, method, new Class<?>[]{});
+                        });
                         inspect(language + "-" + method);
                         instrumentation.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK);
                         instrumentation.waitForIdleSync();
@@ -208,7 +219,10 @@ public final class LanguageLayoutTest {
                     android.os.SystemClock.sleep(20L);
                 }
                 assertNull("Layout fixture playback service must stop", runningPlaybackService());
-            } finally { AppLanguage.set(context, previous); }
+            } finally {
+                detection.set(null, previousDetection);
+                AppLanguage.set(context, previous);
+            }
         }
     }
 

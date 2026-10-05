@@ -322,12 +322,28 @@ public final class MediaControlsTest {
         SystemClock.sleep(900L);
         assertEquals("The HCN PCM handoff is not verified on TS", "not-requested",
                 field(RadioPlaybackService.class, "routingPulseStatus", service));
+        Object guard = field(RadioPlaybackService.class, "radioVolumeGuard", service);
+        assertEquals("TS must not activate the HCN input-gain workaround", false,
+                field(RadioVolumeGuard.class, "active", guard));
         assertFalse(ts.commonCalls.contains(2)); // Never global mute.
         assertFalse(ts.commonCalls.contains(1)); // Never open the stock UI.
         assertFalse(ts.radioCalls.contains(36)); // Never factory reset.
         assertFalse(ts.radioCalls.contains(38));
         assertEquals(0, tuner.focusRequests);
         assertEquals(0, tuner.focusReleases);
+    }
+
+    @Test public void unknownBackendCannotActivateTheVendorInputGainWorkaround() throws Exception {
+        instrumentation.runOnMainSync(() -> {
+            setField(service, "radio", null);
+            try {
+                Method update = RadioPlaybackService.class.getDeclaredMethod("setPlaybackRequested", boolean.class);
+                update.setAccessible(true);
+                update.invoke(service, true);
+            } catch (ReflectiveOperationException e) { throw new AssertionError(e); }
+        });
+        Object guard = field(RadioPlaybackService.class, "radioVolumeGuard", service);
+        assertEquals(false, field(RadioVolumeGuard.class, "active", guard));
     }
 
     @Test public void screenStationTapResumesAfterPauseThenReusesPlayback() throws Exception {

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="backend_feature_unverified">"Bu özellik henüz bu orijinal radyo için doğrulanmadı"</string>
+    <string name="backend_unrecognized">"Orijinal radyonun kontrol arayüzü tanınmadı. Güvenlik nedeniyle kontrol engellendi. Ayarlar → Genel → Uygulama hakkında bölümünü açın ve radyo modelini GitHub üzerinden bildirin."</string>
+    <string name="backend_awaiting">"Orijinal radyo algılama: bağlantı bekleniyor"</string>
+    <string name="backend_control_prefix">"Radyo kontrolü: "</string>
+    <string name="backend_band_failed">"Radyo bandı seçilemedi"</string>
+</resources>

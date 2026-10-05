@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="backend_feature_unverified">"Esta função ainda não foi verificada neste rádio de origem"</string>
+    <string name="backend_unrecognized">"A interface de controlo do rádio de origem não foi reconhecida. O controlo foi bloqueado por segurança. Abre Definições → Geral → Sobre a aplicação e indica o modelo no GitHub."</string>
+    <string name="backend_awaiting">"Deteção do rádio de origem: a aguardar ligação"</string>
+    <string name="backend_control_prefix">"Controlo do rádio: "</string>
+    <string name="backend_band_failed">"Não foi possível selecionar a banda de rádio"</string>
+</resources>
