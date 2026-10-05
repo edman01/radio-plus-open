@@ -7,9 +7,8 @@ Next/previous steering-wheel controls were confirmed working with the correction
 included in community beta 4. One press changes one station, and the brief audio
 interruption after the new station starts has been resolved on this tested unit.
 The optional accessibility service was not needed for these next/previous buttons.
-On-screen station selection was also confirmed without the delayed interruption
-in beta21. The newer beta22 app-return adjustment still needs audible verification
-on the head unit.
+On-screen station selection was also confirmed without the delayed interruption.
+Playback continuity when reopening the app still needs verification on the head unit.
 Other testing has been emulator-only; no other head-unit model is verified.
 This is a device-specific report, not a guarantee for every V7 firmware variant
 or proof that every feature and long-running scenario has passed. The checks
@@ -31,14 +30,9 @@ language selection and activity recreation, and translated screen layouts.
 Logo-isolation checks verify that the public build has no bundled station-logo
 collection. These checks do not verify radio hardware or audible playback.
 
-Development backend tests cover per-APK profile selection, current/legacy HCN
-and TS transaction numbers and Parcel argument types, nested TS descriptor
-validation, FM/AM frequency conversion, bank cycling, state polling without a
-playback command, unsupported-capability guards and fail-closed handling of
-unknown contracts. TS playback tests exercise the actual background service's
-one-station next/previous callbacks and source-based pause/resume. These use
-synthetic Binders, not physical V1/TS tuners or audible playback.
-See [experimental backend status](COMPATIBILITY.md).
+Experimental radio support has automated tests for radio detection, frequency
+handling and playback commands. It has not been tested on real head units.
+See [supported models and limitations](COMPATIBILITY.md).
 
 Media-control tests cover station-list and favorites order, single-press handling,
 Android media-key routing, and avoiding a repeated audio handoff during adjacent

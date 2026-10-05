@@ -21,12 +21,9 @@ Finding `com.hcn.autoradio` on your head unit is a promising compatibility clue:
 Radio+ **may** work, but the package name alone is not a guarantee. The firmware
 must still expose a compatible service/API.
 
-Development source now selects an inspected radio contract per installed stock
-APK; unknown APKs are blocked instead of trying potentially wrong commands.
-The V1 Pro C MT8163 adapter and exact AC8259 / 825X / 8667Q `com.ts.MainUI`
-profiles are experimental and **not** included in the community beta 4 download.
-They have not been tested on physical units.
-[Backend selection, feature limits and research candidates](docs/COMPATIBILITY.md).
+Additional Junsun models have **experimental support, not yet tested on real
+head units**, in development builds. These additions are not included in the
+community beta 4 download. [Supported models and limitations](docs/COMPATIBILITY.md).
 
 **Check your stock radio's package name (no PC needed):**
 

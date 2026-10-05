@@ -21,17 +21,9 @@ The connection is defined in
 [RadioBackendContract](../app/src/main/java/fi/radioplus/app/RadioBackendContract.java)
 and the [service interface](../app/src/main/aidl/com/hcn/autoradio/IRadioServiceAPI.aidl).
 
-Development builds select the inspected control contract from the installed
-stock APK before binding. The older HCN API has different command numbers even
-though its service and descriptor have the same names. Unknown APKs are not
-controlled. See [backend selection and experimental compatibility](COMPATIBILITY.md).
-
-Exact inspected AC8259 / 825X / 8667Q APKs also have an experimental TS adapter
-in development source. It binds `com.ts.MainUI`'s common service and its nested
-radio Binder, converts frequency units and selects the OEM audio source without
-using HCN commands. This is not included in the community beta 4 download, and
-physical playback or steering-key compatibility is not yet verified. Automatic
-scan and LOCAL/DX are disabled on these profiles pending further verification.
+Development builds also include experimental support for selected older Junsun
+radios and `com.ts.MainUI` versions. These have not been tested on real head units.
+See [supported models and limitations](COMPATIBILITY.md).
 
 ## Tuning and audio playback
 
