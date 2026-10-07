@@ -86,41 +86,44 @@ final class NwdRadioApi implements IRadioServiceAPI {
         throw new RemoteException("Unsupported NWD radio band " + raw);
     }
 
-    private void verifyGrid(int band, int khz) throws RemoteException {
-        int raw = band < 3 ? khz / 10 : khz;
-        boolean valid = call(22, null, p -> {
+    private int[] readGrid(int band) throws RemoteException {
+        int[] grid = call(22, null, p -> {
             int count = p.readInt();
-            if (count < 0) return false;
+            if (count < 0) return null;
             if (count > 3) throw new RemoteException("Invalid NWD frequency-grid array");
-            boolean found = false;
+            int[] found = null;
             for (int i = 0; i < count; i++) {
                 int present = p.readInt();
                 if (present == 0) continue;
                 if (present != 1 || p.dataAvail() < 12) throw new RemoteException("Invalid NWD grid parcel");
                 int min = p.readInt(), max = p.readInt(), step = p.readInt();
                 if (i == (band < 3 ? 0 : 1)) {
-                    found = min > 0 && max >= min && step > 0 && raw >= min && raw <= max
-                            && ((long) raw - min) % step == 0;
+                    int scale = band < 3 ? 10 : 1;
+                    if (min > 0 && max >= min && step > 0
+                            && (long) max * scale <= Integer.MAX_VALUE
+                            && (long) step * scale <= Integer.MAX_VALUE) {
+                        found = new int[]{min * scale, max * scale, step * scale};
+                    }
                 }
             }
             return found;
         });
-        if (!valid) throw new RemoteException("NWD frequency grid unavailable or target unsupported");
+        if (grid == null) throw new RemoteException("NWD frequency grid unavailable");
+        return grid;
+    }
+
+    private void verifyGrid(int band, int khz) throws RemoteException {
+        int[] grid = readGrid(band);
+        if (khz < grid[0] || khz > grid[1] || ((long) khz - grid[0]) % grid[2] != 0) {
+            throw new RemoteException("NWD target unsupported by frequency grid");
+        }
     }
 
     synchronized boolean tuneToBand(int band, int khz, BooleanSupplier current) throws RemoteException {
         if (!FrequencyRules.isValid(band, khz)) throw new RemoteException("Invalid NWD tuning target");
         if (!canContinue(current)) return false;
-        int state = radioState();
-        if (state == 2 || state == 3) {
-            stopSearch(current);
-            // A canceled AMS posts its final preset tune after reporting normal.
-            // Do not let that queued tune overwrite the user's selection.
-            for (int i = 0; i < 8; i++) {
-                if (!canContinue(current)) return false;
-                SystemClock.sleep(100);
-            }
-        }
+        prepareForTuning(current);
+        if (!canContinue(current)) return false;
         verifyGrid(band, khz);
         Frequency observed = frequency();
         // The Allwinner implementation ignores band when presetIndex=0. Cycle
@@ -137,6 +140,21 @@ final class NwdRadioApi implements IRadioServiceAPI {
         if (frequency().rawBand != rawBand || !canContinue(current)) return false;
         command(1, p -> { p.writeInt(band < 3 ? khz / 10 : khz); p.writeByte((byte) rawBand); p.writeInt(0); });
         return awaitFrequency(rawBand, khz, current);
+    }
+
+    private void prepareForTuning(BooleanSupplier current) throws RemoteException {
+        int state = radioState();
+        if (autoScanRequested || state == 2 || state == 3) {
+            stopSearch(current);
+            // A canceled AMS posts its final preset tune after reporting normal.
+            // Do not let that queued tune overwrite the user's selection.
+            for (int i = 0; i < 8; i++) {
+                if (!canContinue(current)) throw new RemoteException("NWD tuning canceled");
+                SystemClock.sleep(100);
+            }
+        } else if (state != 1) {
+            throw new RemoteException("NWD tuner is not ready");
+        }
     }
     private Frequency nextBand(BooleanSupplier current) throws RemoteException {
         // The inspected AW implementation discards band changes less than
@@ -211,6 +229,8 @@ final class NwdRadioApi implements IRadioServiceAPI {
                 if (restoring.rawBand != original.rawBand || !canContinue(current)) {
                     throw new RemoteException("NWD station restoration interrupted");
                 }
+                verifyGrid(original.band(), original.khz);
+                if (!canContinue(current)) throw new RemoteException("NWD station restoration canceled");
                 command(1, p -> { p.writeInt(original.rawBand < 3 ? original.khz / 10 : original.khz);
                     p.writeByte((byte) original.rawBand); p.writeInt(0); });
                 if (!awaitFrequency(original.rawBand, original.khz, current)) {
@@ -219,7 +239,10 @@ final class NwdRadioApi implements IRadioServiceAPI {
             }
         }
         if (!canContinue(current)) throw new RemoteException("NWD scan read canceled");
-        return result.stream().mapToInt(Integer::intValue).toArray();
+        int[] frequencies = result.stream().mapToInt(Integer::intValue).toArray();
+        int[] grid = readGrid(band);
+        NwdScanResults.validate(band, frequencies, grid[0], grid[1], grid[2]);
+        return frequencies;
     }
     private int[] currentPresets(int expectedBand) throws RemoteException {
         int[] values = call(21, null, p -> {
@@ -233,7 +256,8 @@ final class NwdRadioApi implements IRadioServiceAPI {
                 int raw = p.readInt();
                 long khz = rawBand < 3 ? (long) raw * 10 : raw;
                 if (khz > Integer.MAX_VALUE || khz < 0) throw new RemoteException("Invalid NWD preset value");
-                // Zero/default padding is removed by the shared sanitizer.
+                // Validate the complete set after restoration; a padding value
+                // cannot be distinguished from a real station in this parcel.
                 entries[i] = (int) khz;
             }
             return entries;
@@ -242,14 +266,32 @@ final class NwdRadioApi implements IRadioServiceAPI {
         return values;
     }
     private void stopSearch(BooleanSupplier current) throws RemoteException {
-        autoScanRequested = false;
+        // AMS is queued on the vendor handler. A stop while state is still
+        // normal is a no-op and cannot cancel that queued start. Wait until
+        // the start is observed, or fail closed without claiming it stopped.
+        while (autoScanRequested && !autoScanObserved) {
+            if (!canContinue(current)) throw new RemoteException("NWD scan stop canceled");
+            int state = radioState();
+            if (state == 2) {
+                autoScanObserved = true;
+                break;
+            }
+            if (state != 1 || SystemClock.elapsedRealtime() - autoScanStarted >= 3000) {
+                throw new RemoteException("NWD scan start was not confirmed; stop cannot be verified");
+            }
+            SystemClock.sleep(50);
+        }
         // Command 27 with 0/0 cancels an active search/INTRO and is otherwise
         // a no-op on the inspected AW path. Unlike AMS, it cannot start a scan.
         command(27, p -> { p.writeByte((byte) 0); p.writeByte((byte) 0); });
         for (int i = 0; i < 30; i++) {
             if (!canContinue(current)) throw new RemoteException("NWD scan stop canceled");
             int state = radioState();
-            if (state == 1) return;
+            if (state == 1) {
+                autoScanRequested = false;
+                autoScanObserved = false;
+                return;
+            }
             if (state != 2 && state != 3) throw new RemoteException("NWD tuner is not ready");
             SystemClock.sleep(100);
         }
@@ -263,19 +305,28 @@ final class NwdRadioApi implements IRadioServiceAPI {
     @Override public int getCurrentFreq() throws RemoteException { return frequency().khz; }
     @Override public String getCurrentFreqRdsPs() throws RemoteException { return frequency().name; }
     String radioText() throws RemoteException { return call(28, null, Parcel::readString); }
-    @Override public void gotoFreq(int khz) throws RemoteException {
+    @Override public synchronized void gotoFreq(int khz) throws RemoteException {
         if (!tuneToBand(getCurrentBand(), khz, () -> true)) throw new RemoteException("NWD band changed during tuning");
     }
     @Override public void gotoFreq2(String value) throws RemoteException {
         try { gotoFreq(Integer.parseInt(value)); }
         catch (NumberFormatException error) { throw new RemoteException("Invalid NWD frequency"); }
     }
-    @Override public synchronized void onBandEvent() throws RemoteException { nextBand(() -> true); }
+    @Override public synchronized void onBandEvent() throws RemoteException {
+        prepareForTuning(() -> true);
+        nextBand(() -> true);
+    }
     // NWD's search is station seek; its seek is a single tuning step.
-    @Override public void onSeekDownEvent() throws RemoteException { command(4, p -> p.writeInt(1)); }
-    @Override public void onSeekUpEvent() throws RemoteException { command(4, p -> p.writeInt(0)); }
-    @Override public void onManualDownEvent() throws RemoteException { step(1); }
-    @Override public void onManualUpEvent() throws RemoteException { step(-1); }
+    @Override public synchronized void onSeekDownEvent() throws RemoteException {
+        prepareForTuning(() -> true);
+        command(4, p -> p.writeInt(1));
+    }
+    @Override public synchronized void onSeekUpEvent() throws RemoteException {
+        prepareForTuning(() -> true);
+        command(4, p -> p.writeInt(0));
+    }
+    @Override public synchronized void onManualDownEvent() throws RemoteException { step(1); }
+    @Override public synchronized void onManualUpEvent() throws RemoteException { step(-1); }
     private void step(int direction) throws RemoteException {
         Frequency f = frequency();
         if (!tuneToBand(f.band(), FrequencyRules.stepFrom(f.band(), f.khz, direction), () -> true)) {
@@ -284,15 +335,17 @@ final class NwdRadioApi implements IRadioServiceAPI {
     }
     @Override public boolean IsStereo() throws RemoteException { return flag(10); }
     @Override public boolean IsDxLocal() throws RemoteException { return flag(9); }
-    @Override public void onLocDxEvent() throws RemoteException { boolean near = !IsDxLocal(); command(8, p -> p.writeInt(near ? 1 : 0)); }
+    @Override public synchronized void onLocDxEvent() throws RemoteException { boolean near = !IsDxLocal(); command(8, p -> p.writeInt(near ? 1 : 0)); }
     @Override public boolean requestPlayAudio() { return audio.play(); }
     boolean pauseRadioSource() { return audio.pause(); }
     RadioPlaybackHealthReader.Snapshot readHealth() { return audio.readHealth(); }
-    @Override public boolean IsAS() throws RemoteException {
+    @Override public synchronized boolean IsAS() throws RemoteException {
         if (!autoScanRequested) return false;
         int state = radioState();
         if (state == 2) { autoScanObserved = true; return true; }
-        if (!autoScanObserved && SystemClock.elapsedRealtime() - autoScanStarted < 3000) return true;
+        // An unobserved start is unresolved, not a completed scan. Keep the
+        // guard until it can be stopped; a timeout must not authorize a tune.
+        if (!autoScanObserved) return true;
         autoScanRequested = false;
         return false;
     }
@@ -303,13 +356,6 @@ final class NwdRadioApi implements IRadioServiceAPI {
     @Override public boolean getFreqIsFavorite(int band, int khz) { return false; }
     @Override public synchronized void onASEvent() throws RemoteException {
         if (autoScanRequested) {
-            // AMS starts asynchronously. Wait for its pending start before
-            // sending the non-starting stop command, not another AMS toggle.
-            while (!autoScanObserved && radioState() == 1
-                    && SystemClock.elapsedRealtime() - autoScanStarted < 3000) {
-                if (Thread.currentThread().isInterrupted()) throw new RemoteException("NWD scan stop interrupted");
-                SystemClock.sleep(50);
-            }
             stopSearch(() -> true);
             return;
         }
@@ -321,7 +367,10 @@ final class NwdRadioApi implements IRadioServiceAPI {
         try { command(6, null); }
         catch (RemoteException | RuntimeException error) { autoScanRequested = false; throw error; }
     }
-    @Override public void onPSEvent() throws RemoteException { command(7, null); }
+    @Override public synchronized void onPSEvent() throws RemoteException {
+        if (autoScanRequested || radioState() == 2) prepareForTuning(() -> true);
+        command(7, null);
+    }
     @Override public void onScanEvent() throws RemoteException { onPSEvent(); }
     @Override public void gotoFreqIndex(int index) throws RemoteException { throw unavailable(); }
     @Override public void favoriteCurrentFreq() throws RemoteException { throw unavailable(); }

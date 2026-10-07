@@ -109,8 +109,13 @@ final class RadioServiceClient {
     private final ExecutorService actionExecutor = Executors.newSingleThreadExecutor();
     private final RadioMetadataReader metadataReader = new RadioMetadataReader();
     private final RdsTextStabilizer radioTextStabilizer = new RdsTextStabilizer();
+    // Only poll workers take this lock. Lifecycle methods must remain responsive
+    // while a remote read waits behind a scan, tune, or slow Binder transaction.
+    private final Object pollingStateLock = new Object();
 
     private ScheduledExecutorService pollExecutor;
+    private volatile long pollingGeneration;
+    private long cachedPollingGeneration = -1L;
     private volatile IRadioServiceAPI service;
     private volatile boolean closed;
     private boolean bound;
@@ -325,6 +330,11 @@ final class RadioServiceClient {
         return service != null;
     }
 
+    boolean canUseObservedScanFallback() {
+        IRadioServiceAPI current = service;
+        return current != null && RadioApiFactory.usesHcnFramework(current);
+    }
+
     void perform(RemoteAction action) {
         if (closed) {
             return;
@@ -405,44 +415,45 @@ final class RadioServiceClient {
     }
 
     void readPresetFrequencies(int band, PresetResult callback) {
-        if (closed) {
-            return;
-        }
+        IRadioServiceAPI current = service;
+        long generation = pollingGeneration;
+        if (!isCurrentPoll(current, generation)) return;
         try {
             actionExecutor.submit(() -> {
-            IRadioServiceAPI current = service;
-            if (current instanceof NwdRadioApi) {
-                int[] frequencies = new int[0];
-                boolean available = false;
-                try {
-                    frequencies = sanitizePresets(band, ((NwdRadioApi) current).readScanPresets(band,
-                            () -> !closed && service == current));
-                    available = true;
-                } catch (RemoteException | RuntimeException error) {
-                    Log.w(TAG, "NWD scan results could not be read completely", error);
+                if (!isCurrentPoll(current, generation)) return;
+                if (current instanceof NwdRadioApi) {
+                    int[] frequencies = new int[0];
+                    boolean available = false;
+                    try {
+                        frequencies = sanitizePresets(band, ((NwdRadioApi) current).readScanPresets(band,
+                                () -> isCurrentPoll(current, generation)));
+                        available = true;
+                    } catch (RemoteException | RuntimeException error) {
+                        if (isCurrentPoll(current, generation)) {
+                            Log.w(TAG, "NWD scan results could not be read completely", error);
+                        }
+                    }
+                    final int[] results = frequencies;
+                    final boolean complete = available;
+                    mainHandler.post(() -> {
+                        if (isCurrentPoll(current, generation)) callback.onResult(band, results, complete);
+                    });
+                    return;
                 }
-                final int[] results = frequencies;
-                final boolean complete = available;
-                mainHandler.post(() -> { if (!closed) callback.onResult(band, results, complete); });
-                return;
-            }
-            if (service instanceof TsRadioApi || !RadioApiFactory.selectedSupportsScanning()) {
-                mainHandler.post(() -> { if (!closed) callback.onResult(band, new int[0], false); });
-                return;
-            }
-            int[] raw = metadataReader.readPresets(band);
-            int[] sanitized = sanitizePresets(band, raw);
-            if (!closed) {
+                if (current instanceof TsRadioApi || !RadioApiFactory.selectedSupportsScanning()) {
+                    mainHandler.post(() -> {
+                        if (isCurrentPoll(current, generation)) callback.onResult(band, new int[0], false);
+                    });
+                    return;
+                }
+                int[] raw = metadataReader.readPresets(band);
+                int[] sanitized = sanitizePresets(band, raw);
+                boolean available = metadataReader.isAvailable();
                 mainHandler.post(() -> {
-                    if (!closed) {
-                        callback.onResult(
-                                band,
-                                sanitized,
-                                metadataReader.isAvailable()
-                        );
+                    if (isCurrentPoll(current, generation)) {
+                        callback.onResult(band, sanitized, available);
                     }
                 });
-            }
             });
         } catch (RejectedExecutionException error) {
             Log.w(TAG, "Preset read ignored during shutdown", error);
@@ -458,23 +469,50 @@ final class RadioServiceClient {
             return;
         }
         stopPolling();
-        lastDispatchedState = null;
+        long generation = pollingGeneration;
         pollExecutor = Executors.newSingleThreadScheduledExecutor();
-        pollExecutor.scheduleWithFixedDelay(this::pollNow, 0, 800, TimeUnit.MILLISECONDS);
+        pollExecutor.scheduleWithFixedDelay(() -> pollNow(generation), 0, 800, TimeUnit.MILLISECONDS);
     }
 
     private synchronized void stopPolling() {
+        // Also invalidate already-queued UI delivery when the next binding
+        // resolves to exactly the same shared API instance.
+        pollingGeneration++;
         if (pollExecutor != null) {
             pollExecutor.shutdownNow();
             pollExecutor = null;
         }
     }
 
-    private synchronized void pollNow() {
+    private void pollNow() {
+        pollNow(pollingGeneration);
+    }
+
+    private void pollNow(long generation) {
         IRadioServiceAPI current = service;
-        if (current == null) {
-            return;
+        if (!isCurrentPoll(current, generation)) return;
+        synchronized (pollingStateLock) {
+            if (!isCurrentPoll(current, generation)) return;
+            if (cachedPollingGeneration != generation) {
+                cachedPollingGeneration = generation;
+                cachedMetadataBand = -1;
+                cachedMetadataFrequency = -1;
+                cachedRdsName = "";
+                cachedRadioText = "";
+                cachedProgramType = "";
+                cachedRadioTextAt = 0L;
+                radioTextStabilizer.reset();
+                lastDispatchedState = null;
+            }
+            pollCurrent(current, generation);
         }
+    }
+
+    private boolean isCurrentPoll(IRadioServiceAPI current, long generation) {
+        return current != null && !closed && service == current && pollingGeneration == generation;
+    }
+
+    private void pollCurrent(IRadioServiceAPI current, long generation) {
         try {
             NwdRadioApi.Frequency nwdFrequency = current instanceof NwdRadioApi
                     ? ((NwdRadioApi) current).frequency() : null;
@@ -548,23 +586,24 @@ final class RadioServiceClient {
                     current.IsSeek(),
                     current.currentFreqIsFavorite()
             );
+            if (!isCurrentPoll(current, generation)) return;
             if (state.hasSameContent(lastDispatchedState)) {
                 return;
             }
             lastDispatchedState = state;
-            if (!closed) {
-                mainHandler.post(() -> {
-                    if (!closed) {
-                        listener.onStateChanged(state);
-                    }
-                });
-            }
+            mainHandler.post(() -> {
+                if (isCurrentPoll(current, generation)) listener.onStateChanged(state);
+            });
         } catch (RemoteException | RuntimeException | LinkageError error) {
+            if (!isCurrentPoll(current, generation)) return;
             Log.e(TAG, "Radiotilan lukeminen epäonnistui", error);
-            handleConnectionFailure(current, tr(
+            String message = tr(
                     "Radiotilan lukeminen epäonnistui",
                     "Reading the radio state failed"
-            ));
+            );
+            mainHandler.post(() -> {
+                if (isCurrentPoll(current, generation)) handleConnectionFailure(current, message);
+            });
         }
     }
 

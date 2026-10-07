@@ -1663,6 +1663,7 @@ public final class MainActivity extends Activity implements
             autoScanFinalizing = false;
             int[] selected = frequencies;
             if (selected.length == 0
+                    && radioClient.canUseObservedScanFallback()
                     && !observedScanFrequencies.isEmpty()
                     && observedScanFrequencies.size() <= 30) {
                 selected = new int[observedScanFrequencies.size()];
@@ -2371,7 +2372,7 @@ public final class MainActivity extends Activity implements
                 || autoScanFinalizing
                 || stationNameResolutionActive;
         setRadioControlsEnabled(connected && !busy);
-        if (!connected && autoScanRequested) {
+        if (!connected && (autoScanRequested || autoScanFinalizing)) {
             cancelAutoScan(tr(
                     "Automaattihaku keskeytyi radioyhteyden katketessa",
                     "Automatic scan stopped when the radio connection was lost"

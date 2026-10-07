@@ -16,6 +16,9 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import static org.junit.Assert.*;
 
@@ -38,6 +41,10 @@ public final class NwdRadioInteropTest {
         boolean near, reject, denied, truncated, extra, stuck, mutateBandOnGrid;
         boolean cancelOnBand, missingFrequency;
         boolean enforceBandCooldown, amSupported = true, handoffOnBand, malformedPresets, pendingScan;
+        boolean scanQueued;
+        boolean paddingPresets;
+        int pendingScanReads;
+        CountDownLatch bankReadEntered, releaseBankRead;
         long lastBandAt;
         final AtomicBoolean current = new AtomicBoolean(true);
         Endpoint() { attachInterface(null, NwdRadioApi.DESCRIPTOR); }
@@ -69,16 +76,22 @@ public final class NwdRadioInteropTest {
                         band = (band + 1) % (amSupported ? 5 : 3); freq = band < 3 ? 9810 : 999;
                     }
                     break;
-                case 6: if (!pendingScan) state = 2; break;
+                case 6: if (!pendingScan) state = 2; else scanQueued = true; break;
                 case 7: state = state == 3 ? 1 : 3; break;
                 case 8: near = data.readInt() != 0; break;
                 case 9: reply.writeInt(near ? 1 : 0); break;
                 case 10: reply.writeInt(1); break;
                 case 21:
+                    if (band == 1 && bankReadEntered != null) {
+                        bankReadEntered.countDown();
+                        try { assertTrue(releaseBankRead.await(5, TimeUnit.SECONDS)); }
+                        catch (InterruptedException error) { Thread.currentThread().interrupt(); throw new AssertionError(error); }
+                    }
                     reply.writeInt(malformedPresets ? -1 : 6);
                     if (!malformedPresets) for (int i = 0; i < 6; i++) {
                         reply.writeInt(1); reply.writeByte((byte) band); reply.writeString("");
-                        reply.writeInt(band < 3 ? 9000 + band * 600 + i * 10 : 522 + (band - 3) * 54 + i * 9);
+                        reply.writeInt(paddingPresets ? (band < 3 ? 8750 : 531)
+                                : band < 3 ? 9000 + band * 600 + i * 10 : 603 + (band - 3) * 54 + i * 9);
                     }
                     break;
                 case 22:
@@ -91,8 +104,15 @@ public final class NwdRadioInteropTest {
                     }
                     if (mutateBandOnGrid && calls.stream().filter(c -> c == 22).count() >= 2) band = 3;
                     break;
-                case 23: reply.writeByte((byte) state); break;
-                case 27: assertEquals(0, data.readByte()); assertEquals(0, data.readByte()); state = 1; break;
+                case 23:
+                    if (scanQueued && pendingScanReads > 0 && --pendingScanReads == 0) {
+                        state = 2; scanQueued = false;
+                    }
+                    reply.writeByte((byte) state); break;
+                case 27:
+                    assertEquals(0, data.readByte()); assertEquals(0, data.readByte());
+                    assertFalse("Stop is ineffective before the queued scan has started", scanQueued);
+                    state = 1; break;
                 case 28: reply.writeString("Radio text"); break;
                 case 29: reply.writeInt(type); break;
                 default: fail("Unverified NWD transaction " + code);
@@ -210,9 +230,66 @@ public final class NwdRadioInteropTest {
 
     @Test public void pendingScanIsReportedWithoutSendingASecondStart() throws Exception {
         Endpoint e = new Endpoint(); e.audio.source = 4; e.pendingScan = true; NwdRadioApi api = e.api();
+        e.pendingScanReads = 4;
         api.onASEvent(); assertTrue(api.IsAS());
         api.onASEvent(); assertFalse(api.IsAS());
         assertEquals(1L, e.calls.stream().filter(c -> c == 6).count());
+    }
+
+    @Test public void tuningWaitsForQueuedScanStartBeforeStoppingIt() throws Exception {
+        Endpoint e = new Endpoint(); e.audio.source = 4; e.pendingScan = true; e.pendingScanReads = 4;
+        NwdRadioApi api = e.api(); api.onASEvent();
+        assertTrue(api.tuneToBand(0, 101700, e.current::get));
+        assertEquals(10170, e.freq); assertEquals(1, e.state); assertFalse(api.IsAS());
+        assertTrue(e.calls.indexOf(27) < e.calls.indexOf(1));
+        assertEquals(1L, e.calls.stream().filter(c -> c == 6).count());
+    }
+
+    @Test public void unconfirmedScanStartCannotBeReportedStoppedOrAllowATune() throws Exception {
+        Endpoint e = new Endpoint(); e.audio.source = 4; e.pendingScan = true;
+        NwdRadioApi api = e.api(); api.onASEvent();
+        assertThrows(RemoteException.class, () -> api.tuneToBand(0, 101700, e.current::get));
+        assertTrue("Unresolved scan must stay guarded after the timeout", api.IsAS());
+        assertThrows(RemoteException.class, api::onASEvent);
+        assertFalse(e.calls.contains(1)); assertFalse(e.calls.contains(27));
+        assertEquals(1L, e.calls.stream().filter(c -> c == 6).count());
+    }
+
+    @Test public void pendingScanMustAlsoStartBeforePresetCollectionCanCancelIt() throws Exception {
+        Endpoint e = new Endpoint(); e.audio.source = 4; e.pendingScan = true; e.pendingScanReads = 3;
+        NwdRadioApi api = e.api(); api.onASEvent();
+        assertEquals(18, api.readScanPresets(0, e.current::get).length);
+        assertTrue(e.calls.indexOf(27) < e.calls.indexOf(21));
+        assertFalse(api.IsAS());
+    }
+
+    @Test public void manualStepCannotReadATemporaryBankOrBeOverwrittenByScanRestore() throws Exception {
+        Endpoint e = new Endpoint(); e.audio.source = 4;
+        e.bankReadEntered = new CountDownLatch(1); e.releaseBankRead = new CountDownLatch(1);
+        NwdRadioApi api = e.api(); ExecutorService workers = Executors.newFixedThreadPool(2);
+        CountDownLatch stepStarted = new CountDownLatch(1), stepFinished = new CountDownLatch(1);
+        try {
+            Future<int[]> scan = workers.submit(() -> api.readScanPresets(0, e.current::get));
+            assertTrue(e.bankReadEntered.await(5, TimeUnit.SECONDS));
+            Future<?> step = workers.submit(() -> {
+                stepStarted.countDown();
+                try { api.onManualDownEvent(); } catch (RemoteException error) { throw new AssertionError(error); }
+                finally { stepFinished.countDown(); }
+            });
+            assertTrue(stepStarted.await(5, TimeUnit.SECONDS));
+            assertFalse("Mutating commands share the scan/restoration lock", stepFinished.await(150, TimeUnit.MILLISECONDS));
+            e.releaseBankRead.countDown();
+            assertEquals(18, scan.get(10, TimeUnit.SECONDS).length); step.get(10, TimeUnit.SECONDS);
+            assertEquals(0, e.band); assertEquals(9820, e.freq);
+        } finally { e.releaseBankRead.countDown(); workers.shutdownNow(); }
+    }
+
+    @Test public void unknownTunerStateNeverPermitsTuningOrBandCommands() throws Exception {
+        Endpoint e = new Endpoint(); NwdRadioApi api = e.api(); e.state = 0;
+        assertThrows(RemoteException.class, () -> api.tuneToBand(0, 101700, e.current::get));
+        assertThrows(RemoteException.class, api::onBandEvent);
+        assertThrows(RemoteException.class, api::onSeekDownEvent);
+        assertFalse(e.calls.contains(1)); assertFalse(e.calls.contains(5)); assertFalse(e.calls.contains(4));
     }
 
     @Test public void finishedScanReadsEveryFmBankAndRestoresOriginalStation() throws Exception {
@@ -248,6 +325,15 @@ public final class NwdRadioInteropTest {
         Endpoint e = new Endpoint(); e.audio.source = 4; e.malformedPresets = true;
         assertThrows(RemoteException.class, () -> e.api().readScanPresets(0, e.current::get));
         assertEquals(0, e.band); assertEquals(9810, e.freq);
+    }
+
+    @Test public void ambiguousPaddingIsNotReturnedAsFoundStationsAndOriginalIsRestored() throws Exception {
+        for (int band : new int[]{0, 3}) {
+            Endpoint e = new Endpoint(); e.audio.source = 4; e.band = band;
+            e.freq = band == 0 ? 9810 : 999; e.paddingPresets = true;
+            assertThrows(IllegalArgumentException.class, () -> e.api().readScanPresets(band, e.current::get));
+            assertEquals(band, e.band); assertEquals(band == 0 ? 9810 : 999, e.freq);
+        }
     }
 
     @Test public void bandCyclingRespectsVendorCooldown() throws Exception {

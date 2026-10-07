@@ -24,6 +24,7 @@ final class NwdAudioRouting {
     private boolean requested;
     private int requestedFrom;
     private long requestedAt;
+    private boolean pausePending;
     static final long PENDING_ROUTE_MS = 3000L;
 
     NwdAudioRouting(Context context) {
@@ -44,15 +45,22 @@ final class NwdAudioRouting {
     synchronized boolean play() {
         int source = transport.source();
         long now = clock.getAsLong();
-        if (source == 4) {
+        boolean resumePendingPause = pausePending;
+        if (source == 4 && !resumePendingPause) {
             requested = false;
+            pausePending = false;
             return true;
         }
         // Both our UI client and media service may request the same route.
         // Repeating APP_IN while the kernel is switching can restart vendor
         // initialization (and its temporary music mute). Retry only on a later
         // explicit request, after a bounded grace period; never run a retry loop.
-        if (requested && requestedFrom == source && now - requestedAt < PENDING_ROUTE_MS) return true;
+        if (!resumePendingPause && requested && requestedFrom == source
+                && now - requestedAt < PENDING_ROUTE_MS) return true;
+        // Pause may still be queued while the source setting reports 4.
+        // This explicit Play must follow it with source=4 and APP_IN, not mistake
+        // the old setting for acknowledgement. Commands go to two OEM processes:
+        // sending this sequence is not an atomic or audible-playback guarantee.
         // Kernel's direct-source rule changes audio without launching the stock UI.
         // The byte extra is essential: getByteExtra does not accept an Integer.
         transport.send(new Intent(CHANGE_SOURCE).setPackage(KERNEL_PACKAGE)
@@ -65,12 +73,14 @@ final class NwdAudioRouting {
         requested = true;
         requestedFrom = source;
         requestedAt = now;
+        pausePending = false;
         return true; // Request sent, not proof of audible playback.
     }
 
     synchronized boolean pause() {
+        long now = clock.getAsLong();
         boolean pendingFromArm = requested && requestedFrom == 0
-                && clock.getAsLong() - requestedAt < PENDING_ROUTE_MS;
+                && now - requestedAt < PENDING_ROUTE_MS;
         requested = false;
         // Do not select a different source or mute another app after a handoff.
         int source = transport.source();
@@ -78,6 +88,7 @@ final class NwdAudioRouting {
         // Queue source=0 after our pending request only if it still reports ARM;
         // this also leaves any music already using ARM on that same source.
         if (source != 4 && !(source == 0 && pendingFromArm)) return false;
+        pausePending = true;
         transport.send(new Intent(CHANGE_SOURCE).setPackage(KERNEL_PACKAGE)
                 .putExtra("extra_source_id", (byte) 0));
         transport.send(new Intent(EXIT_RADIO).setPackage(RADIO_PACKAGE));
@@ -90,6 +101,8 @@ final class NwdAudioRouting {
         // Play after another app takes ARM must not be lost in the grace period.
         // Observing a source never sends any command or reclaims playback.
         if (source == 4) requested = false;
+        // The source acknowledges only the kernel route, not the other process's
+        // queued EXIT. Only an explicit restoring Play clears pausePending.
         return new RadioPlaybackHealthReader.Snapshot(source >= 0,
                 source == 4 ? RADIO_PACKAGE : "nwd.source/" + source, false, false);
     }

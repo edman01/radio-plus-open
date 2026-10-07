@@ -13,12 +13,25 @@ An optional test build with support for additional Junsun radio implementations.
 - Added automatic-scan control and collection of all FM/AM preset banks, with
   restoration of the selected station. The stock service's band-change delay
   is respected. Scan-result collection temporarily tunes the other banks.
+  Ambiguous default-filled banks are rejected: the service does not expose a
+  reliable station count. Existing stations are retained, and scan progress
+  frequencies are not imported as found stations. Automatic scan is not yet
+  equivalent to the tested Junsun V7 implementation: partial banks and some
+  genuine full scans cannot be accepted without reliable result metadata.
 - Band changes are checked before tuning, and frequencies are checked against
   the stock tuner grid. Stopped or canceled commands do not continue tuning.
 - Coalesced pending NWD playback requests to avoid repeated initialization.
   Once the radio source is acknowledged, a later explicit Play after another
   app is treated as a new request, including quick switches between apps.
   NWD does not use the Junsun V7 audio-focus, input-gain or PCM handoff workarounds.
+- Shared the tuner connection between the app screen and background playback
+  to prevent overlapping bank changes and station restoration. Tuning now waits
+  for a queued scan to start before canceling it; an unconfirmed start cannot
+  be reported as a successful stop.
+- Kept app navigation responsive during slow status reads and discarded status
+  or preset results belonging to an earlier connection.
+- Fixed explicit Play immediately after Pause being ignored while the source
+  setting still reports radio. Reading source status never reclaims playback.
 - Added tests for the NWD protocol, malformed replies, source switching,
   pause during startup, and next/previous through Android media controls.
   UI tests cover the FM/AM band cycle and direct FM/AM choices, restoration of
@@ -26,13 +39,16 @@ An optional test build with support for additional Junsun radio implementations.
 - Kept the existing interface, layouts, themes and translations unchanged.
 
 This is **not confirmed support for every Hizpo or `com.nwd.radio` device**.
-The inspected apps came from a K2401 stock-app archive; the firmware revision
-was not identified. An exact match is required. Other NWD tuner implementations,
-K4811, and the reported Hizpo unit still need their own matching service files
-and device testing. No manufacturer APKs or firmware are included.
+The enabled development profile remains the exact RadioService 2.2.2 /
+KernelService 2.2.6 pair with the verified runtime tuner type. Firmware samples
+for K2401 (RadioService 2.1.8) and K4811 (RadioService 2.3.0 / KernelService 2.5.0)
+have also been inspected, but are not enabled by this profile. K4811 changes
+the tuning call and contains several different tuner implementations; its
+processor or model name alone cannot select a safe control method.
+No manufacturer APKs or firmware are included.
 
 **Not ready for Junsun V7-equivalent support. No NWD APK has been released.**
-The inspected kernel forwards wheel next/previous to the stock radio's station
+The inspected K2401 and K4811 paths forward wheel next/previous to the stock radio's station
 search while the FM source is active, rather than to Android media controls.
 Radio+'s list navigation does not yet replace that native key route. An additional
 receiver would also leave the stock handler active, risking conflicting actions.

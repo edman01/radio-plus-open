@@ -31,6 +31,9 @@ final class RadioApiFactory {
     // Shared by the UI and playback bindings, so a channel tap cannot initialize
     // the vendor audio path twice. Accessed only on INSPECTOR.
     private static NwdAudioRouting nwdAudio;
+    // One hardware endpoint must have one scan/band state and operation lock,
+    // even when the activity and playback service bind independently.
+    private static final NwdRadioConnectionCache nwdConnections = new NwdRadioConnectionCache();
     private static final Map<String, String> cachedIdentities = new HashMap<>();
     private static final Map<String, Detection> cachedDetections = new HashMap<>();
 
@@ -88,7 +91,7 @@ final class RadioApiFactory {
                         nwdAudio = new NwdAudioRouting(application);
                     }
                     api = detection.profile == RadioBackendProfile.NWD_222
-                            ? new NwdRadioApi(binder, nwdAudio)
+                            ? nwdConnections.resolve(binder, nwdAudio)
                             : create(detection.profile, binder);
                 } catch (RemoteException | RuntimeException error) {
                     detection = new Detection(RadioBackendProfile.UNKNOWN, detection.stockPackage, detection.stockVersion,
