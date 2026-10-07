@@ -117,6 +117,10 @@ final class RadioApiFactory {
         if (profile == null || profile == RadioBackendProfile.UNKNOWN) {
             throw new RemoteException("Unrecognized stock radio contract");
         }
+        if (profile.isReglink()) {
+            // Reject before inspecting or transacting on any supplied Binder.
+            throw new RemoteException("Reglink audio ownership is not supported; control disabled");
+        }
         if (profile.isTs()) return new TsRadioApi(binder);
         if (profile.isNwd()) {
             throw new RemoteException("NWD requires its verified audio-routing dependency");
@@ -132,13 +136,9 @@ final class RadioApiFactory {
         Detection recognized = null;
         Detection lastUnknown = null;
         for (String stockPackage : new String[]{RadioBackendContract.PACKAGE_NAME, "com.ts.MainUI",
-                "com.nwd.radio.service"}) {
+                "com.nwd.radio.service", "com.reglink.services"}) {
             Detection candidate = inspectPackage(context, stockPackage);
             if (candidate == null) continue;
-            if (candidate.profile != RadioBackendProfile.UNKNOWN && !candidate.profile.isEnabledForDeviceControl()) {
-                candidate = unknown(stockPackage, candidate.stockVersion,
-                        "This NWD tuner profile is not enabled in this build");
-            }
             if (candidate.profile.isNwd()) {
                 // Both packages contain commands used by this adapter. A UI APK
                 // or a service descriptor alone cannot establish this contract.
@@ -147,6 +147,21 @@ final class RadioApiFactory {
                     candidate = unknown(stockPackage, candidate.stockVersion,
                             "The NWD audio-routing service has not been verified");
                 }
+            }
+            if (candidate.profile.isReglink()) {
+                Detection radio = inspectPackage(context, "com.reglink.apps.radio");
+                Detection tuner = inspectPackage(context, "com.reglink.apps.mtkradio");
+                if (radio == null || tuner == null || !RadioBackendProfile.verifiedReglinkTriplet(
+                        candidate.sha256, radio.sha256, tuner.sha256)) {
+                    candidate = unknown(stockPackage, candidate.stockVersion,
+                            "The Reglink radio service combination has not been verified");
+                }
+            }
+            if (candidate.profile != RadioBackendProfile.UNKNOWN && !candidate.profile.isEnabledForDeviceControl()) {
+                candidate = new Detection(RadioBackendProfile.UNKNOWN, stockPackage,
+                        candidate.stockVersion, candidate.sha256, candidate.profile.isReglink()
+                        ? "Reglink audio ownership is not supported; control is disabled in this build"
+                        : "This NWD tuner profile is not enabled in this build");
             }
             if (candidate.profile == RadioBackendProfile.UNKNOWN) {
                 lastUnknown = candidate;
@@ -239,13 +254,16 @@ final class RadioApiFactory {
     }
 
     static boolean usesHcnFramework(IRadioServiceAPI api) {
-        return api != null && !(api instanceof TsRadioApi) && !(api instanceof NwdRadioApi);
+        return api != null && !(api instanceof TsRadioApi) && !(api instanceof NwdRadioApi)
+                && !(api instanceof ReglinkRadioApi);
     }
 
     static boolean supportsScanning(IRadioServiceAPI api) {
         return usesHcnFramework(api) || (api instanceof NwdRadioApi && ((NwdRadioApi) api).supportsScanning());
     }
-    static boolean supportsLocalMode(IRadioServiceAPI api) { return api != null && !(api instanceof TsRadioApi); }
+    static boolean supportsLocalMode(IRadioServiceAPI api) {
+        return api != null && !(api instanceof TsRadioApi) && !(api instanceof ReglinkRadioApi);
+    }
 
     static boolean selectedSupportsScanning() {
         Detection detection = latest;
@@ -269,11 +287,13 @@ final class RadioApiFactory {
     }
     static boolean selectedSupportsTuning() {
         Detection detection = latest;
-        return detection != null && detection.profile != RadioBackendProfile.UNKNOWN;
+        return detection != null && detection.profile != RadioBackendProfile.UNKNOWN
+                && !detection.profile.isReglink();
     }
     static boolean selectedSupportsStationSeek() {
         Detection detection = latest;
         return detection != null && detection.profile != RadioBackendProfile.UNKNOWN
+                && !detection.profile.isReglink()
                 && detection.profile != RadioBackendProfile.NWD_230;
     }
 

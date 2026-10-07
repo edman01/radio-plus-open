@@ -5,6 +5,35 @@ import java.util.Locale;
 import static org.junit.Assert.*;
 
 public final class RadioBackendProfileTest {
+    @Test public void reglinkInspectionNeverEnablesUnresolvedAudioOwnership() {
+        assertEquals(RadioBackendProfile.REGLINK_S540,
+                RadioBackendProfile.forApkSha256(RadioBackendProfile.REGLINK_S540_SERVICE_SHA256));
+        assertTrue(RadioBackendProfile.REGLINK_S540.isReglink());
+        assertFalse(RadioBackendProfile.REGLINK_S540.isNwd());
+        assertFalse(RadioBackendProfile.REGLINK_S540.isTs());
+        assertFalse(RadioBackendProfile.REGLINK_S540.isEnabledForDeviceControl());
+        assertEquals("com.reglink.services", RadioBackendProfile.REGLINK_S540.stockPackage());
+        assertTrue(RadioBackendProfile.verifiedReglinkTriplet(
+                RadioBackendProfile.REGLINK_S540_SERVICE_SHA256.toUpperCase(Locale.ROOT),
+                RadioBackendProfile.REGLINK_S540_RADIO_SHA256,
+                RadioBackendProfile.REGLINK_S540_TUNER_SHA256));
+        for (String wrong : new String[]{null, "", "S5.40", "com.reglink.apps.radio", "Srnubi",
+                RadioBackendProfile.NWD_230_RADIO_SHA256}) {
+            assertFalse(RadioBackendProfile.verifiedReglinkTriplet(wrong,
+                    RadioBackendProfile.REGLINK_S540_RADIO_SHA256,
+                    RadioBackendProfile.REGLINK_S540_TUNER_SHA256));
+            assertFalse(RadioBackendProfile.verifiedReglinkTriplet(
+                    RadioBackendProfile.REGLINK_S540_SERVICE_SHA256, wrong,
+                    RadioBackendProfile.REGLINK_S540_TUNER_SHA256));
+            assertFalse(RadioBackendProfile.verifiedReglinkTriplet(
+                    RadioBackendProfile.REGLINK_S540_SERVICE_SHA256,
+                    RadioBackendProfile.REGLINK_S540_RADIO_SHA256, wrong));
+        }
+        assertEquals(RadioBackendProfile.UNKNOWN,
+                RadioBackendProfile.forApkSha256(RadioBackendProfile.REGLINK_S540_RADIO_SHA256));
+        assertEquals(RadioBackendProfile.UNKNOWN,
+                RadioBackendProfile.forApkSha256(RadioBackendProfile.REGLINK_S540_TUNER_SHA256));
+    }
     @Test public void k4811RequiresExactMatched230And250Pair() {
         assertEquals(RadioBackendProfile.NWD_230,
                 RadioBackendProfile.forApkSha256(RadioBackendProfile.NWD_230_RADIO_SHA256));
