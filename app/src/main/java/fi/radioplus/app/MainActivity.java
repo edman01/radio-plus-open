@@ -385,6 +385,7 @@ public final class MainActivity extends Activity implements
                 event.getScanCode(), event.getFlags(), event.getSource(), event.getDownTime(), event.getEventTime());
         if (!debugPreview
                 && event != null
+                && !RadioPlaybackService.shouldIgnoreRawMediaKeys()
                 && RadioPlaybackService.supportsMediaKey(event.getKeyCode())) {
             if (RadioMediaButtonReceiver.dispatch(this, event)) {
                 return true;
@@ -702,6 +703,10 @@ public final class MainActivity extends Activity implements
     }
 
     private void showSteeringKeySetup() {
+        if (RadioPlaybackService.shouldIgnoreRawMediaKeys()) {
+            showUnverifiedBackendFeature();
+            return;
+        }
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle(R.string.settings_steering)
                 .setMessage(getString(R.string.steering_automatic_hint) + "\n\n"
@@ -1033,10 +1038,12 @@ public final class MainActivity extends Activity implements
         seekLower.setText(tr("◀  Etsi alempi", "◀  Seek lower"));
         seekLower.setTextSize(16f);
         seekLower.setMinHeight(dp(48));
+        seekLower.setEnabled(RadioApiFactory.selectedSupportsStationSeek());
         Button seekHigher = new Button(this);
         seekHigher.setText(tr("Etsi ylempi  ▶", "Seek higher  ▶"));
         seekHigher.setTextSize(16f);
         seekHigher.setMinHeight(dp(48));
+        seekHigher.setEnabled(RadioApiFactory.selectedSupportsStationSeek());
         LinearLayout.LayoutParams seekButtonParams = new LinearLayout.LayoutParams(
                 0,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -1656,7 +1663,7 @@ public final class MainActivity extends Activity implements
                 "Viimeistellään asemalistaa…",
                 "Finalizing station list…"
         ));
-        radioClient.readPresetFrequencies(band, (resultBand, frequencies, vendorAvailable) -> {
+        RadioServiceClient.PresetResult completion = (resultBand, frequencies, vendorAvailable) -> {
             if (destroyed) {
                 return;
             }
@@ -1690,7 +1697,14 @@ public final class MainActivity extends Activity implements
                     added,
                     vendorAvailable
             );
-        });
+        };
+        if (debugPreview) {
+            // Preview has no tuner binding. Finish through the same callback
+            // without requesting hardware metadata or inventing discovered stations.
+            completion.onResult(band, new int[0], false);
+        } else {
+            radioClient.readPresetFrequencies(band, completion);
+        }
     }
 
     private void completeStoppedScan(int found, int added) {

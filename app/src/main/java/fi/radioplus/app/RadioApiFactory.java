@@ -28,6 +28,7 @@ final class RadioApiFactory {
     private static final ExecutorService INSPECTOR = Executors.newSingleThreadExecutor();
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static volatile Detection latest;
+    private static volatile NwdRadioApi resolvedNwd;
     // Shared by the UI and playback bindings, so a channel tap cannot initialize
     // the vendor audio path twice. Accessed only on INSPECTOR.
     private static NwdAudioRouting nwdAudio;
@@ -66,6 +67,8 @@ final class RadioApiFactory {
         Context application = context.getApplicationContext();
         INSPECTOR.execute(() -> {
             Detection detection = inspectInstalled(application);
+            if (latest == null || latest.profile != detection.profile
+                    || !latest.sha256.equals(detection.sha256)) resolvedNwd = null;
             latest = detection;
             MAIN.post(() -> callback.onDetected(detection));
         });
@@ -87,18 +90,21 @@ final class RadioApiFactory {
             }
             if (detection.profile != RadioBackendProfile.UNKNOWN) {
                 try {
-                    if (detection.profile == RadioBackendProfile.NWD_222 && nwdAudio == null) {
-                        nwdAudio = new NwdAudioRouting(application);
+                    boolean decoder = detection.profile == RadioBackendProfile.NWD_222;
+                    if (detection.profile.isNwd() && (nwdAudio == null
+                            || nwdAudio.usesDecoderLifecycle() != decoder)) {
+                        nwdAudio = new NwdAudioRouting(application, decoder);
                     }
-                    api = detection.profile == RadioBackendProfile.NWD_222
-                            ? nwdConnections.resolve(binder, nwdAudio)
+                    api = detection.profile.isNwd()
+                            ? nwdConnections.resolve(detection.profile, binder, nwdAudio)
                             : create(detection.profile, binder);
                 } catch (RemoteException | RuntimeException error) {
                     detection = new Detection(RadioBackendProfile.UNKNOWN, detection.stockPackage, detection.stockVersion,
-                            detection.sha256, "The stock radio Binder does not match its APK");
+                            detection.sha256, "The stock radio endpoint or tuner implementation is not supported");
                 }
             }
             latest = detection;
+            resolvedNwd = api instanceof NwdRadioApi ? (NwdRadioApi) api : null;
             IRadioServiceAPI resolved = api;
             Detection result = detection;
             MAIN.post(() -> callback.onResolved(resolved, result));
@@ -112,7 +118,7 @@ final class RadioApiFactory {
             throw new RemoteException("Unrecognized stock radio contract");
         }
         if (profile.isTs()) return new TsRadioApi(binder);
-        if (profile == RadioBackendProfile.NWD_222) {
+        if (profile.isNwd()) {
             throw new RemoteException("NWD requires its verified audio-routing dependency");
         }
         if (binder == null || !DESCRIPTOR.equals(binder.getInterfaceDescriptor())) {
@@ -129,7 +135,11 @@ final class RadioApiFactory {
                 "com.nwd.radio.service"}) {
             Detection candidate = inspectPackage(context, stockPackage);
             if (candidate == null) continue;
-            if (candidate.profile == RadioBackendProfile.NWD_222) {
+            if (candidate.profile != RadioBackendProfile.UNKNOWN && !candidate.profile.isEnabledForDeviceControl()) {
+                candidate = unknown(stockPackage, candidate.stockVersion,
+                        "This NWD tuner profile is not enabled in this build");
+            }
+            if (candidate.profile.isNwd()) {
                 // Both packages contain commands used by this adapter. A UI APK
                 // or a service descriptor alone cannot establish this contract.
                 Detection kernel = inspectPackage(context, "com.nwd.kernel");
@@ -232,23 +242,39 @@ final class RadioApiFactory {
         return api != null && !(api instanceof TsRadioApi) && !(api instanceof NwdRadioApi);
     }
 
-    static boolean supportsScanning(IRadioServiceAPI api) { return usesHcnFramework(api) || api instanceof NwdRadioApi; }
+    static boolean supportsScanning(IRadioServiceAPI api) {
+        return usesHcnFramework(api) || (api instanceof NwdRadioApi && ((NwdRadioApi) api).supportsScanning());
+    }
     static boolean supportsLocalMode(IRadioServiceAPI api) { return api != null && !(api instanceof TsRadioApi); }
 
     static boolean selectedSupportsScanning() {
         Detection detection = latest;
+        NwdRadioApi api = resolvedNwd;
         return detection != null && (detection.profile == RadioBackendProfile.HCN_CURRENT_31
                 || detection.profile == RadioBackendProfile.HCN_LEGACY_25
-                || detection.profile == RadioBackendProfile.NWD_222);
+                || (detection.profile.isNwd() && api != null && api.asBinder().isBinderAlive() && api.supportsScanning()));
     }
     static boolean selectedSupportsLocalMode() {
         Detection detection = latest;
         return selectedSupportsScanning()
-                || (detection != null && detection.profile == RadioBackendProfile.NWD_222);
+                || (detection != null && detection.profile.isNwd() && liveNwd());
+    }
+    private static boolean liveNwd() {
+        NwdRadioApi api = resolvedNwd;
+        return api != null && api.asBinder().isBinderAlive();
+    }
+    static boolean selectedUsesNwd() {
+        Detection detection = latest;
+        return detection != null && "com.nwd.radio.service".equals(detection.stockPackage);
     }
     static boolean selectedSupportsTuning() {
         Detection detection = latest;
         return detection != null && detection.profile != RadioBackendProfile.UNKNOWN;
+    }
+    static boolean selectedSupportsStationSeek() {
+        Detection detection = latest;
+        return detection != null && detection.profile != RadioBackendProfile.UNKNOWN
+                && detection.profile != RadioBackendProfile.NWD_230;
     }
 
     static String unsupportedMessage(Context context) {

@@ -274,37 +274,97 @@ public final class AboutAppUiTest {
         });
     }
 
+    @Test public void mcuTouchProfileHidesAutomaticScanButKeepsManualAndLocalControls() throws Exception {
+        assumeTrue("Window inspection requires API 29+", android.os.Build.VERSION.SDK_INT >= 29);
+        K4811InteropTest.Endpoint endpoint = new K4811InteropTest.Endpoint();
+        withNwdTuner(RadioBackendProfile.NWD_230, endpoint.api(), () -> {
+            instrumentation.runOnMainSync(() -> {
+                assertFalse(RadioApiFactory.selectedSupportsScanning());
+                assertTrue(RadioApiFactory.selectedSupportsLocalMode());
+                assertFalse(activity.findViewById(R.id.scan_button).isEnabled());
+                assertTrue(activity.findViewById(R.id.local_button).isEnabled());
+                assertTrue(activity.findViewById(R.id.auto_scan_button).isEnabled());
+                assertTrue(activity.findViewById(R.id.auto_scan_button).performClick());
+            });
+            instrumentation.waitForIdleSync();
+            instrumentation.runOnMainSync(() -> {
+                int listId = activity.getResources().getIdentifier("select_dialog_listview", "id", "android");
+                ListView choices = null;
+                for (View root : WindowInspector.getGlobalWindowViews()) {
+                    ListView candidate = root.findViewById(listId);
+                    if (candidate != null && candidate.isShown()) choices = candidate;
+                }
+                assertNotNull("MCU manual tuning must remain reachable", choices);
+                assertEquals("Unverified automatic scan must not be offered", 1, choices.getAdapter().getCount());
+                assertEquals(activity.getString(R.string.tuning_manual), choices.getAdapter().getItem(0));
+                choices.performItemClick(choices.getChildAt(0), 0, choices.getAdapter().getItemId(0));
+            });
+            instrumentation.waitForIdleSync();
+            instrumentation.runOnMainSync(() -> {
+                assertTrue(((RadioButton) field(MainActivity.class, "manualFmChoice", activity)).isEnabled());
+                assertTrue(((RadioButton) field(MainActivity.class, "manualAmChoice", activity)).isEnabled());
+                assertTrue(((RadioButton) field(MainActivity.class, "manualLocalChoice", activity)).isEnabled());
+                assertTrue(((RadioButton) field(MainActivity.class, "manualDxChoice", activity)).isEnabled());
+                AlertDialog dialog = (AlertDialog) field(MainActivity.class, "manualTuningDialog", activity);
+                TextView lower = findText(dialog.getWindow().getDecorView(), "◀  Seek lower");
+                TextView higher = findText(dialog.getWindow().getDecorView(), "Seek higher  ▶");
+                assertNotNull(lower); assertNotNull(higher);
+                assertFalse(lower.isEnabled()); assertFalse(higher.isEnabled());
+            });
+            for (int command : new int[]{1, 3, 4, 5, 6, 7, 8}) {
+                assertEquals("Opening controls must not mutate the MCU tuner", 0L, endpoint.count(command));
+            }
+            assertTrue("Opening controls must not change the audio source", endpoint.audio.sent.isEmpty());
+        });
+    }
+
     private interface NwdUiAction { void run(NwdRadioInteropTest.Endpoint endpoint) throws Exception; }
+    private interface NwdApiUiAction { void run() throws Exception; }
 
     private void withNwdTuner(NwdUiAction action) throws Exception {
         assumeTrue("Synthetic UI fixture is emulator-only", "ranchu".equals(android.os.Build.HARDWARE)
                 || "goldfish".equals(android.os.Build.HARDWARE));
         NwdRadioInteropTest.Endpoint endpoint = new NwdRadioInteropTest.Endpoint();
         endpoint.audio.source = 4; endpoint.enforceBandCooldown = true;
+        withNwdTuner(RadioBackendProfile.NWD_222, endpoint.api(), () -> action.run(endpoint));
+    }
+
+    private void withNwdTuner(RadioBackendProfile profile, NwdRadioApi api,
+            NwdApiUiAction action) throws Exception {
+        assumeTrue("Synthetic UI fixture is emulator-only", "ranchu".equals(android.os.Build.HARDWARE)
+                || "goldfish".equals(android.os.Build.HARDWARE));
         Object client = field(MainActivity.class, "radioClient", activity);
         Field service = RadioServiceClient.class.getDeclaredField("service"); service.setAccessible(true);
         Field preview = MainActivity.class.getDeclaredField("debugPreview"); preview.setAccessible(true);
         Field latest = RadioApiFactory.class.getDeclaredField("latest"); latest.setAccessible(true);
+        Field resolved = RadioApiFactory.class.getDeclaredField("resolvedNwd"); resolved.setAccessible(true);
         Object oldService = service.get(client), oldDetection = latest.get(null);
+        Object oldResolved = resolved.get(null);
+        boolean oldPreview = preview.getBoolean(activity);
         try {
-            service.set(client, endpoint.api()); preview.setBoolean(activity, false);
-            latest.set(null, new RadioApiFactory.Detection(RadioBackendProfile.NWD_222, "", "", ""));
+            service.set(client, api); preview.setBoolean(activity, false);
+            latest.set(null, new RadioApiFactory.Detection(profile, "", "", ""));
+            resolved.set(null, api);
             instrumentation.runOnMainSync(() -> {
                 activity.onConnectionChanged(true, "Synthetic NWD test endpoint");
                 activity.onStateChanged(new RadioServiceClient.RadioState(0, 98100, "", "", "",
                         false, false, false, false, false, false, false));
             });
-            action.run(endpoint);
+            action.run();
         } finally {
-            instrumentation.runOnMainSync(() -> {
-                AlertDialog manual = (AlertDialog) field(MainActivity.class, "manualTuningDialog", activity);
-                if (manual != null) manual.dismiss();
-            });
-            service.set(client, oldService); preview.setBoolean(activity, true);
-            context.stopService(new Intent(context, RadioPlaybackService.class));
-            await(() -> field(RadioPlaybackService.class, "runningInstance", null) == null,
-                    "Release UI test playback service");
-            latest.set(null, oldDetection);
+            try {
+                instrumentation.runOnMainSync(() -> {
+                    AlertDialog manual = (AlertDialog) field(MainActivity.class, "manualTuningDialog", activity);
+                    if (manual != null) manual.dismiss();
+                });
+                context.stopService(new Intent(context, RadioPlaybackService.class));
+                await(() -> field(RadioPlaybackService.class, "runningInstance", null) == null,
+                        "Release UI test playback service");
+            } finally {
+                service.set(client, oldService); preview.setBoolean(activity, oldPreview);
+                latest.set(null, oldDetection);
+                resolved.set(null, oldResolved);
+            }
         }
     }
 

@@ -13,7 +13,7 @@ See [device details](../README.md#compatibility) and [known issues](TESTING.md#k
 ## Experimental support
 
 **Experimental support — not yet tested on a real head unit.**
-Available in [Experimental APK builds](https://github.com/edman01/radio-plus-open/releases/tag/v0.16.1-experimental2),
+Available in [Experimental APK builds](https://github.com/edman01/radio-plus-open/releases/tag/v0.16.1-experimental3),
 not the community beta 4 download. Read the [installation notes](EXPERIMENTAL.md#download)
 before trying it.
 
@@ -23,6 +23,7 @@ before trying it.
 | Junsun V1 Pro / AC8259 | UI02 V115 `20240307` | `com.ts.MainUI` |
 | Junsun 825X Pro (reported as 8257p) | UI02 V27 `20211201` | `com.ts.MainUI` |
 | Junsun / 8667Q | UI02 V23 `20221121` | `com.ts.MainUI` |
+| K4811, MCU tuner type 0 only | `K4811_NWD_S212851.20260507.044024`, RadioService 2.3.0 + KernelService 2.5.0 | `com.nwd.radio.service` + `com.nwd.kernel` |
 
 Support currently covers the inspected stock radio apps from these firmware versions.
 Other versions may not be recognized. A matching model or package name alone
@@ -34,22 +35,29 @@ audio playback, pause/resume and physical steering buttons still need device tes
 Use Experimental 2 (`0.16.1-dev29`) or newer: Experimental 1 had an incorrect
 TS tuning parameter. See the [changes and remaining limitations](EXPERIMENTAL.md).
 
+The K4811 profile in Experimental 3 is a touch-control test, **not full V7-equivalent
+support**. Radio+ wheel integration is unavailable; native buttons may still
+operate the stock tuner. K4811 MCU automatic scan, station seek and preset preview
+are unavailable. AM needs a valid device grid. K4811 starts from Android audio or
+the current radio source, not Bluetooth/other dedicated hardware sources.
+Read the [complete limitations](EXPERIMENTAL.md#k4811-limitations) before installing.
+
 ## Under investigation
 
 - Xtrons IAP12CTS / IA series
 - ATOTO A7 / HN7
 - Junsun V3 Pro / MT8768
-- NWD / K2401 Allwinner: RadioService 2.2.2 + KernelService 2.2.6 sample
-- Other NWD service versions, K4811, and the reported Hizpo / `com.nwd.radio` unit
+- NWD / K2401 Allwinner: RadioService 2.2.2 + KernelService 2.2.6
+- Other NWD service versions, K4811 tuner types 1/2/3, and the reported Hizpo / `com.nwd.radio` unit
 
-Support has not been added for these models. Their original radio APK or matching
-firmware is needed to continue. Do not install another model's firmware to try Radio+.
+Support has not been enabled for these models or variants. Original radio APKs,
+matching firmware or further device evidence may be needed to continue.
+Do not install another model's firmware to try Radio+.
 
-The NWD K2401 adapter is in development, not included in an APK release.
-The inspected firmware directs wheel keys to the stock radio's station search;
-Radio+ cannot yet substitute its own next/previous list navigation on that route.
-Other functions have synthetic protocol tests but have not been tested on hardware.
-See [NWD development status](EXPERIMENTAL.md#nwd-development-status--not-an-apk-release).
+The inspected NWD firmware directs wheel keys to the stock radio's station search;
+Radio+ does not substitute its own next/previous list navigation on that route.
+The enabled functions have synthetic protocol tests, not physical hardware verification.
+See [experimental support](EXPERIMENTAL.md).
 The visible `com.nwd.radio` package name alone is insufficient to identify a
 compatible service pair, firmware or tuner implementation.
 

@@ -5,6 +5,24 @@ import java.util.Locale;
 import static org.junit.Assert.*;
 
 public final class RadioBackendProfileTest {
+    @Test public void k4811RequiresExactMatched230And250Pair() {
+        assertEquals(RadioBackendProfile.NWD_230,
+                RadioBackendProfile.forApkSha256(RadioBackendProfile.NWD_230_RADIO_SHA256));
+        assertTrue(RadioBackendProfile.NWD_230.isNwd());
+        assertTrue(RadioBackendProfile.NWD_230.isEnabledForDeviceControl());
+        assertFalse(RadioBackendProfile.NWD_222.isEnabledForDeviceControl());
+        assertFalse(RadioBackendProfile.UNKNOWN.isEnabledForDeviceControl());
+        assertTrue(RadioBackendProfile.NWD_222.isNwd());
+        assertFalse(RadioBackendProfile.UNKNOWN.isNwd());
+        assertEquals("com.nwd.radio.service", RadioBackendProfile.NWD_230.stockPackage());
+        assertTrue(RadioBackendProfile.verifiedNwdPair(RadioBackendProfile.NWD_230_RADIO_SHA256,
+                RadioBackendProfile.NWD_230_KERNEL_SHA256.toUpperCase(Locale.ROOT)));
+        assertFalse(RadioBackendProfile.verifiedNwdPair(RadioBackendProfile.NWD_230_RADIO_SHA256,
+                RadioBackendProfile.NWD_KERNEL_SHA256));
+        assertFalse(RadioBackendProfile.verifiedNwdPair(RadioBackendProfile.NWD_RADIO_SHA256,
+                RadioBackendProfile.NWD_230_KERNEL_SHA256));
+        assertFalse(RadioBackendProfile.verifiedNwdPair("K4811", RadioBackendProfile.NWD_230_KERNEL_SHA256));
+    }
     @Test public void nwdRequiresBothExactServiceFingerprints() {
         assertEquals(RadioBackendProfile.NWD_222,
                 RadioBackendProfile.forApkSha256(RadioBackendProfile.NWD_RADIO_SHA256));

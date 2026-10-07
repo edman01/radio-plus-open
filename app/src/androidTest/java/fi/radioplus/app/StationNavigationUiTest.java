@@ -114,8 +114,10 @@ public final class StationNavigationUiTest {
         assertSelectedList(true);
         // Start the actual preview scan lifecycle, then deliver its completion
         // immediately instead of waiting for the 15-second preview timer.
-        // The real asynchronous preset-result callback still handles completion.
+        // The shared scan-completion callback still handles completion.
         instrumentation.runOnMainSync(() -> {
+            assertFalse("Preview must not need a tuner binding",
+                    ((RadioServiceClient) field(MainActivity.class, "radioClient", activity)).isConnected());
             invoke(activity, "startAutoScan", new Class<?>[]{});
             invoke(activity, "finishAutoScan", new Class<?>[]{int.class}, 0);
         });
@@ -126,6 +128,12 @@ public final class StationNavigationUiTest {
         }
         instrumentation.waitForIdleSync();
         assertSelectedList(false);
+        instrumentation.runOnMainSync(() -> {
+            assertEquals("Preview completion must clear the finalizing state", false,
+                    field(MainActivity.class, "autoScanFinalizing", activity));
+            assertFalse("Preview completion must not create a tuner binding",
+                    ((RadioServiceClient) field(MainActivity.class, "radioClient", activity)).isConnected());
+        });
         recreateActivity();
         assertSelectedList(false);
         click(R.id.seek_up_button);

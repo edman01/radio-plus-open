@@ -6,7 +6,7 @@ compatibility with those devices has not been verified.
 
 **[Download community beta APK](https://github.com/edman01/radio-plus-open/releases/tag/v0.16.1-community-beta4)**
 
-[Experimental APK builds — 0.16.1-dev29](https://github.com/edman01/radio-plus-open/releases/tag/v0.16.1-experimental2)
+[Experimental APK builds — 0.16.1-dev31](https://github.com/edman01/radio-plus-open/releases/tag/v0.16.1-experimental3)
 · [Supported models](docs/COMPATIBILITY.md#experimental-support).
 *Experimental radio support has not been tested on real head units.*
 

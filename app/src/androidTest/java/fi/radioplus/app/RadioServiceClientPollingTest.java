@@ -6,6 +6,7 @@ import android.os.Binder;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Parcel;
+import android.os.RemoteException;
 import androidx.test.platform.app.InstrumentationRegistry;
 import com.hcn.autoradio.IRadioServiceAPI;
 import java.lang.reflect.Field;
@@ -92,6 +93,31 @@ public final class RadioServiceClientPollingTest {
 
         void close() { instrumentation.runOnMainSync(client::close); }
         void idle() { instrumentation.waitForIdleSync(); }
+    }
+
+    private static final class BlockingMcuEndpoint extends Binder {
+        final K4811InteropTest.Endpoint delegate = new K4811InteropTest.Endpoint();
+        final CountDownLatch entered = new CountDownLatch(1), release = new CountDownLatch(1);
+        final AtomicInteger blockedReads = new AtomicInteger();
+        final int blockedTransaction;
+
+        BlockingMcuEndpoint(int blockedTransaction) {
+            this.blockedTransaction = blockedTransaction;
+            attachInterface(null, NwdRadioApi.DESCRIPTOR);
+        }
+
+        NwdRadioApi api() throws RemoteException {
+            return new NwdRadioApi(RadioBackendProfile.NWD_230, this, delegate.audio.routing);
+        }
+
+        @Override protected boolean onTransact(int code, Parcel data, Parcel reply, int flags)
+                throws RemoteException {
+            if (code == blockedTransaction && blockedReads.incrementAndGet() == 1) {
+                entered.countDown();
+                Endpoint.await(release);
+            }
+            return delegate.transact(code, data, reply, flags);
+        }
     }
 
     private static NwdAudioRouting audio() {
@@ -230,6 +256,102 @@ public final class RadioServiceClientPollingTest {
             setService(f.client, IRadioServiceAPI.Stub.asInterface(hcn));
             assertTrue(f.client.canUseObservedScanFallback());
         } finally { f.close(); }
+    }
+
+    @Test public void queuedMutationsAreDiscardedAfterBindingOrGenerationChanges() throws Exception {
+        for (boolean sameEndpoint : new boolean[]{false, true}) {
+            Fixture f = new Fixture(); BlockingMcuEndpoint original = new BlockingMcuEndpoint(-1);
+            NwdRadioApi originalApi = original.api(), replacementApi = new K4811InteropTest.Endpoint().api();
+            setService(f.client, originalApi);
+            ExecutorService executor = actionExecutor(f.client);
+            CountDownLatch entered = new CountDownLatch(1), release = new CountDownLatch(1);
+            AtomicInteger mutations = new AtomicInteger();
+            Future<?> blocker = executor.submit(() -> { entered.countDown(); Endpoint.await(release); });
+            try {
+                assertTrue(entered.await(3, TimeUnit.SECONDS));
+                f.client.perform(remote -> mutations.incrementAndGet());
+                f.client.tuneTo(0, 101700);
+                f.instrumentation.runOnMainSync(() -> changeBinding(f, sameEndpoint, replacementApi));
+                release.countDown(); blocker.get(3, TimeUnit.SECONDS); awaitActions(executor); f.idle();
+                assertEquals("The original queued action must not run", 0, mutations.get());
+                assertEquals("Canceled tuning must not even read the old tuner", 1, original.delegate.calls.size());
+                assertEquals(Integer.valueOf(29), original.delegate.calls.get(0));
+                assertTrue(original.delegate.audio.sent.isEmpty());
+                assertTrue(f.states.isEmpty()); assertTrue(f.errors.isEmpty());
+                assertTrue(f.client.isConnected());
+                f.client.perform(remote -> mutations.incrementAndGet());
+                awaitActions(executor); f.idle();
+                assertEquals("New-generation commands remain usable", 1, mutations.get());
+            } finally { release.countDown(); f.close(); }
+        }
+    }
+
+    @Test public void obsoleteActionCompletionAndExceptionsCannotPollOrDisconnectSameEndpoint() throws Exception {
+        for (int outcome : new int[]{0, 1, 2}) {
+            Fixture f = new Fixture(); Endpoint endpoint = new Endpoint();
+            setService(f.client, new NwdRadioApi(endpoint, audio()));
+            ExecutorService executor = actionExecutor(f.client);
+            CountDownLatch entered = new CountDownLatch(1), release = new CountDownLatch(1);
+            try {
+                f.client.perform(remote -> {
+                    entered.countDown(); Endpoint.await(release);
+                    if (outcome == 1) throw new RemoteException("Synthetic old-connection failure");
+                    if (outcome == 2) throw new NwdRadioApi.CommandRejectedException("Synthetic old rejection");
+                });
+                assertTrue(entered.await(3, TimeUnit.SECONDS));
+                f.instrumentation.runOnMainSync(() -> invoke(f.client, "stopPolling"));
+                release.countDown(); awaitActions(executor); f.idle();
+                assertTrue("An obsolete failure must not invalidate the cached shared API", f.client.isConnected());
+                assertEquals("Old completion must not poll the new generation", 0, endpoint.frequencyReads.get());
+                assertTrue(f.states.isEmpty()); assertTrue(f.errors.isEmpty());
+            } finally { release.countDown(); f.close(); }
+        }
+    }
+
+    @Test public void queuedActionErrorsAndRecoveryAreDiscardedAfterSameEndpointGenerationChanges() throws Exception {
+        for (boolean rejection : new boolean[]{false, true}) {
+            Fixture f = new Fixture(); Endpoint endpoint = new Endpoint();
+            setService(f.client, new NwdRadioApi(endpoint, audio()));
+            ExecutorService executor = actionExecutor(f.client);
+            try {
+                f.instrumentation.runOnMainSync(() -> {
+                    f.client.perform(remote -> {
+                        if (rejection) throw new NwdRadioApi.CommandRejectedException("Synthetic rejection");
+                        throw new RemoteException("Synthetic remote failure");
+                    });
+                    // Hold main-thread delivery until the old worker has queued
+                    // its error/recovery, then restart with the same API object.
+                    awaitActions(executor);
+                    invoke(f.client, "stopPolling");
+                });
+                f.idle();
+                assertTrue("Queued recovery must not disconnect a new generation", f.client.isConnected());
+                assertTrue(f.errors.isEmpty()); assertTrue(f.states.isEmpty());
+            } finally { f.close(); }
+        }
+    }
+
+    @Test public void inFlightMcuTuneCancelsBeforeAudioOrTuningAfterSameEndpointGenerationChanges() throws Exception {
+        for (int blockedTransaction : new int[]{22, 2}) {
+            Fixture f = new Fixture(); BlockingMcuEndpoint endpoint = new BlockingMcuEndpoint(blockedTransaction);
+            // Block either readonly target validation before audio is armed, or
+            // the later MCU-readiness frequency read inside tuneToBand.
+            if (blockedTransaction == 22) endpoint.delegate.audio.source = 0;
+            setService(f.client, endpoint.api());
+            ExecutorService executor = actionExecutor(f.client);
+            try {
+                f.client.tuneTo(0, 101700);
+                assertTrue(endpoint.entered.await(3, TimeUnit.SECONDS));
+                f.instrumentation.runOnMainSync(() -> invoke(f.client, "stopPolling"));
+                endpoint.release.countDown(); awaitActions(executor); f.idle();
+                assertEquals("Canceled tuning must not send a one-way frequency command", 0L,
+                        endpoint.delegate.count(1));
+                assertEquals("Canceled tuning must not switch radio banks", 0L, endpoint.delegate.count(5));
+                assertTrue("Canceled validation must not arm the audio source", endpoint.delegate.audio.sent.isEmpty());
+                assertTrue(f.client.isConnected());
+                assertTrue(f.errors.isEmpty()); assertTrue(f.states.isEmpty());
+            } finally { endpoint.release.countDown(); f.close(); }
+        }
     }
 
     @Test public void queuedPresetRequestDoesNotSwitchToANewerBindingOrGeneration() throws Exception {

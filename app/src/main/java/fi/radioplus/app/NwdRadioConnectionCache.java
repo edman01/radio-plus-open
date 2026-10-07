@@ -7,10 +7,16 @@ import android.os.RemoteException;
 final class NwdRadioConnectionCache {
     private NwdRadioApi api;
     private NwdAudioRouting audio;
+    private RadioBackendProfile profile;
 
     synchronized NwdRadioApi resolve(IBinder binder, NwdAudioRouting routing)
             throws RemoteException {
-        if (api != null && api.asBinder() == binder && audio == routing
+        return resolve(RadioBackendProfile.NWD_222, binder, routing);
+    }
+
+    synchronized NwdRadioApi resolve(RadioBackendProfile selected, IBinder binder, NwdAudioRouting routing)
+            throws RemoteException {
+        if (api != null && profile == selected && api.asBinder() == binder && audio == routing
                 && binder.isBinderAlive()) {
             return api;
         }
@@ -18,15 +24,17 @@ final class NwdRadioConnectionCache {
         // it fails, neither it nor the previous connection remains reusable.
         api = null;
         audio = null;
+        profile = null;
         if (binder == null || !binder.isBinderAlive()) {
             throw new RemoteException("NWD radio endpoint is not alive");
         }
-        NwdRadioApi candidate = new NwdRadioApi(binder, routing);
+        NwdRadioApi candidate = new NwdRadioApi(selected, binder, routing);
         if (!binder.isBinderAlive()) {
             throw new RemoteException("NWD radio endpoint disconnected during validation");
         }
         api = candidate;
         audio = routing;
+        profile = selected;
         return candidate;
     }
 }

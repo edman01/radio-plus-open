@@ -142,11 +142,11 @@ public final class MediaControlsTest {
         assertEquals("Next/previous never call the hardware search API", 0, tuner.seekCalls);
     }
 
-    @Test public void nwdMediaKeysTuneOneStationWithoutPcmOrRepeatedInitialization() throws Exception {
+    @Test public void nwdExplicitTransportTunesOneStationWithoutPcmOrRepeatedInitialization() throws Exception {
         NwdRadioInteropTest.Endpoint endpoint = new NwdRadioInteropTest.Endpoint();
         NwdRadioApi api = endpoint.api(); endpoint.audio.source = 4;
         instrumentation.runOnMainSync(() -> setField(service, "radio", api));
-        sendControllerPress(KeyEvent.KEYCODE_MEDIA_NEXT);
+        controls().skipToNext();
         await(() -> endpoint.band == BRAVO.band && endpoint.freq == BRAVO.frequency / 10,
                 "NWD next must select the next favorite, not seek");
         drainServiceCommands(); waitBeyondMediaKeyFallback();
@@ -156,11 +156,61 @@ public final class MediaControlsTest {
         assertEquals("not-requested", field(RadioPlaybackService.class, "routingPulseStatus", service));
         assertEquals(false, field(RadioVolumeGuard.class, "active",
                 field(RadioPlaybackService.class, "radioVolumeGuard", service)));
-        sendControllerPress(KeyEvent.KEYCODE_MEDIA_PREVIOUS);
+        controls().skipToPrevious();
         await(() -> endpoint.band == ALPHA.band && endpoint.freq == ALPHA.frequency / 10,
                 "NWD previous must return to the previous favorite");
         drainServiceCommands();
         assertEquals(2L, endpoint.calls.stream().filter(c -> c == 1).count());
+    }
+
+    @Test public void nwdRawStopAndSkipNeverFallThroughToTransportCallbacks() throws Exception {
+        NwdRadioInteropTest.Endpoint endpoint = new NwdRadioInteropTest.Endpoint();
+        NwdRadioApi api = endpoint.api(); endpoint.audio.source = 4;
+        instrumentation.runOnMainSync(() -> setField(service, "radio", api));
+        controls().play();
+        drainServiceCommands();
+        endpoint.calls.clear();
+        endpoint.audio.sent.clear();
+
+        // KernelService sends raw STOP DOWN+UP when it selects source 4.
+        // MediaSession's default key handler must not turn that into onStop().
+        sendControllerPress(KeyEvent.KEYCODE_MEDIA_STOP);
+        sendControllerPress(KeyEvent.KEYCODE_MEDIA_NEXT);
+        sendControllerPress(KeyEvent.KEYCODE_MEDIA_PREVIOUS);
+        sendControllerPress(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);
+        waitBeyondMediaKeyFallback();
+        drainServiceCommands();
+
+        assertEquals(true, field(RadioPlaybackService.class, "playbackRequested", service));
+        assertFalse("Raw skip must not race the OEM handler", endpoint.calls.contains(1));
+        assertFalse(endpoint.calls.contains(4));
+        assertTrue("Raw vendor STOP must not exit the radio source", endpoint.audio.sent.isEmpty());
+    }
+
+    @Test public void nwdUnavailableAmTargetDoesNotTakeAudioOrTriggerRebind() throws Exception {
+        NwdRadioInteropTest.Endpoint endpoint = new NwdRadioInteropTest.Endpoint();
+        endpoint.gridCount = 1; // This unit exposes an FM grid only.
+        endpoint.audio.source = 7; // Another source is playing before the request.
+        NwdRadioApi api = endpoint.api();
+        instrumentation.runOnMainSync(() -> setField(service, "radio", api));
+        navigation.setFavoritesSelected(false); // Next from ALPHA is the AM station.
+        Object generation = field(RadioPlaybackService.class, "backendGeneration", service);
+        for (boolean fromScreen : new boolean[]{false, true}) {
+            endpoint.calls.clear();
+            if (fromScreen) startStationIntent(RadioPlaybackService.ACTION_TUNE_UI_STATION, CHARLIE);
+            else controls().skipToNext();
+            await(() -> endpoint.calls.contains(22), "NWD target must be checked before source takeover");
+            drainServiceCommands();
+            instrumentation.waitForIdleSync();
+            assertEquals(false, field(RadioPlaybackService.class, "playbackRequested", service));
+            assertNull(field(RadioPlaybackService.class, "pendingWidgetStation", service));
+            assertEquals(generation, field(RadioPlaybackService.class, "backendGeneration", service));
+            assertSame(api, field(RadioPlaybackService.class, "radio", service));
+            assertTrue("Unsupported AM must leave the current audio source untouched", endpoint.audio.sent.isEmpty());
+            assertFalse("Unsupported AM must not tune", endpoint.calls.contains(1));
+            assertFalse("Unsupported AM must not cycle the band", endpoint.calls.contains(5));
+            assertFalse(endpoint.calls.contains(4));
+        }
     }
 
     @Test public void nwdPauseUsesSourceExitWithoutHcnFocusOrMutingOtherAudio() throws Exception {

@@ -8,6 +8,7 @@ enum RadioBackendProfile {
     TS_825X_V27("TS / 825X UI02 V27 (experimental)", true),
     TS_8667Q_V23("TS / 8667Q UI02 V23 (experimental)", true),
     NWD_222("NWD / RadioService 2.2.2 (experimental)", true),
+    NWD_230("K4811 / MCU RadioService 2.3.0 (experimental)", true),
     UNKNOWN("Unrecognized stock radio", false);
 
     // Inspected APK fingerprints only; no vendor binaries or implementations are bundled.
@@ -25,6 +26,10 @@ enum RadioBackendProfile {
             "0eb6df5e6b090c45895369bdee7112f2ec83042f8d5e37fc5e701ee24e0e7842";
     static final String NWD_KERNEL_SHA256 =
             "e2de2b8da9bfe96a308e38a86fac75d978b7496a795881b8a921fa930b4d8b47";
+    static final String NWD_230_RADIO_SHA256 =
+            "0bd82481535166987f37d1d876d2d697393afcef3b46f979ec1a60209ac1fcf8";
+    static final String NWD_230_KERNEL_SHA256 =
+            "429685bf6410ae04f6410a62a5c03be2fb57466a0d5d9615f522d1000da6280b";
 
     final String label;
     final boolean experimental;
@@ -41,18 +46,24 @@ enum RadioBackendProfile {
         if (TS_825X_APK_SHA256.equalsIgnoreCase(hash)) return TS_825X_V27;
         if (TS_8667Q_APK_SHA256.equalsIgnoreCase(hash)) return TS_8667Q_V23;
         if (NWD_RADIO_SHA256.equalsIgnoreCase(hash)) return NWD_222;
+        if (NWD_230_RADIO_SHA256.equalsIgnoreCase(hash)) return NWD_230;
         return UNKNOWN;
     }
 
     String stockPackage() {
-        if (this == NWD_222) return "com.nwd.radio.service";
+        if (isNwd()) return "com.nwd.radio.service";
         return isTs() ? "com.ts.MainUI" : RadioBackendContract.PACKAGE_NAME;
     }
 
     static boolean verifiedNwdPair(String radioHash, String kernelHash) {
-        return NWD_RADIO_SHA256.equalsIgnoreCase(radioHash)
-                && NWD_KERNEL_SHA256.equalsIgnoreCase(kernelHash);
+        return (NWD_RADIO_SHA256.equalsIgnoreCase(radioHash)
+                && NWD_KERNEL_SHA256.equalsIgnoreCase(kernelHash))
+                || (NWD_230_RADIO_SHA256.equalsIgnoreCase(radioHash)
+                && NWD_230_KERNEL_SHA256.equalsIgnoreCase(kernelHash));
     }
+
+    boolean isNwd() { return this == NWD_222 || this == NWD_230; }
+    boolean isEnabledForDeviceControl() { return this != UNKNOWN && this != NWD_222; }
 
     boolean isTs() {
         return this == TS_AC8259_V115 || this == TS_825X_V27 || this == TS_8667Q_V23;

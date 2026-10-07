@@ -240,7 +240,7 @@ final class RadioServiceClient {
         boundDetection = detection;
         Intent intent = RadioBackendContract.serviceIntent(detection.profile);
         try {
-            if (detection.profile == RadioBackendProfile.NWD_222) context.startService(intent);
+            if (detection.profile.isNwd()) context.startService(intent);
             bound = context.bindService(intent, connection, Context.BIND_AUTO_CREATE);
             if (!bound) {
                 notifyConnection(false, tr(
@@ -336,10 +336,14 @@ final class RadioServiceClient {
     }
 
     void perform(RemoteAction action) {
+        long generation = pollingGeneration;
+        perform(service, generation, action);
+    }
+
+    private void perform(IRadioServiceAPI current, long generation, RemoteAction action) {
         if (closed) {
             return;
         }
-        IRadioServiceAPI current = service;
         if (current == null) {
             notifyConnection(false, tr(
                     "Radiolaitteisto ei ole yhdistetty",
@@ -347,20 +351,29 @@ final class RadioServiceClient {
             ));
             return;
         }
+        if (!isCurrentPoll(current, generation)) return;
         try {
             actionExecutor.submit(() -> {
-                if (closed || service != current) {
-                    return;
-                }
+                if (!isCurrentPoll(current, generation)) return;
                 try {
                     action.run(current);
-                    pollNow();
+                    if (isCurrentPoll(current, generation)) pollNow(generation);
+                } catch (NwdRadioApi.CommandRejectedException rejected) {
+                    if (!isCurrentPoll(current, generation)) return;
+                    Log.w(TAG, "NWD command unavailable; connection and source left unchanged", rejected);
+                    notifyError(current, generation,
+                            tr("Radio-ohjaus epäonnistui", "Radio control failed"));
+                    pollNow(generation);
                 } catch (RemoteException | RuntimeException | LinkageError error) {
+                    if (!isCurrentPoll(current, generation)) return;
                     Log.e(TAG, "Radio-ohjaus epäonnistui", error);
-                    handleConnectionFailure(current, tr(
+                    String message = tr(
                             "Radio-ohjaus epäonnistui",
                             "Radio control failed"
-                    ));
+                    );
+                    mainHandler.post(() -> {
+                        if (isCurrentPoll(current, generation)) handleConnectionFailure(current, message);
+                    });
                 }
             });
         } catch (RejectedExecutionException error) {
@@ -369,6 +382,8 @@ final class RadioServiceClient {
     }
 
     void tuneTo(int targetBand, int frequency) {
+        long generation = pollingGeneration;
+        IRadioServiceAPI current = service;
         if (!FrequencyRules.isValid(targetBand, frequency)) {
             notifyError(tr(
                     "Viritystaajuus ei ole kelvollinen",
@@ -376,41 +391,59 @@ final class RadioServiceClient {
             ));
             return;
         }
-        perform(remote -> {
+        perform(current, generation, remote -> {
+            if (!isCurrentPoll(remote, generation)) return;
             if (remote instanceof NwdRadioApi) {
-                remote.requestPlayAudio();
+                try { ((NwdRadioApi) remote).validateTuningTarget(targetBand, frequency); }
+                catch (RemoteException error) {
+                    notifyError(remote, generation,
+                            tr("Radio-ohjaus epäonnistui", "Radio control failed"));
+                    return;
+                }
+                if (!isCurrentPoll(remote, generation)) return;
+                if (!remote.requestPlayAudio()) {
+                    notifyError(remote, generation,
+                            tr("Radio-ohjaus epäonnistui", "Radio control failed"));
+                    return;
+                }
+                if (!isCurrentPoll(remote, generation)) return;
                 if (!((NwdRadioApi) remote).tuneToBand(targetBand, frequency,
-                        () -> !closed && service == remote)) {
-                    notifyError(tr("Radiokaistaa ei voitu valita", "Could not select the radio band"));
+                        () -> isCurrentPoll(remote, generation))) {
+                    notifyError(remote, generation,
+                            tr("Radiokaistaa ei voitu valita", "Could not select the radio band"));
                 }
                 return;
             }
             if (remote instanceof TsRadioApi) {
                 if (!((TsRadioApi) remote).tuneToBand(targetBand, frequency,
-                        () -> !closed && service == remote)) {
-                    notifyError(tr("Radiokaistaa ei voitu valita", "Could not select the radio band"));
+                        () -> isCurrentPoll(remote, generation))) {
+                    notifyError(remote, generation,
+                            tr("Radiokaistaa ei voitu valita", "Could not select the radio band"));
                     return;
                 }
-                if (!closed && service == remote) remote.requestPlayAudio();
+                if (isCurrentPoll(remote, generation)) remote.requestPlayAudio();
                 return;
             }
             int currentBand = remote.getCurrentBand();
             int normalizedTarget = normalizeBand(targetBand);
             int guard = 0;
             while (normalizeBand(currentBand) != normalizedTarget && guard < 5) {
+                if (!isCurrentPoll(remote, generation)) return;
                 remote.onBandEvent();
+                if (!isCurrentPoll(remote, generation)) return;
                 currentBand = remote.getCurrentBand();
                 guard++;
             }
+            if (!isCurrentPoll(remote, generation)) return;
             if (normalizeBand(currentBand) == normalizedTarget) {
                 remote.gotoFreq(frequency);
             } else if (!metadataReader.tuneToBand(normalizedTarget, frequency)) {
-                notifyError(tr(
+                notifyError(remote, generation, tr(
                         "Valittua radiokaistaa ei voitu avata",
                         "The selected radio band could not be opened"
                 ));
             }
-            remote.requestPlayAudio();
+            if (isCurrentPoll(remote, generation)) remote.requestPlayAudio();
         });
     }
 
@@ -422,6 +455,12 @@ final class RadioServiceClient {
             actionExecutor.submit(() -> {
                 if (!isCurrentPoll(current, generation)) return;
                 if (current instanceof NwdRadioApi) {
+                    if (!((NwdRadioApi) current).supportsScanning()) {
+                        mainHandler.post(() -> {
+                            if (isCurrentPoll(current, generation)) callback.onResult(band, new int[0], false);
+                        });
+                        return;
+                    }
                     int[] frequencies = new int[0];
                     boolean available = false;
                     try {
@@ -639,6 +678,13 @@ final class RadioServiceClient {
                 }
             });
         }
+    }
+
+    private void notifyError(IRadioServiceAPI current, long generation, String message) {
+        if (!isCurrentPoll(current, generation)) return;
+        mainHandler.post(() -> {
+            if (isCurrentPoll(current, generation)) listener.onRadioError(message);
+        });
     }
 
     private String tr(String finnish, String english) {

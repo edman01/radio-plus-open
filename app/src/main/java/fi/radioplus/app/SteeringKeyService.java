@@ -43,6 +43,10 @@ public final class SteeringKeyService extends AccessibilityService {
     }
 
     @Override protected boolean onKeyEvent(KeyEvent event) {
+        if (RadioPlaybackService.shouldIgnoreRawMediaKeys()) {
+            consumed.clear();
+            return false;
+        }
         if (event != null && radioVisible) {
             SteeringDiagnosticTrace.get().key("accessibility", event.getKeyCode(),
                     event.getAction(), event.getMetaState(), event.getRepeatCount(),
