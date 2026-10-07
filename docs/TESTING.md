@@ -34,6 +34,14 @@ Experimental 2 adds regression tests for TS frequency-to-step conversion,
 invalid or changing tuning grids, cancellation during band changes, on-screen
 seek and step directions, access to manual tuning when automatic scanning is
 unavailable, and older HCN frameworks with a mute setter but no getter.
+The unreleased NWD adapter adds tests for service-pair recognition, Binder reply
+layout, FM/AM units, tuning-grid checks, canceled band changes, band-change
+cooldown, scan-bank collection and restoration, source-request coalescing,
+pause during startup, and media next/previous without HCN workarounds.
+These use synthetic services, not manufacturer code or physical radio hardware.
+The inspected NWD firmware sends native wheel keys to stock station search in
+FM mode. Android media-control tests do not validate or replace that route;
+the NWD adapter is not being released as Junsun V7-equivalent support.
 See [supported models and limitations](COMPATIBILITY.md).
 
 Media-control tests cover station-list and favorites order, single-press handling,

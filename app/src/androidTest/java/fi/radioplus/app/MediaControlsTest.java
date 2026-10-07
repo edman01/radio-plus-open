@@ -142,6 +142,42 @@ public final class MediaControlsTest {
         assertEquals("Next/previous never call the hardware search API", 0, tuner.seekCalls);
     }
 
+    @Test public void nwdMediaKeysTuneOneStationWithoutPcmOrRepeatedInitialization() throws Exception {
+        NwdRadioInteropTest.Endpoint endpoint = new NwdRadioInteropTest.Endpoint();
+        NwdRadioApi api = endpoint.api(); endpoint.audio.source = 4;
+        instrumentation.runOnMainSync(() -> setField(service, "radio", api));
+        sendControllerPress(KeyEvent.KEYCODE_MEDIA_NEXT);
+        await(() -> endpoint.band == BRAVO.band && endpoint.freq == BRAVO.frequency / 10,
+                "NWD next must select the next favorite, not seek");
+        drainServiceCommands(); waitBeyondMediaKeyFallback();
+        assertEquals(1L, endpoint.calls.stream().filter(c -> c == 1).count());
+        assertFalse(endpoint.calls.contains(4));
+        assertTrue("An already playing radio must not be initialized again", endpoint.audio.sent.isEmpty());
+        assertEquals("not-requested", field(RadioPlaybackService.class, "routingPulseStatus", service));
+        assertEquals(false, field(RadioVolumeGuard.class, "active",
+                field(RadioPlaybackService.class, "radioVolumeGuard", service)));
+        sendControllerPress(KeyEvent.KEYCODE_MEDIA_PREVIOUS);
+        await(() -> endpoint.band == ALPHA.band && endpoint.freq == ALPHA.frequency / 10,
+                "NWD previous must return to the previous favorite");
+        drainServiceCommands();
+        assertEquals(2L, endpoint.calls.stream().filter(c -> c == 1).count());
+    }
+
+    @Test public void nwdPauseUsesSourceExitWithoutHcnFocusOrMutingOtherAudio() throws Exception {
+        NwdRadioInteropTest.Endpoint endpoint = new NwdRadioInteropTest.Endpoint();
+        NwdRadioApi api = endpoint.api(); endpoint.audio.source = 4;
+        instrumentation.runOnMainSync(() -> setField(service, "radio", api));
+        controls().play(); drainServiceCommands();
+        controls().pause(); drainServiceCommands();
+        assertEquals(2, endpoint.audio.sent.size());
+        assertEquals(NwdAudioRouting.EXIT_RADIO, endpoint.audio.sent.get(1).getAction());
+        assertNull("NWD pause must never take HCN's temporary media focus",
+                field(RadioPlaybackService.class, "pauseFocusRequest", service));
+        endpoint.audio.source = 7; endpoint.audio.sent.clear();
+        controls().pause(); drainServiceCommands();
+        assertTrue("Pause after source handoff must not touch another app", endpoint.audio.sent.isEmpty());
+    }
+
     @Test public void coldNextClaimsRoutingButSteadyAdjacentNavigationDoesNotReclaim() throws Exception {
         long claimBefore = routingClaimId();
         expectTune(() -> controls().skipToNext(), BRAVO);

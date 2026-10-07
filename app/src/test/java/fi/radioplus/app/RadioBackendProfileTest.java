@@ -5,6 +5,23 @@ import java.util.Locale;
 import static org.junit.Assert.*;
 
 public final class RadioBackendProfileTest {
+    @Test public void nwdRequiresBothExactServiceFingerprints() {
+        assertEquals(RadioBackendProfile.NWD_222,
+                RadioBackendProfile.forApkSha256(RadioBackendProfile.NWD_RADIO_SHA256));
+        assertTrue(RadioBackendProfile.NWD_222.experimental);
+        assertFalse(RadioBackendProfile.NWD_222.isTs());
+        assertEquals("com.nwd.radio.service", RadioBackendProfile.NWD_222.stockPackage());
+        assertTrue(RadioBackendProfile.verifiedNwdPair(RadioBackendProfile.NWD_RADIO_SHA256,
+                RadioBackendProfile.NWD_KERNEL_SHA256.toUpperCase(Locale.ROOT)));
+        for (String wrong : new String[]{null, "", "com.nwd.radio", "2.2.6", "K4811", "Hizpo",
+                RadioBackendProfile.NWD_RADIO_SHA256}) {
+            assertFalse(RadioBackendProfile.verifiedNwdPair(RadioBackendProfile.NWD_RADIO_SHA256, wrong));
+        }
+        assertFalse(RadioBackendProfile.verifiedNwdPair("com.nwd.radio", RadioBackendProfile.NWD_KERNEL_SHA256));
+        // The stock UI alone never authorizes service or kernel commands.
+        assertEquals(RadioBackendProfile.UNKNOWN, RadioBackendProfile.forApkSha256(
+                "dd8d8ea3531af41b5420f3ccf4d783d3d72e5cef22c7c7bfb12be7bc133f4bce"));
+    }
     @Test public void inspectedV7SelectsCurrentContract() {
         assertEquals(RadioBackendProfile.HCN_CURRENT_31,
                 RadioBackendProfile.forApkSha256(RadioBackendProfile.V7_APK_SHA256));

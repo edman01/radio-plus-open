@@ -39,9 +39,19 @@ TS tuning parameter. See the [changes and remaining limitations](EXPERIMENTAL.md
 - Xtrons IAP12CTS / IA series
 - ATOTO A7 / HN7
 - Junsun V3 Pro / MT8768
+- NWD / K2401 Allwinner: RadioService 2.2.2 + KernelService 2.2.6 sample
+- Other NWD service versions, K4811, and the reported Hizpo / `com.nwd.radio` unit
 
 Support has not been added for these models. Their original radio APK or matching
 firmware is needed to continue. Do not install another model's firmware to try Radio+.
+
+The NWD K2401 adapter is in development, not included in an APK release.
+The inspected firmware directs wheel keys to the stock radio's station search;
+Radio+ cannot yet substitute its own next/previous list navigation on that route.
+Other functions have synthetic protocol tests but have not been tested on hardware.
+See [NWD development status](EXPERIMENTAL.md#nwd-development-status--not-an-apk-release).
+The visible `com.nwd.radio` package name alone is insufficient to identify a
+compatible service pair, firmware or tuner implementation.
 
 ## Request support
 

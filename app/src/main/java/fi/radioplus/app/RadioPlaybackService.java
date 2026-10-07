@@ -587,6 +587,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
         boundDetection = detection;
         Intent intent = RadioBackendContract.serviceIntent(detection.profile);
         try {
+            if (detection.profile == RadioBackendProfile.NWD_222) startService(intent);
             bound = bindService(intent, connection, Context.BIND_AUTO_CREATE);
             if (!bound) {
                 scheduleRebind();
@@ -672,9 +673,9 @@ public final class RadioPlaybackService extends MediaBrowserService {
         SteeringDiagnosticTrace.get().event("playback", "pause-request");
         setPlaybackRequested(false);
         long pauseEpoch = playbackEpoch;
-        if (usesTsBackend()) {
-            // TS exits the radio source and abandons its own focus through one
-            // verified source command. HCN's focus/mute handoff does not apply.
+        if (usesSourceExitBackend()) {
+            // TS and NWD exit their radio source through the verified vendor
+            // command. HCN's focus/mute handoff does not apply.
             releasePlaybackFocus();
             return;
         }
@@ -847,7 +848,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
             // The V7 PCM routing handoff is hardware-tested only on HCN.
             // On TS, Android PCM may itself switch the analog source to mode 0.
             // Do not apply that workaround before a TS device test verifies it.
-            if (!(current instanceof TsRadioApi)) scheduleRoutingClaim(current, epoch);
+            if (RadioApiFactory.usesHcnFramework(current)) scheduleRoutingClaim(current, epoch);
         }
         scheduleStartupVolumePolicy(requestFocus);
     }
@@ -991,16 +992,18 @@ public final class RadioPlaybackService extends MediaBrowserService {
         oemFocusState.onServiceDisconnected();
     }
 
-    private boolean usesTsBackend() {
-        return radio instanceof TsRadioApi
-                || (boundDetection != null && boundDetection.profile.isTs());
+    private boolean usesSourceExitBackend() {
+        return radio instanceof TsRadioApi || radio instanceof NwdRadioApi
+                || (boundDetection != null && (boundDetection.profile.isTs()
+                    || boundDetection.profile == RadioBackendProfile.NWD_222));
     }
 
     private RadioPlaybackHealthReader.Snapshot readPlaybackHealth() {
         IRadioServiceAPI current = radio;
         if (current == null) return new RadioPlaybackHealthReader.Snapshot(false, "", false, false);
+        if (current instanceof NwdRadioApi) return ((NwdRadioApi) current).readHealth();
         if (!(current instanceof TsRadioApi)) {
-            if (usesTsBackend()) return new RadioPlaybackHealthReader.Snapshot(false, "", false, false);
+            if (usesSourceExitBackend()) return new RadioPlaybackHealthReader.Snapshot(false, "", false, false);
             return playbackHealthReader.read();
         }
         try {
@@ -1014,7 +1017,17 @@ public final class RadioPlaybackService extends MediaBrowserService {
     private boolean setTunerMuted(boolean muted) {
         IRadioServiceAPI current = radio;
         if (current == null) return false;
-        if (!(current instanceof TsRadioApi)) return !usesTsBackend() && playbackHealthReader.setMuted(muted);
+        if (current instanceof NwdRadioApi) {
+            if (!muted || playbackRequested) return false;
+            if (Looper.myLooper() == Looper.getMainLooper()) {
+                executeRadioCommand("pause NWD source", connected -> {
+                    if (!playbackRequested && connected == current) ((NwdRadioApi) connected).pauseRadioSource();
+                });
+                return false;
+            }
+            return ((NwdRadioApi) current).pauseRadioSource();
+        }
+        if (!(current instanceof TsRadioApi)) return !usesSourceExitBackend() && playbackHealthReader.setMuted(muted);
         // TS has a verified source exit but no verified idempotent tuner mute.
         // Do not toggle global mute, run HCN reflection, or block the main thread.
         if (!muted || playbackRequested) return false;
@@ -1158,7 +1171,10 @@ public final class RadioPlaybackService extends MediaBrowserService {
         int currentBand = normalizeBand(current.getCurrentBand());
         if (!isCurrentPlayback(epoch, current)) return false;
         boolean commandIssued;
-        if (current instanceof TsRadioApi) {
+        if (current instanceof NwdRadioApi) {
+            commandIssued = ((NwdRadioApi) current).tuneToBand(normalizedTarget, target.frequency,
+                    () -> isCurrentPlayback(epoch, current));
+        } else if (current instanceof TsRadioApi) {
             commandIssued = ((TsRadioApi) current).tuneToBand(normalizedTarget, target.frequency,
                     () -> isCurrentPlayback(epoch, current));
         } else if (currentBand == normalizedTarget) {
@@ -1212,7 +1228,10 @@ public final class RadioPlaybackService extends MediaBrowserService {
                 Log.w(TAG, "Tuner did not confirm " + target.key()
                         + "; retry " + (attempt + 1)
                         + " (actual=" + observedBand + ":" + observedFrequency + ")");
-                if (current instanceof TsRadioApi) {
+                if (current instanceof NwdRadioApi) {
+                    ((NwdRadioApi) current).tuneToBand(normalizedTarget, target.frequency,
+                            () -> isCurrentPlayback(epoch, current));
+                } else if (current instanceof TsRadioApi) {
                     ((TsRadioApi) current).tuneToBand(normalizedTarget, target.frequency,
                             () -> isCurrentPlayback(epoch, current));
                 } else if (!tunerMetadataReader.tuneToBand(

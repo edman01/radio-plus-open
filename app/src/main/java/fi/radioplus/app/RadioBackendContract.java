@@ -26,6 +26,10 @@ final class RadioBackendContract {
     }
 
     static Intent serviceIntent(RadioBackendProfile profile) {
+        if (profile == RadioBackendProfile.NWD_222) {
+            return new Intent("com.nwd.radio.service.ACTION_RADIO_SERVICE").setComponent(
+                    new ComponentName("com.nwd.radio.service", "com.nwd.radio.service.RadioService"));
+        }
         if (profile.isTs()) {
             return new Intent("android.intent.action.MAIN_UI").setComponent(
                     new ComponentName("com.ts.MainUI", "com.ts.main.common.MainUI"));

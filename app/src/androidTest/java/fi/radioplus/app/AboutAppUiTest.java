@@ -55,8 +55,7 @@ public final class AboutAppUiTest {
         assumeTrue("Preview requires a debug build", BuildConfig.DEBUG);
         assumeFalse("Use a stock Android emulator", hasVendorFramework());
         context = instrumentation.getTargetContext();
-        assertNull("Stop playback before running this preview fixture",
-                field(RadioPlaybackService.class, "runningInstance", null));
+        assertNoPlayback();
         for (String name : PREFERENCES) {
             SharedPreferences preferences = context.getSharedPreferences(name, Context.MODE_PRIVATE);
             savedPreferences.put(name, new HashMap<>(preferences.getAll()));
@@ -73,6 +72,7 @@ public final class AboutAppUiTest {
                 if (activity != null) activity.finish();
             });
             instrumentation.waitForIdleSync();
+            if (context != null) context.stopService(new Intent(context, RadioPlaybackService.class));
         } finally {
             for (Map.Entry<String, Map<String, ?>> entry : savedPreferences.entrySet()) {
                 restorePreferences(entry.getKey(), entry.getValue());
@@ -376,7 +376,14 @@ public final class AboutAppUiTest {
     }
 
     private void assertNoPlayback() {
-        assertNull("About must not start playback", field(RadioPlaybackService.class, "runningInstance", null));
+        // System UI may passively bind the media browser between tests. A live
+        // service is not playback; verify the actual no-audio/no-tuner invariant.
+        assertFalse("About must not request playback", RadioPlaybackService.isPlaybackRequested());
+        Object service = field(RadioPlaybackService.class, "runningInstance", null);
+        if (service != null) {
+            assertNull("About must not attach the tuner", field(RadioPlaybackService.class, "radio", service));
+            assertEquals("not-requested", field(RadioPlaybackService.class, "routingPulseStatus", service));
+        }
     }
 
     private static void assertTextFits(TextView text) {

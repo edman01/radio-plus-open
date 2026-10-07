@@ -9,6 +9,8 @@
     <queries>
         <package android:name="com.hcn.autoradio" />
         <package android:name="com.ts.MainUI" />
+        <package android:name="com.nwd.radio.service" />
+        <package android:name="com.nwd.kernel" />
     </queries>
 
     <application

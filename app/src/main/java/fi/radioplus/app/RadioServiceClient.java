@@ -235,6 +235,7 @@ final class RadioServiceClient {
         boundDetection = detection;
         Intent intent = RadioBackendContract.serviceIntent(detection.profile);
         try {
+            if (detection.profile == RadioBackendProfile.NWD_222) context.startService(intent);
             bound = context.bindService(intent, connection, Context.BIND_AUTO_CREATE);
             if (!bound) {
                 notifyConnection(false, tr(
@@ -366,6 +367,14 @@ final class RadioServiceClient {
             return;
         }
         perform(remote -> {
+            if (remote instanceof NwdRadioApi) {
+                remote.requestPlayAudio();
+                if (!((NwdRadioApi) remote).tuneToBand(targetBand, frequency,
+                        () -> !closed && service == remote)) {
+                    notifyError(tr("Radiokaistaa ei voitu valita", "Could not select the radio band"));
+                }
+                return;
+            }
             if (remote instanceof TsRadioApi) {
                 if (!((TsRadioApi) remote).tuneToBand(targetBand, frequency,
                         () -> !closed && service == remote)) {
@@ -401,6 +410,22 @@ final class RadioServiceClient {
         }
         try {
             actionExecutor.submit(() -> {
+            IRadioServiceAPI current = service;
+            if (current instanceof NwdRadioApi) {
+                int[] frequencies = new int[0];
+                boolean available = false;
+                try {
+                    frequencies = sanitizePresets(band, ((NwdRadioApi) current).readScanPresets(band,
+                            () -> !closed && service == current));
+                    available = true;
+                } catch (RemoteException | RuntimeException error) {
+                    Log.w(TAG, "NWD scan results could not be read completely", error);
+                }
+                final int[] results = frequencies;
+                final boolean complete = available;
+                mainHandler.post(() -> { if (!closed) callback.onResult(band, results, complete); });
+                return;
+            }
             if (service instanceof TsRadioApi || !RadioApiFactory.selectedSupportsScanning()) {
                 mainHandler.post(() -> { if (!closed) callback.onResult(band, new int[0], false); });
                 return;
@@ -451,14 +476,24 @@ final class RadioServiceClient {
             return;
         }
         try {
-            int band = current.getCurrentBand();
-            int frequency = current.getCurrentFreq();
+            NwdRadioApi.Frequency nwdFrequency = current instanceof NwdRadioApi
+                    ? ((NwdRadioApi) current).frequency() : null;
+            int band = nwdFrequency == null ? current.getCurrentBand() : nwdFrequency.band();
+            int frequency = nwdFrequency == null ? current.getCurrentFreq() : nwdFrequency.khz;
             if (!FrequencyRules.isValid(band, frequency)) {
                 return;
             }
-            String serviceRdsName = RadioMetadataReader.clean(current.getCurrentFreqRdsPs());
-            RadioMetadataReader.Metadata metadata = current instanceof TsRadioApi
-                    ? null : metadataReader.read();
+            String serviceRdsName = RadioMetadataReader.clean(nwdFrequency == null
+                    ? current.getCurrentFreqRdsPs() : nwdFrequency.name);
+            RadioMetadataReader.Metadata metadata = RadioApiFactory.usesHcnFramework(current)
+                    ? metadataReader.read() : null;
+            if (nwdFrequency != null) {
+                String text = ((NwdRadioApi) current).radioText();
+                NwdRadioApi.Frequency after = ((NwdRadioApi) current).frequency();
+                if (after.rawBand == nwdFrequency.rawBand && after.khz == frequency) {
+                    metadata = new RadioMetadataReader.Metadata(frequency, serviceRdsName, text, "", false);
+                }
+            }
             if (band != cachedMetadataBand || frequency != cachedMetadataFrequency) {
                 cachedMetadataBand = band;
                 cachedMetadataFrequency = frequency;

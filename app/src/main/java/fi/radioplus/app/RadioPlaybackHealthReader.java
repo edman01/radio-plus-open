@@ -36,7 +36,8 @@ final class RadioPlaybackHealthReader {
         boolean radioOwnsSource() {
             return RadioBackendContract.PACKAGE_NAME.equals(sourcePackage)
                     || sourcePackage.startsWith(RadioBackendContract.PACKAGE_NAME + "/")
-                    || "com.ts.MainUI".equals(sourcePackage);
+                    || "com.ts.MainUI".equals(sourcePackage)
+                    || "com.nwd.radio.service".equals(sourcePackage);
         }
     }
 

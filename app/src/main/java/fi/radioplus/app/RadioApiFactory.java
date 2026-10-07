@@ -28,6 +28,9 @@ final class RadioApiFactory {
     private static final ExecutorService INSPECTOR = Executors.newSingleThreadExecutor();
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static volatile Detection latest;
+    // Shared by the UI and playback bindings, so a channel tap cannot initialize
+    // the vendor audio path twice. Accessed only on INSPECTOR.
+    private static NwdAudioRouting nwdAudio;
     private static final Map<String, String> cachedIdentities = new HashMap<>();
     private static final Map<String, Detection> cachedDetections = new HashMap<>();
 
@@ -81,7 +84,12 @@ final class RadioApiFactory {
             }
             if (detection.profile != RadioBackendProfile.UNKNOWN) {
                 try {
-                    api = create(detection.profile, binder);
+                    if (detection.profile == RadioBackendProfile.NWD_222 && nwdAudio == null) {
+                        nwdAudio = new NwdAudioRouting(application);
+                    }
+                    api = detection.profile == RadioBackendProfile.NWD_222
+                            ? new NwdRadioApi(binder, nwdAudio)
+                            : create(detection.profile, binder);
                 } catch (RemoteException | RuntimeException error) {
                     detection = new Detection(RadioBackendProfile.UNKNOWN, detection.stockPackage, detection.stockVersion,
                             detection.sha256, "The stock radio Binder does not match its APK");
@@ -101,6 +109,9 @@ final class RadioApiFactory {
             throw new RemoteException("Unrecognized stock radio contract");
         }
         if (profile.isTs()) return new TsRadioApi(binder);
+        if (profile == RadioBackendProfile.NWD_222) {
+            throw new RemoteException("NWD requires its verified audio-routing dependency");
+        }
         if (binder == null || !DESCRIPTOR.equals(binder.getInterfaceDescriptor())) {
             throw new RemoteException("Unexpected stock radio Binder descriptor");
         }
@@ -111,9 +122,19 @@ final class RadioApiFactory {
     private static Detection inspectInstalled(Context context) {
         Detection recognized = null;
         Detection lastUnknown = null;
-        for (String stockPackage : new String[]{RadioBackendContract.PACKAGE_NAME, "com.ts.MainUI"}) {
+        for (String stockPackage : new String[]{RadioBackendContract.PACKAGE_NAME, "com.ts.MainUI",
+                "com.nwd.radio.service"}) {
             Detection candidate = inspectPackage(context, stockPackage);
             if (candidate == null) continue;
+            if (candidate.profile == RadioBackendProfile.NWD_222) {
+                // Both packages contain commands used by this adapter. A UI APK
+                // or a service descriptor alone cannot establish this contract.
+                Detection kernel = inspectPackage(context, "com.nwd.kernel");
+                if (kernel == null || !RadioBackendProfile.verifiedNwdPair(candidate.sha256, kernel.sha256)) {
+                    candidate = unknown(stockPackage, candidate.stockVersion,
+                            "The NWD audio-routing service has not been verified");
+                }
+            }
             if (candidate.profile == RadioBackendProfile.UNKNOWN) {
                 lastUnknown = candidate;
             } else if (recognized != null) {
@@ -133,7 +154,7 @@ final class RadioApiFactory {
                     stockPackage, 0);
             ApplicationInfo application = info.applicationInfo;
             String version = info.versionName == null ? "" : info.versionName;
-            if (application == null || application.sourceDir == null
+            if (application == null || !application.enabled || application.sourceDir == null
                     || (application.splitSourceDirs != null && application.splitSourceDirs.length > 0)) {
                 return unknown(stockPackage, version, "The stock radio APK layout is not recognized");
             }
@@ -197,22 +218,31 @@ final class RadioApiFactory {
     }
 
     static boolean supportsOemFavorites(IRadioServiceAPI api) {
-        return api != null && !(api instanceof LegacyHcnRadioApi) && !(api instanceof TsRadioApi);
+        return api != null && !(api instanceof LegacyHcnRadioApi) && usesHcnFramework(api);
     }
 
     static boolean supportsSeparateAudioFocus(IRadioServiceAPI api) {
-        return api != null && !(api instanceof LegacyHcnRadioApi) && !(api instanceof TsRadioApi);
+        return api != null && !(api instanceof LegacyHcnRadioApi) && usesHcnFramework(api);
     }
 
-    static boolean supportsScanning(IRadioServiceAPI api) { return api != null && !(api instanceof TsRadioApi); }
+    static boolean usesHcnFramework(IRadioServiceAPI api) {
+        return api != null && !(api instanceof TsRadioApi) && !(api instanceof NwdRadioApi);
+    }
+
+    static boolean supportsScanning(IRadioServiceAPI api) { return usesHcnFramework(api) || api instanceof NwdRadioApi; }
     static boolean supportsLocalMode(IRadioServiceAPI api) { return api != null && !(api instanceof TsRadioApi); }
 
     static boolean selectedSupportsScanning() {
         Detection detection = latest;
         return detection != null && (detection.profile == RadioBackendProfile.HCN_CURRENT_31
-                || detection.profile == RadioBackendProfile.HCN_LEGACY_25);
+                || detection.profile == RadioBackendProfile.HCN_LEGACY_25
+                || detection.profile == RadioBackendProfile.NWD_222);
     }
-    static boolean selectedSupportsLocalMode() { return selectedSupportsScanning(); }
+    static boolean selectedSupportsLocalMode() {
+        Detection detection = latest;
+        return selectedSupportsScanning()
+                || (detection != null && detection.profile == RadioBackendProfile.NWD_222);
+    }
     static boolean selectedSupportsTuning() {
         Detection detection = latest;
         return detection != null && detection.profile != RadioBackendProfile.UNKNOWN;

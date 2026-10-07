@@ -7,6 +7,7 @@ enum RadioBackendProfile {
     TS_AC8259_V115("TS / AC8259 V115 (experimental)", true),
     TS_825X_V27("TS / 825X UI02 V27 (experimental)", true),
     TS_8667Q_V23("TS / 8667Q UI02 V23 (experimental)", true),
+    NWD_222("NWD / RadioService 2.2.2 (experimental)", true),
     UNKNOWN("Unrecognized stock radio", false);
 
     // Inspected APK fingerprints only; no vendor binaries or implementations are bundled.
@@ -20,6 +21,10 @@ enum RadioBackendProfile {
             "ad6bb86af9ec4b660e2edf38febc51ed04b4c9865aea28f841cace01fdcc6abc";
     static final String TS_8667Q_APK_SHA256 =
             "9b164f151e7d74ac1b430372a7b75533a43753298d2ac1aaef145df50dfd7918";
+    static final String NWD_RADIO_SHA256 =
+            "0eb6df5e6b090c45895369bdee7112f2ec83042f8d5e37fc5e701ee24e0e7842";
+    static final String NWD_KERNEL_SHA256 =
+            "e2de2b8da9bfe96a308e38a86fac75d978b7496a795881b8a921fa930b4d8b47";
 
     final String label;
     final boolean experimental;
@@ -35,11 +40,18 @@ enum RadioBackendProfile {
         if (AC8259_APK_SHA256.equalsIgnoreCase(hash)) return TS_AC8259_V115;
         if (TS_825X_APK_SHA256.equalsIgnoreCase(hash)) return TS_825X_V27;
         if (TS_8667Q_APK_SHA256.equalsIgnoreCase(hash)) return TS_8667Q_V23;
+        if (NWD_RADIO_SHA256.equalsIgnoreCase(hash)) return NWD_222;
         return UNKNOWN;
     }
 
     String stockPackage() {
+        if (this == NWD_222) return "com.nwd.radio.service";
         return isTs() ? "com.ts.MainUI" : RadioBackendContract.PACKAGE_NAME;
+    }
+
+    static boolean verifiedNwdPair(String radioHash, String kernelHash) {
+        return NWD_RADIO_SHA256.equalsIgnoreCase(radioHash)
+                && NWD_KERNEL_SHA256.equalsIgnoreCase(kernelHash);
     }
 
     boolean isTs() {

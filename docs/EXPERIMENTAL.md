@@ -3,6 +3,43 @@
 An optional test build with support for additional Junsun radio implementations.
 **The additional radio support has not been tested on real head units.**
 
+## NWD development status — not an APK release
+
+- Added an NWD / K2401 Allwinner adapter for the inspected RadioService 2.2.2
+  and KernelService 2.2.6 pair. Both installed APK fingerprints and the runtime
+  tuner type must match before control is enabled.
+- Implemented manual FM/AM tuning, station seek, Radio+ favorites, RDS station
+  names and RadioText, LOCAL/DX, and radio-source play/pause for that adapter.
+- Added automatic-scan control and collection of all FM/AM preset banks, with
+  restoration of the selected station. The stock service's band-change delay
+  is respected. Scan-result collection temporarily tunes the other banks.
+- Band changes are checked before tuning, and frequencies are checked against
+  the stock tuner grid. Stopped or canceled commands do not continue tuning.
+- Coalesced pending NWD playback requests to avoid repeated initialization.
+  NWD does not use the Junsun V7 audio-focus, input-gain or PCM handoff workarounds.
+- Added tests for the NWD protocol, malformed replies, source switching,
+  pause during startup, and next/previous through Android media controls.
+- Kept the existing interface, layouts, themes and translations unchanged.
+
+This is **not confirmed support for every Hizpo or `com.nwd.radio` device**.
+The inspected apps came from a K2401 stock-app archive; the firmware revision
+was not identified. An exact match is required. Other NWD tuner implementations,
+K4811, and the reported Hizpo unit still need their own matching service files
+and device testing. No manufacturer APKs or firmware are included.
+
+**Not ready for Junsun V7-equivalent support. No NWD APK has been released.**
+The inspected kernel forwards wheel next/previous to the stock radio's station
+search while the FM source is active, rather than to Android media controls.
+Radio+'s list navigation does not yet replace that native key route. An additional
+receiver would also leave the stock handler active, risking conflicting actions.
+Passing Android media-control tests does not validate this firmware key route.
+
+Audible playback, pause/resume, scan results, source handoff and ACC wake still
+need testing on hardware. Manual AM tuning requires the stock service to report
+a usable AM grid. The exact model and matching service APKs are still needed
+from the reported Hizpo device; this sample does not establish its compatibility.
+The download below remains Experimental 2 and does not include the NWD adapter.
+
 ## Changes in 0.16.1-dev29 — Experimental 2
 
 - Fixed AC8259, 825X and 8667Q tuning: the stock command takes a tuning-step
@@ -19,7 +56,7 @@ An optional test build with support for additional Junsun radio implementations.
 - Added the missing radio-detection and compatibility messages in all 12 languages.
 
 This replaces Experimental 1 (`0.16.1-dev28`), which sent the wrong tuning
-parameter to TS radios. **TS testers should use Experimental 2.**
+parameter to TS radios. **TS testers should use Experimental 2 or newer.**
 
 ## Radio interfaces added in Experimental 1
 
@@ -63,6 +100,10 @@ If you want to keep using the confirmed Junsun V7 build, stay on
 Radio+ automatically selects the control method for a recognized stock radio APK.
 A matching model or package name alone is not enough: other firmware versions
 may remain unrecognized.
+
+For NWD research, `com.nwd.radio` is the stock interface, not the service that
+controls the tuner. Its matching `com.nwd.radio.service` and `com.nwd.kernel`
+are also needed. Do not install stock apps from another head unit to force a match.
 
 Automatic scanning and LOCAL/DX are unavailable on the AC8259, 825X and 8667Q
 profiles. Manual tuning and Radio+'s favorites are implemented, but real audio,

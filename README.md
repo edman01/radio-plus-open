@@ -25,8 +25,9 @@ Finding `com.hcn.autoradio` on your head unit is a promising compatibility clue:
 Radio+ **may** work, but the package name alone is not a guarantee. The firmware
 must still expose a compatible service/API.
 
-Additional Junsun models have **experimental support, not yet tested on real
-head units**, in the separate experimental download. These additions are not
+Additional Junsun interfaces have
+**experimental support, not yet tested on real head units**, in the separate
+experimental download. These additions are not
 included in community beta 4. [Supported models and limitations](docs/COMPATIBILITY.md).
 
 **Check your stock radio's package name (no PC needed):**

@@ -21,8 +21,12 @@ The connection is defined in
 [RadioBackendContract](../app/src/main/java/fi/radioplus/app/RadioBackendContract.java)
 and the [service interface](../app/src/main/aidl/com/hcn/autoradio/IRadioServiceAPI.aidl).
 
-Experimental builds also include support for selected older Junsun
-radios and `com.ts.MainUI` versions. These have not been tested on real head units.
+Experimental APKs also include support for selected older Junsun radios and
+`com.ts.MainUI` versions. An unreleased NWD / K2401 Allwinner adapter uses
+`com.nwd.radio.service` for tuning and `com.nwd.kernel` for audio-source routing;
+both APKs are checked before control is enabled. These additions have not been
+tested on real head units. NWD's native steering-key route remains unresolved;
+it is not yet equivalent to Junsun V7 support.
 See [supported models and limitations](COMPATIBILITY.md).
 
 ## Tuning and audio playback
@@ -45,6 +49,8 @@ universal Android tuner API.
 Pausing live radio means **muting playback**. Radio+ does not record the broadcast
 or resume from the point where it was paused. Its pause logic coordinates audio
 focus and tuner mute rather than only changing the station's on-screen highlight.
+The experimental TS and unreleased NWD adapters instead use their own inspected source-exit
+commands; they do not apply HCN's focus or mute workarounds.
 
 See [RadioPlaybackService](../app/src/main/java/fi/radioplus/app/RadioPlaybackService.java)
 for playback control and
