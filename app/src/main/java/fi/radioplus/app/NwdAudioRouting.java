@@ -44,7 +44,10 @@ final class NwdAudioRouting {
     synchronized boolean play() {
         int source = transport.source();
         long now = clock.getAsLong();
-        if (source == 4) return true;
+        if (source == 4) {
+            requested = false;
+            return true;
+        }
         // Both our UI client and media service may request the same route.
         // Repeating APP_IN while the kernel is switching can restart vendor
         // initialization (and its temporary music mute). Retry only on a later
@@ -81,8 +84,12 @@ final class NwdAudioRouting {
         return true;
     }
 
-    RadioPlaybackHealthReader.Snapshot readHealth() {
+    synchronized RadioPlaybackHealthReader.Snapshot readHealth() {
         int source = transport.source();
+        // Once acknowledged, the request is no longer pending. A later explicit
+        // Play after another app takes ARM must not be lost in the grace period.
+        // Observing a source never sends any command or reclaims playback.
+        if (source == 4) requested = false;
         return new RadioPlaybackHealthReader.Snapshot(source >= 0,
                 source == 4 ? RADIO_PACKAGE : "nwd.source/" + source, false, false);
     }

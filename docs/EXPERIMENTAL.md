@@ -16,9 +16,13 @@ An optional test build with support for additional Junsun radio implementations.
 - Band changes are checked before tuning, and frequencies are checked against
   the stock tuner grid. Stopped or canceled commands do not continue tuning.
 - Coalesced pending NWD playback requests to avoid repeated initialization.
+  Once the radio source is acknowledged, a later explicit Play after another
+  app is treated as a new request, including quick switches between apps.
   NWD does not use the Junsun V7 audio-focus, input-gain or PCM handoff workarounds.
 - Added tests for the NWD protocol, malformed replies, source switching,
   pause during startup, and next/previous through Android media controls.
+  UI tests cover the FM/AM band cycle and direct FM/AM choices, restoration of
+  each band's frequency, MHz/kHz display and refusal to tune AM on an FM-only tuner.
 - Kept the existing interface, layouts, themes and translations unchanged.
 
 This is **not confirmed support for every Hizpo or `com.nwd.radio` device**.
@@ -33,6 +37,9 @@ search while the FM source is active, rather than to Android media controls.
 Radio+'s list navigation does not yet replace that native key route. An additional
 receiver would also leave the stock handler active, risking conflicting actions.
 Passing Android media-control tests does not validate this firmware key route.
+Native next/previous must move exactly one station in Radio+'s selected list,
+without a competing stock-radio search. This is a requirement for the NWD APK
+release, not an optional feature to be left out.
 
 Audible playback, pause/resume, scan results, source handoff and ACC wake still
 need testing on hardware. Manual AM tuning requires the stock service to report

@@ -16,6 +16,8 @@ import android.view.inspector.WindowInspector;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.ListView;
+import android.widget.EditText;
+import android.widget.RadioButton;
 
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry;
@@ -203,6 +205,130 @@ public final class AboutAppUiTest {
     private void invokeUi(Method method, Object... args) {
         try { method.invoke(activity, args); }
         catch (ReflectiveOperationException error) { throw new AssertionError(error); }
+    }
+
+    @Test public void nwdBandButtonDisplaysConfirmedFmAmCycle() throws Exception {
+        withNwdTuner(endpoint -> {
+            for (int expectedRawBand : new int[]{1, 2, 3, 4, 0}) {
+                instrumentation.runOnMainSync(() -> {
+                    View button = activity.findViewById(R.id.band_button);
+                    assertTrue(button.isEnabled());
+                    assertTrue(button.performClick());
+                });
+                int band = expectedRawBand < 3 ? expectedRawBand : 3;
+                await(() -> endpoint.band == expectedRawBand, "Native band must change");
+                awaitUiBand(band, band < 3 ? 98100 : 999);
+            }
+            assertFalse(endpoint.calls.contains(1));
+            assertTrue(endpoint.audio.sent.isEmpty());
+        });
+    }
+
+    @Test public void manualFmAmChoicesTuneAndRestoreTheirOwnFrequencyUnits() throws Exception {
+        withNwdTuner(endpoint -> {
+            // Use the actual Tuning menu and its Manual entry, not preview tuning.
+            instrumentation.runOnMainSync(() -> assertTrue(activity.findViewById(R.id.auto_scan_button).performClick()));
+            instrumentation.waitForIdleSync();
+            instrumentation.runOnMainSync(() -> {
+                int listId = activity.getResources().getIdentifier("select_dialog_listview", "id", "android");
+                ListView choices = null;
+                for (View root : WindowInspector.getGlobalWindowViews()) {
+                    ListView candidate = root.findViewById(listId);
+                    if (candidate != null && candidate.isShown()) choices = candidate;
+                }
+                assertNotNull(choices);
+                int manual = -1;
+                for (int i = 0; i < choices.getAdapter().getCount(); i++) {
+                    if (activity.getString(R.string.tuning_manual).equals(choices.getAdapter().getItem(i))) manual = i;
+                }
+                assertTrue(manual >= 0);
+                choices.performItemClick(choices.getChildAt(manual), manual, choices.getAdapter().getItemId(manual));
+            });
+            instrumentation.waitForIdleSync();
+            instrumentation.runOnMainSync(() -> {
+                RadioButton am = (RadioButton) field(MainActivity.class, "manualAmChoice", activity);
+                assertNotNull(am); assertTrue(am.isEnabled());
+                // CompoundButton reports an OnClickListener result, while the
+                // actual band listener is OnCheckedChangeListener.
+                am.performClick(); assertTrue(am.isChecked());
+            });
+            awaitUiBand(3, 999);
+            assertEquals(999, endpoint.freq);
+            assertManualInput("999", false);
+            instrumentation.runOnMainSync(() -> {
+                ((EditText) field(MainActivity.class, "manualTuningInput", activity)).setText("900");
+                ((AlertDialog) field(MainActivity.class, "manualTuningDialog", activity))
+                        .getButton(AlertDialog.BUTTON_POSITIVE).performClick();
+            });
+            awaitUiBand(3, 900);
+            instrumentation.runOnMainSync(() -> ((RadioButton) field(MainActivity.class, "manualFmChoice", activity)).performClick());
+            awaitUiBand(0, 98100);
+            assertEquals(9810, endpoint.freq);
+            assertManualInput("98.1", true);
+            instrumentation.runOnMainSync(() -> ((RadioButton) field(MainActivity.class, "manualAmChoice", activity)).performClick());
+            awaitUiBand(3, 900);
+            assertManualInput("900", false);
+            assertEquals("Three selections plus one explicit Tune", 4L,
+                    endpoint.calls.stream().filter(c -> c == 1).count());
+            assertTrue("Already active radio must not be reinitialized", endpoint.audio.sent.isEmpty());
+        });
+    }
+
+    private interface NwdUiAction { void run(NwdRadioInteropTest.Endpoint endpoint) throws Exception; }
+
+    private void withNwdTuner(NwdUiAction action) throws Exception {
+        assumeTrue("Synthetic UI fixture is emulator-only", "ranchu".equals(android.os.Build.HARDWARE)
+                || "goldfish".equals(android.os.Build.HARDWARE));
+        NwdRadioInteropTest.Endpoint endpoint = new NwdRadioInteropTest.Endpoint();
+        endpoint.audio.source = 4; endpoint.enforceBandCooldown = true;
+        Object client = field(MainActivity.class, "radioClient", activity);
+        Field service = RadioServiceClient.class.getDeclaredField("service"); service.setAccessible(true);
+        Field preview = MainActivity.class.getDeclaredField("debugPreview"); preview.setAccessible(true);
+        Field latest = RadioApiFactory.class.getDeclaredField("latest"); latest.setAccessible(true);
+        Object oldService = service.get(client), oldDetection = latest.get(null);
+        try {
+            service.set(client, endpoint.api()); preview.setBoolean(activity, false);
+            latest.set(null, new RadioApiFactory.Detection(RadioBackendProfile.NWD_222, "", "", ""));
+            instrumentation.runOnMainSync(() -> {
+                activity.onConnectionChanged(true, "Synthetic NWD test endpoint");
+                activity.onStateChanged(new RadioServiceClient.RadioState(0, 98100, "", "", "",
+                        false, false, false, false, false, false, false));
+            });
+            action.run(endpoint);
+        } finally {
+            instrumentation.runOnMainSync(() -> {
+                AlertDialog manual = (AlertDialog) field(MainActivity.class, "manualTuningDialog", activity);
+                if (manual != null) manual.dismiss();
+            });
+            service.set(client, oldService); preview.setBoolean(activity, true);
+            context.stopService(new Intent(context, RadioPlaybackService.class));
+            await(() -> field(RadioPlaybackService.class, "runningInstance", null) == null,
+                    "Release UI test playback service");
+            latest.set(null, oldDetection);
+        }
+    }
+
+    private void awaitUiBand(int band, int frequency) {
+        await(() -> {
+            boolean[] matches = {false};
+            instrumentation.runOnMainSync(() -> {
+                RadioServiceClient.RadioState state = (RadioServiceClient.RadioState)
+                        field(MainActivity.class, "currentState", activity);
+                matches[0] = state != null && state.band == band && state.frequency == frequency
+                        && (band < 3 ? "FM" : "AM").contentEquals(((Button) activity.findViewById(R.id.band_button)).getText());
+            });
+            return matches[0];
+        }, "UI must display confirmed band/frequency " + band + ":" + frequency);
+    }
+
+    private void assertManualInput(String text, boolean fm) {
+        instrumentation.runOnMainSync(() -> {
+            assertEquals(text, ((EditText) field(MainActivity.class, "manualTuningInput", activity)).getText().toString());
+            assertEquals(fm, ((RadioButton) field(MainActivity.class, "manualFmChoice", activity)).isChecked());
+            assertEquals(!fm, ((RadioButton) field(MainActivity.class, "manualAmChoice", activity)).isChecked());
+            assertTrue(((TextView) field(MainActivity.class, "manualTuningStatus", activity)).getText().toString()
+                    .contains(fm ? "MHz" : "kHz"));
+        });
     }
 
     @Test public void githubRequiresATapUsesCanonicalHttpsAndHandlesMissingBrowser() {

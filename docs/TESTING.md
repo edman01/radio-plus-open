@@ -39,6 +39,10 @@ layout, FM/AM units, tuning-grid checks, canceled band changes, band-change
 cooldown, scan-bank collection and restoration, source-request coalescing,
 pause during startup, and media next/previous without HCN workarounds.
 These use synthetic services, not manufacturer code or physical radio hardware.
+FM/AM checks exercise the existing band button and manual-tuning selectors,
+frequency limits and step wrapping, return to FM, and an FM-only endpoint.
+Audio tests also cover an explicit Play immediately after another app takes the
+source; passive polling must never take playback back from that app.
 The inspected NWD firmware sends native wheel keys to stock station search in
 FM mode. Android media-control tests do not validate or replace that route;
 the NWD adapter is not being released as Junsun V7-equivalent support.

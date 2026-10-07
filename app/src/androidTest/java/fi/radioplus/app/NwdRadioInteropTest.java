@@ -256,6 +256,44 @@ public final class NwdRadioInteropTest {
         assertEquals(3, e.band); assertEquals(999, e.freq);
     }
 
+    @Test public void bandButtonCyclesBothAmBanksAndReturnsToFmWithoutRetuning() throws Exception {
+        Endpoint e = new Endpoint(); e.enforceBandCooldown = true;
+        NwdRadioApi api = e.api();
+        for (int rawBand : new int[]{1, 2, 3, 4, 0}) {
+            api.onBandEvent();
+            assertEquals(rawBand, e.band);
+            assertEquals(rawBand < 3 ? rawBand : 3, api.getCurrentBand());
+            assertEquals(rawBand < 3 ? 98100 : 999, api.getCurrentFreq());
+        }
+        assertFalse("Band selection must not overwrite a preset", e.calls.contains(1));
+        assertTrue("Band selection must not reinitialize audio", e.audio.sent.isEmpty());
+    }
+
+    @Test public void fmOnlyTunerCannotReportSuccessfulAmTuning() throws Exception {
+        Endpoint e = new Endpoint(); e.amSupported = false; e.enforceBandCooldown = true;
+        NwdRadioApi api = e.api();
+        assertFalse(api.tuneToBand(3, 999, e.current::get));
+        assertTrue(api.getCurrentBand() < 3);
+        assertFalse("Never send an AM value to an FM band", e.calls.contains(1));
+        assertTrue(api.tuneToBand(0, 101700, e.current::get));
+        assertEquals(101700, api.getCurrentFreq());
+    }
+
+    @Test public void fmAndAmBandLimitsAndStepsNeverMixUnits() throws Exception {
+        Endpoint e = new Endpoint(); NwdRadioApi api = e.api();
+        assertTrue(api.tuneToBand(3, 522, e.current::get)); assertEquals(522, e.freq);
+        api.onManualUpEvent(); assertEquals(1620, e.freq);
+        api.onManualDownEvent(); assertEquals(522, e.freq);
+        assertTrue(api.tuneToBand(0, 87500, e.current::get)); assertEquals(8750, e.freq);
+        api.onManualUpEvent(); assertEquals(10800, e.freq);
+        api.onManualDownEvent(); assertEquals(8750, e.freq);
+        int writes = (int) e.calls.stream().filter(c -> c == 1).count();
+        for (int bad : new int[]{521, 523, 1621, 98100}) {
+            assertThrows(RemoteException.class, () -> api.tuneToBand(3, bad, e.current::get));
+        }
+        assertEquals(writes, e.calls.stream().filter(c -> c == 1).count());
+    }
+
     @Test public void tuningStopsAnActiveSearchBeforeSendingTheRequestedFrequency() throws Exception {
         Endpoint e = new Endpoint(); e.state = 2;
         assertTrue(e.api().tuneToBand(0, 101700, e.current::get));
@@ -313,6 +351,21 @@ public final class NwdRadioInteropTest {
 
     @Test public void alreadyPlayingStockRadioIsNotReinitialized() {
         Audio a = new Audio(); a.source = 4; assertTrue(a.routing.play()); assertTrue(a.sent.isEmpty());
+    }
+
+    @Test public void acknowledgedRouteDoesNotSuppressExplicitPlayAfterAnotherApp() {
+        for (boolean acknowledgeThroughPolling : new boolean[]{true, false}) {
+            Audio a = new Audio(); a.routing.play(); assertEquals(2, a.sent.size());
+            a.source = 4;
+            if (acknowledgeThroughPolling) assertTrue(a.routing.readHealth().radioOwnsSource());
+            else assertTrue(a.routing.play());
+            assertEquals("Acknowledgement itself is read-only", 2, a.sent.size());
+            a.source = 0;
+            assertFalse(a.routing.readHealth().radioOwnsSource());
+            assertEquals("Never reclaim another player's source during polling", 2, a.sent.size());
+            a.routing.play();
+            assertEquals("An explicit Play after handoff is a new request, even inside 3 seconds", 4, a.sent.size());
+        }
     }
 
     @Test public void immediatePauseCancelsPendingArmToRadioButNotAnotherSource() {
