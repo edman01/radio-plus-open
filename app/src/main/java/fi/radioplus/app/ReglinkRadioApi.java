@@ -65,20 +65,31 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
     private interface Reader<T> { T read(Parcel reply) throws RemoteException; }
     private final IBinder common;
     private final IBinder radio;
+    private final ReglinkCapabilityReader.Snapshot capabilities;
     private final Object operationLock = new Object();
     private final Object stateLock = new Object();
     private volatile boolean closed;
+    private volatile boolean capabilitiesInvalidated;
     private RadioObserver observer;
+    private RadioObserver pendingObserverCleanup;
     private long observerGeneration;
+    private long observationGeneration;
     private String callbackBand = "";
     private int callbackFrequency;
     private int callbackState;
     private String pendingBand = "";
     private int pendingFrequency;
+    private long tuneGeneration;
+    private boolean tuneDispatching;
+    // This tracks our request, NOT exclusive OEM ownership. The wire protocol
+    // carries no request IDs; a future live backend still needs verified
+    // cross-client exclusion before invoking any of these mutation methods.
     private boolean scanOwned;
     private boolean scanStarted;
     private boolean scanComplete;
     private boolean scanStopIssued;
+    private boolean scanTerminal;
+    private boolean scanInvalidated;
     private String scanBand = "";
     private long scanRequestedAt;
     private final Set<Integer> scanResults = new LinkedHashSet<>();
@@ -88,6 +99,13 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
             throw new RemoteException("Unexpected Reglink service Binder");
         }
         this.common = common;
+        // The Radio facade alone reports every band as supported before its
+        // concrete tuner connects, and MCU variants accept arbitrary bands.
+        // Read independently identified hardware facts before fetching Radio.
+        capabilities = ReglinkCapabilityReader.read(common);
+        if (capabilities.kind == ReglinkCapabilityReader.Kind.UNKNOWN) {
+            throw new RemoteException("Reglink hardware capabilities are not verified");
+        }
         radio = transact(common, COMMON_DESCRIPTOR, 2,
                 data -> data.writeString("Radio"), Parcel::readStrongBinder);
         if (radio == null || !RADIO_DESCRIPTOR.equals(radio.getInterfaceDescriptor())) {
@@ -109,6 +127,7 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
             if (!binder.transact(code, data, reply, 0)) {
                 throw new RemoteException("Reglink transaction rejected: " + code);
             }
+            if (reply.dataAvail() < 4) throw new RemoteException("Missing Reglink reply status");
             reply.readException();
             if (reader != null && reply.dataAvail() < 4) {
                 throw new RemoteException("Truncated Reglink reply");
@@ -134,7 +153,7 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
 
     boolean supportsBand(int band) throws RemoteException {
         String name = ReglinkTuningRules.nativeBand(band);
-        if (name.isEmpty()) return false;
+        if (name.isEmpty() || capabilitiesInvalidated || !capabilities.supportsBand(band)) return false;
         return call(20, data -> data.writeString(name), reply -> {
             int value = reply.readInt();
             if (value != 0 && value != 1) throw new RemoteException("Invalid Reglink capability");
@@ -142,9 +161,36 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
         });
     }
 
+    private void revalidateCapabilities() throws RemoteException {
+        if (closed) throw new CommandRejectedException("Reglink adapter is closed");
+        if (capabilitiesInvalidated) {
+            throw new CommandRejectedException("Reglink hardware changed; reconnect before control");
+        }
+        ReglinkCapabilityReader.Snapshot current;
+        try { current = ReglinkCapabilityReader.read(common); }
+        catch (RemoteException | RuntimeException failure) {
+            capabilitiesInvalidated = true;
+            throw new CommandRejectedException("Reglink hardware revalidation failed; reconnect before control");
+        }
+        if (current.kind == ReglinkCapabilityReader.Kind.UNKNOWN
+                || current.kind != capabilities.kind
+                || !capabilities.module.equals(current.module)
+                || current.onboardRadio != capabilities.onboardRadio
+                || current.initialized != capabilities.initialized) {
+            capabilitiesInvalidated = true;
+            throw new CommandRejectedException("Reglink hardware changed; reconnect before control");
+        }
+    }
+
     /** Read-only; never substitutes callback scan progress for the tuned frequency. */
     Snapshot snapshot() throws RemoteException {
         for (int attempt = 0; attempt < 3; attempt++) {
+            long observedTuneGeneration;
+            long observedObservationGeneration;
+            synchronized (stateLock) {
+                observedTuneGeneration = tuneGeneration;
+                observedObservationGeneration = observationGeneration;
+            }
             String before = call(5, null, Parcel::readString);
             int frequency = call(7, null, Parcel::readInt);
             boolean scanning = flag(14);
@@ -156,9 +202,19 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
                 throw new RemoteException("Reglink frequency is not in the inspected range");
             }
             synchronized (stateLock) {
-                if (pendingBand.equals(before) && pendingFrequency == frequency) pendingBand = "";
-                if (scanOwned && scanBand.equals(before)) {
-                    if (scanning) scanStarted = true;
+                // A queued one-way callback may overtake the getter sequence.
+                // Never combine its new terminal event with an older scan flag.
+                if (observedObservationGeneration != observationGeneration) continue;
+                // A poll begun before dispatch cannot acknowledge that command.
+                if (!tuneDispatching && observedTuneGeneration == tuneGeneration
+                        && pendingBand.equals(before) && pendingFrequency == frequency) pendingBand = "";
+                if (scanOwned || scanComplete) {
+                    if (!scanBand.equals(before) || (scanComplete && scanning)) {
+                        invalidateScanLocked();
+                    } else if (scanOwned) {
+                        if (scanning) scanStarted = true;
+                        else if (scanTerminal) completeScanLocked();
+                    }
                 }
                 boolean known = observer != null && callbackBand.equals(before)
                         && callbackFrequency == frequency;
@@ -174,16 +230,20 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
         }
     }
 
-    private void requireReadyForMutation() throws RemoteException {
+    private Snapshot requireReadyForMutation() throws RemoteException {
         Snapshot current = snapshot();
         synchronized (stateLock) {
             if (!pendingBand.isEmpty()) {
                 throw new CommandRejectedException("Previous Reglink tune has not been confirmed");
             }
-            if (scanOwned || current.scanning) {
+            if (scanInvalidated) {
+                throw new CommandRejectedException("Reglink scan ownership changed; reconnect before control");
+            }
+            if (scanOwned || current.scanning || current.seeking) {
                 throw new CommandRejectedException("Stop the existing Reglink scan first");
             }
         }
+        return current;
     }
 
     boolean tuneToBand(int band, int khz) throws RemoteException {
@@ -192,20 +252,31 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
 
     boolean tuneToBand(int band, int khz, BooleanSupplier stillCurrent) throws RemoteException {
         synchronized (operationLock) {
+            if (!canContinue(stillCurrent)) return false;
+            revalidateCapabilities();
             validateTuningTarget(band, khz);
             if (!canContinue(stillCurrent)) return false;
-            requireReadyForMutation();
+            Snapshot current = requireReadyForMutation();
             String name = ReglinkTuningRules.nativeBand(band);
             int raw = ReglinkTuningRules.rawFrequency(band, khz);
+            if (!canContinue(stillCurrent)) return false;
+            // Retuning the same station is not an audio-neutral operation in
+            // this firmware. It can unmute or restart a route unnecessarily.
+            if (name.equals(current.rawBand) && current.rawFrequency == raw) return true;
+            revalidateCapabilities();
             if (!canContinue(stillCurrent)) return false;
             synchronized (stateLock) {
                 pendingBand = name;
                 pendingFrequency = raw;
+                tuneGeneration++;
+                tuneDispatching = true;
                 callbackBand = "";
+                clearScanLocked();
             }
             // A failed reply can still follow a delivered mutation. Keep the
             // pending readback guard on failure/cancellation rather than replay.
-            call(6, data -> { data.writeString(name); data.writeInt(raw); }, null);
+            try { call(6, data -> { data.writeString(name); data.writeInt(raw); }, null); }
+            finally { synchronized (stateLock) { tuneDispatching = false; } }
             long deadline = SystemClock.elapsedRealtime() + TUNE_WAIT_MS;
             do {
                 if (!canContinue(stillCurrent)) return false;
@@ -223,21 +294,34 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
     }
 
     private void ensureObserver() throws RemoteException {
+        if (closed) throw new CommandRejectedException("Reglink adapter is closed");
+        if (pendingObserverCleanup != null) {
+            removePendingObserver();
+        }
         if (observer != null) return;
         RadioObserver fresh;
         synchronized (stateLock) {
             fresh = new RadioObserver(++observerGeneration);
             observer = fresh;
             callbackBand = "";
+            observationGeneration++;
         }
         try { call(1, data -> data.writeStrongBinder(fresh), null); }
         catch (RemoteException | RuntimeException failure) {
             synchronized (stateLock) { observer = null; observerGeneration++; }
             // Registration may have succeeded before its reply failed.
-            try { call(2, data -> data.writeStrongBinder(fresh), null); }
+            pendingObserverCleanup = fresh;
+            try { removePendingObserver(); }
             catch (RemoteException | RuntimeException ignored) { }
             throw failure;
         }
+    }
+
+    private void removePendingObserver() throws RemoteException {
+        RadioObserver pending = pendingObserverCleanup;
+        if (pending == null) return;
+        transact(radio, RADIO_DESCRIPTOR, 2, data -> data.writeStrongBinder(pending), null);
+        pendingObserverCleanup = null;
     }
 
     private final class RadioObserver extends Binder {
@@ -261,6 +345,7 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
             int khz = ReglinkTuningRules.observedKhz(band, raw);
             synchronized (stateLock) {
                 if (closed || observer != this || generation != observerGeneration) return true;
+                observationGeneration++;
                 // Invalid final scan callbacks are present in this OEM build;
                 // their completion bit is useful but frequency must be rejected.
                 if (khz >= 0) {
@@ -268,12 +353,26 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
                     callbackFrequency = raw;
                     callbackState = state;
                 }
-                if (scanOwned && scanBand.equals(band)) {
+                if ((scanOwned || scanComplete) && !scanInvalidated) {
+                    if (khz >= 0 && !scanBand.equals(band)) {
+                        // A valid band handoff can begin and end between getter
+                        // polls. Do not retain results across that transition.
+                        invalidateScanLocked();
+                        return true;
+                    }
+                    if (!scanBand.equals(band)) return true;
+                    if ((scanComplete || scanTerminal) && (state & 4) != 0) {
+                        // A new scan followed the terminal callback. Its
+                        // results cannot belong to our completed request.
+                        invalidateScanLocked();
+                        return true;
+                    }
+                    if (!scanOwned) return true;
                     if ((state & 4) != 0) scanStarted = true;
                     if (scanStarted && (state & 8) != 0 && khz >= 0
                             && FrequencyRules.isValid(ReglinkTuningRules.appBand(band), khz)
                             && scanResults.size() < MAX_SCAN_RESULTS) scanResults.add(khz);
-                    if (scanStarted && (state & 4) == 0) completeScanLocked();
+                    if (scanStarted && (state & 4) == 0) scanTerminal = true;
                 }
             }
             return true; // OEM callback is one-way, with no reply parcel.
@@ -283,38 +382,82 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
     private void completeScanLocked() {
         scanOwned = false;
         scanComplete = true;
+        observationGeneration++;
+    }
+
+    private void invalidateScanLocked() {
+        scanOwned = false;
+        scanComplete = false;
+        scanInvalidated = true;
+        scanResults.clear();
+        observationGeneration++;
+    }
+
+    private void clearScanLocked() {
+        scanOwned = false;
+        scanComplete = false;
+        scanStarted = false;
+        scanStopIssued = false;
+        scanTerminal = false;
+        scanInvalidated = false;
+        scanBand = "";
+        scanResults.clear();
+        observationGeneration++;
     }
 
     void startScan() throws RemoteException {
+        if (!startScan(() -> true)) throw new CommandRejectedException("Reglink scan was cancelled");
+    }
+
+    boolean startScan(BooleanSupplier stillCurrent) throws RemoteException {
         synchronized (operationLock) {
-            requireReadyForMutation();
-            Snapshot current = snapshot();
+            if (!canContinue(stillCurrent)) return false;
+            revalidateCapabilities();
+            Snapshot current = requireReadyForMutation();
             if (!supportsBand(current.band)) throw new CommandRejectedException("Reglink band unavailable");
+            if (!canContinue(stillCurrent)) return false;
             ensureObserver();
+            // Subscription is IPC too; the OEM may have changed bands or
+            // started a scan while it was being established.
+            Snapshot afterRegistration = requireReadyForMutation();
+            if (!current.rawBand.equals(afterRegistration.rawBand)) {
+                throw new CommandRejectedException("Reglink band changed before scan");
+            }
+            revalidateCapabilities();
+            if (!canContinue(stillCurrent)) return false;
             synchronized (stateLock) {
+                clearScanLocked();
                 scanBand = current.rawBand;
-                scanResults.clear();
-                scanComplete = false;
-                scanStopIssued = false;
-                scanStarted = false;
                 scanOwned = true;
                 scanRequestedAt = SystemClock.elapsedRealtime();
             }
-            try { call(12, null, null); }
-            catch (RemoteException | RuntimeException failure) {
-                // Preserve owned state: an accepted command with a lost reply
-                // still needs an explicit stop, never a second scan command.
-                throw failure;
-            }
+            // Preserve requested state on a failed reply: the OEM may already
+            // have accepted it. Never issue another scan as automatic recovery.
+            call(12, null, null);
+            return canContinue(stillCurrent);
         }
     }
 
     boolean stopScan(BooleanSupplier stillCurrent) throws RemoteException {
         synchronized (operationLock) {
-            synchronized (stateLock) { if (!scanOwned) return scanComplete; }
+            if (!canContinue(stillCurrent)) return false;
+            synchronized (stateLock) {
+                if (scanInvalidated) throw new CommandRejectedException("Reglink scan ownership changed");
+                if (!scanOwned && !scanComplete) return false;
+            }
+            Snapshot current = snapshot();
+            if (!canContinue(stillCurrent)) return false;
+            revalidateCapabilities();
             if (!canContinue(stillCurrent)) return false;
             boolean sendStop;
             synchronized (stateLock) {
+                if (scanInvalidated || !scanBand.equals(current.rawBand)) {
+                    throw new CommandRejectedException("Reglink scan band changed; stop was not sent");
+                }
+                if (scanComplete) return true;
+                // A terminal callback while the getter still says scanning may
+                // describe a newer operation. Read again later, never retune it.
+                if (scanTerminal) return false;
                 sendStop = !scanStopIssued;
                 scanStopIssued = true;
             }
@@ -324,13 +467,17 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
             long deadline = SystemClock.elapsedRealtime() + SCAN_STOP_WAIT_MS;
             do {
                 if (!canContinue(stillCurrent)) return false;
-                if (!flag(14)) {
+                Snapshot observed = snapshot();
+                if (!observed.scanning) {
                     synchronized (stateLock) {
                         // Getter false may overtake queued one-way result
                         // callbacks. Only their terminal event closes a started
                         // scan, so late valid stations are not silently lost.
                         if (scanComplete) return true;
                     }
+                }
+                synchronized (stateLock) {
+                    if (scanInvalidated) throw new CommandRejectedException("Reglink scan band changed");
                 }
                 SystemClock.sleep(50);
             } while (SystemClock.elapsedRealtime() < deadline);
@@ -340,8 +487,11 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
 
     int[] readScanPresets(int band, BooleanSupplier stillCurrent) throws RemoteException {
         synchronized (operationLock) {
+            if (!canContinue(stillCurrent)) {
+                throw new CommandRejectedException("Reglink scan result request was cancelled");
+            }
             synchronized (stateLock) {
-                if (!scanBand.equals(ReglinkTuningRules.nativeBand(band))) {
+                if (scanInvalidated || !scanBand.equals(ReglinkTuningRules.nativeBand(band))) {
                     throw new CommandRejectedException("No Reglink scan for this band");
                 }
             }
@@ -349,6 +499,10 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
                 throw new CommandRejectedException("Reglink scan completion is not confirmed");
             }
             synchronized (stateLock) {
+                if (!scanComplete || scanInvalidated
+                        || !scanBand.equals(ReglinkTuningRules.nativeBand(band))) {
+                    throw new CommandRejectedException("Reglink scan changed before results were copied");
+                }
                 int[] result = new int[scanResults.size()];
                 int index = 0;
                 for (Integer frequency : scanResults) result[index++] = frequency;
@@ -359,7 +513,8 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
 
     private boolean canContinue(BooleanSupplier current) {
         return !closed && !Thread.currentThread().isInterrupted()
-                && current != null && current.getAsBoolean();
+                && current != null && current.getAsBoolean()
+                && !closed && !Thread.currentThread().isInterrupted();
     }
 
     private void step(int direction) throws RemoteException {
@@ -447,7 +602,7 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
 
     @Override public void close() {
         synchronized (operationLock) {
-            if (closed) return;
+            if (closed && pendingObserverCleanup == null) return;
             // Do not stop/power a shared tuner during lifecycle teardown. A scan
             // owner must explicitly stop while it still has ownership first.
             closed = true;
@@ -456,15 +611,11 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
                 previous = observer;
                 observer = null;
                 observerGeneration++;
-                scanOwned = false;
-                scanComplete = false;
-                scanResults.clear();
+                clearScanLocked();
             }
-            if (previous != null) {
-                try { transact(radio, RADIO_DESCRIPTOR, 2,
-                        data -> data.writeStrongBinder(previous), null); }
-                catch (RemoteException | RuntimeException ignored) { }
-            }
+            if (previous != null) pendingObserverCleanup = previous;
+            try { removePendingObserver(); }
+            catch (RemoteException | RuntimeException ignored) { }
         }
     }
 }
