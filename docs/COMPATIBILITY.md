@@ -42,13 +42,27 @@ are unavailable. AM needs a valid device grid. K4811 starts from Android audio o
 the current radio source, not Bluetooth/other dedicated hardware sources.
 Read the [complete limitations](EXPERIMENTAL.md#k4811-limitations) before installing.
 
+### G5 development profile
+
+Source version **0.16.1-dev32** additionally recognizes the inspected
+`G5_NWD_S212851.20260916.201422` RadioService **2.4.2** + KernelService **2.6.2**
+pair, **MCU / runtime tuner type 0 only**. This profile is not in the Experimental 3
+download. Manual FM, conditional AM, Radio+ stations/favorites, LOCAL/DX and
+source-based play/pause have synthetic contract tests, not physical device confirmation.
+ARM/Allwinner and other runtime types remain disabled.
+
+G5 has the same touch-control limitations as K4811 MCU. Native steering controls
+remain with the stock firmware, not Radio+'s favorites order. A Hizpo/Asuret QS
+name or the `com.nwd.radio` UI package alone does not establish this exact profile.
+See [G5 scope and limitations](EXPERIMENTAL.md#development-build-0161-dev32--g5-mcu).
+
 ## Under investigation
 
 - Xtrons IAP12CTS / IA series
 - ATOTO A7 / HN7
 - Junsun V3 Pro / MT8768
 - NWD / K2401 Allwinner: RadioService 2.2.2 + KernelService 2.2.6
-- Other NWD service versions, K4811 tuner types 1/2/3, and the reported Hizpo / `com.nwd.radio` unit
+- Other NWD service versions, K4811/G5 tuner types 1/2/3, and Hizpo / `com.nwd.radio` variants outside the exact pairs above
 
 Support has not been enabled for these models or variants. Original radio APKs,
 matching firmware or further device evidence may be needed to continue.

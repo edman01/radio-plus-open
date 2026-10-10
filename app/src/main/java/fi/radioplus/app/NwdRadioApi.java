@@ -16,6 +16,14 @@ final class NwdRadioApi implements IRadioServiceAPI {
     static final class CommandRejectedException extends RemoteException {
         CommandRejectedException(String message) { super(message); }
     }
+    /** Safe diagnostic from the read-only implementation query, not an OEM error string. */
+    static final class UnsupportedTunerException extends RemoteException {
+        final int tunerType;
+        UnsupportedTunerException(int tunerType) {
+            super("Unsupported NWD runtime tuner type " + tunerType);
+            this.tunerType = tunerType;
+        }
+    }
     static final String DESCRIPTOR = "com.nwd.radio.service.RadioFeature";
     private final IBinder binder;
     private final NwdAudioRouting audio;
@@ -54,13 +62,15 @@ final class NwdRadioApi implements IRadioServiceAPI {
         }
         this.binder = binder;
         this.audio = audio;
-        this.mcu = profile == RadioBackendProfile.NWD_230;
+        this.mcu = profile.isNwdMcu();
         if (audio.usesDecoderLifecycle() == mcu) throw new RemoteException("Mismatched NWD audio lifecycle");
         int type = call(29, null, Parcel::readInt);
         // This APK includes several hardware implementations. The inspected
         // Allwinner path reports 2; e.g. the SPRD path reports 3 but its LOCAL
         // setter only updates a field. Do not claim their runtime behavior by ABI.
-        if (type != (mcu ? 0 : 2)) throw new RemoteException("Unverified NWD tuner implementation");
+        if (type != (mcu ? 0 : 2)) {
+            throw new UnsupportedTunerException(type);
+        }
     }
 
     boolean supportsScanning() { return !mcu; }

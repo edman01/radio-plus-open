@@ -100,7 +100,7 @@ final class RadioApiFactory {
                             : create(detection.profile, binder);
                 } catch (RemoteException | RuntimeException error) {
                     detection = new Detection(RadioBackendProfile.UNKNOWN, detection.stockPackage, detection.stockVersion,
-                            detection.sha256, "The stock radio endpoint or tuner implementation is not supported");
+                            detection.sha256, endpointProblem(error));
                 }
             }
             latest = detection;
@@ -130,6 +130,15 @@ final class RadioApiFactory {
         }
         return profile == RadioBackendProfile.HCN_LEGACY_25
                 ? new LegacyHcnRadioApi(binder) : IRadioServiceAPI.Stub.asInterface(binder);
+    }
+
+    static String endpointProblem(Exception error) {
+        if (error instanceof NwdRadioApi.UnsupportedTunerException) {
+            int type = ((NwdRadioApi.UnsupportedTunerException) error).tunerType;
+            return "NWD runtime tuner type " + type
+                    + " is not enabled in this build; Radio+ sent no tuning or audio-routing commands";
+        }
+        return "The stock radio endpoint or tuner implementation is not supported";
     }
 
     private static Detection inspectInstalled(Context context) {
@@ -294,7 +303,7 @@ final class RadioApiFactory {
         Detection detection = latest;
         return detection != null && detection.profile != RadioBackendProfile.UNKNOWN
                 && !detection.profile.isReglink()
-                && detection.profile != RadioBackendProfile.NWD_230;
+                && !detection.profile.isNwdMcu();
     }
 
     static String unsupportedMessage(Context context) {

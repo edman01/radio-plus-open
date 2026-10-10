@@ -275,9 +275,18 @@ public final class AboutAppUiTest {
     }
 
     @Test public void mcuTouchProfileHidesAutomaticScanButKeepsManualAndLocalControls() throws Exception {
+        checkMcuTouchControls(RadioBackendProfile.NWD_230, false);
+    }
+
+    @Test public void g5TouchProfileKeepsExistingManualFmAmFlowWithoutAutomaticScan() throws Exception {
+        checkMcuTouchControls(RadioBackendProfile.NWD_G5_242, true);
+    }
+
+    private void checkMcuTouchControls(RadioBackendProfile profile, boolean exerciseBands) throws Exception {
         assumeTrue("Window inspection requires API 29+", android.os.Build.VERSION.SDK_INT >= 29);
         K4811InteropTest.Endpoint endpoint = new K4811InteropTest.Endpoint();
-        withNwdTuner(RadioBackendProfile.NWD_230, endpoint.api(), () -> {
+        NwdRadioApi api = new NwdRadioApi(profile, endpoint, endpoint.audio.routing);
+        withNwdTuner(profile, api, () -> {
             instrumentation.runOnMainSync(() -> {
                 assertFalse(RadioApiFactory.selectedSupportsScanning());
                 assertTrue(RadioApiFactory.selectedSupportsLocalMode());
@@ -315,6 +324,41 @@ public final class AboutAppUiTest {
                 assertEquals("Opening controls must not mutate the MCU tuner", 0L, endpoint.count(command));
             }
             assertTrue("Opening controls must not change the audio source", endpoint.audio.sent.isEmpty());
+            if (exerciseBands) {
+                instrumentation.runOnMainSync(() -> {
+                    RadioButton am = (RadioButton) field(MainActivity.class, "manualAmChoice", activity);
+                    am.performClick();
+                    assertTrue(am.isChecked());
+                });
+                awaitUiBand(3, 999);
+                assertEquals(3, endpoint.band);
+                assertEquals(999, endpoint.frequency);
+                assertManualInput("999", false);
+                assertEquals("Band selection already at the target must not tune again", 0L, endpoint.count(1));
+                instrumentation.runOnMainSync(() -> {
+                    ((EditText) field(MainActivity.class, "manualTuningInput", activity)).setText("900");
+                    ((AlertDialog) field(MainActivity.class, "manualTuningDialog", activity))
+                            .getButton(AlertDialog.BUTTON_POSITIVE).performClick();
+                });
+                awaitUiBand(3, 900);
+                assertEquals(900, endpoint.lastTuneFrequency);
+                assertEquals(1L, endpoint.count(1));
+                instrumentation.runOnMainSync(() -> ((RadioButton)
+                        field(MainActivity.class, "manualFmChoice", activity)).performClick());
+                awaitUiBand(0, 98100);
+                assertEquals(9810, endpoint.frequency);
+                assertManualInput("98.1", true);
+                instrumentation.runOnMainSync(() -> ((RadioButton)
+                        field(MainActivity.class, "manualAmChoice", activity)).performClick());
+                awaitUiBand(3, 900);
+                assertManualInput("900", false);
+                assertEquals("Only explicit 900 kHz tuning and later AM restoration write frequency",
+                        2L, endpoint.count(1));
+                for (int unrequested : new int[]{3, 4, 6, 7, 8, 27}) {
+                    assertEquals("Band selection must not scan or change LOCAL/DX", 0L, endpoint.count(unrequested));
+                }
+                assertTrue("Already active G5 radio must not restart its audio source", endpoint.audio.sent.isEmpty());
+            }
         });
     }
 

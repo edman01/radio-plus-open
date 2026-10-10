@@ -9,6 +9,7 @@ enum RadioBackendProfile {
     TS_8667Q_V23("TS / 8667Q UI02 V23 (experimental)", true),
     NWD_222("NWD / RadioService 2.2.2 (experimental)", true),
     NWD_230("K4811 / MCU RadioService 2.3.0 (experimental)", true),
+    NWD_G5_242("G5 / MCU RadioService 2.4.2 (experimental)", true),
     REGLINK_S540("Reglink / S5.40 (control unavailable)", true),
     UNKNOWN("Unrecognized stock radio", false);
 
@@ -31,6 +32,10 @@ enum RadioBackendProfile {
             "0bd82481535166987f37d1d876d2d697393afcef3b46f979ec1a60209ac1fcf8";
     static final String NWD_230_KERNEL_SHA256 =
             "429685bf6410ae04f6410a62a5c03be2fb57466a0d5d9615f522d1000da6280b";
+    static final String NWD_G5_RADIO_SHA256 =
+            "c25dae04c2819cc7e8267b44432928aa4594c131a28562d57cef7148b9262b07";
+    static final String NWD_G5_KERNEL_SHA256 =
+            "13dc810da813623bc38c98e1e69f907329da2906983f9f3d547fc4e681948ab1";
     static final String REGLINK_S540_SERVICE_SHA256 =
             "f66aac7196c1256888e46c54e16d50b3c3b5680a020af367a16bea60896a1a9c";
     static final String REGLINK_S540_RADIO_SHA256 =
@@ -54,6 +59,7 @@ enum RadioBackendProfile {
         if (TS_8667Q_APK_SHA256.equalsIgnoreCase(hash)) return TS_8667Q_V23;
         if (NWD_RADIO_SHA256.equalsIgnoreCase(hash)) return NWD_222;
         if (NWD_230_RADIO_SHA256.equalsIgnoreCase(hash)) return NWD_230;
+        if (NWD_G5_RADIO_SHA256.equalsIgnoreCase(hash)) return NWD_G5_242;
         if (REGLINK_S540_SERVICE_SHA256.equalsIgnoreCase(hash)) return REGLINK_S540;
         return UNKNOWN;
     }
@@ -68,10 +74,17 @@ enum RadioBackendProfile {
         return (NWD_RADIO_SHA256.equalsIgnoreCase(radioHash)
                 && NWD_KERNEL_SHA256.equalsIgnoreCase(kernelHash))
                 || (NWD_230_RADIO_SHA256.equalsIgnoreCase(radioHash)
-                && NWD_230_KERNEL_SHA256.equalsIgnoreCase(kernelHash));
+                && NWD_230_KERNEL_SHA256.equalsIgnoreCase(kernelHash))
+                || (NWD_G5_RADIO_SHA256.equalsIgnoreCase(radioHash)
+                && NWD_G5_KERNEL_SHA256.equalsIgnoreCase(kernelHash));
     }
 
-    boolean isNwd() { return this == NWD_222 || this == NWD_230; }
+    boolean isNwd() { return this == NWD_222 || isNwdMcu(); }
+
+    // These independently inspected service/kernel pairs share the type-0 MCU
+    // contract: one-way tuning and source-only audio. Their ARM/AW implementations
+    // have different lifecycle requirements and are rejected by NwdRadioApi.
+    boolean isNwdMcu() { return this == NWD_230 || this == NWD_G5_242; }
     boolean isReglink() { return this == REGLINK_S540; }
 
     static boolean verifiedReglinkTriplet(String services, String radio, String tuner) {

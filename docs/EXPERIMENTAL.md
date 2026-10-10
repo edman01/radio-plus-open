@@ -4,6 +4,36 @@ Optional test builds for additional radio implementations.
 **This additional support has not been tested on real head units.**
 Keep the original radio app and its services installed and enabled.
 
+## Development build 0.16.1-dev32 — G5 MCU
+
+The current source adds a separately recognized **G5 MCU / tuner type 0**
+profile for RadioService **2.4.2** and KernelService **2.6.2**, inspected in
+`G5_NWD_S212851.20260916.201422`. This is not included in the Experimental 3
+download below and has not been verified on a physical head unit.
+
+- Both installed service APK fingerprints must match the inspected pair.
+  The runtime tuner type is checked before tuner or audio commands are sent.
+  A matching version number, radio UI or Hizpo/Asuret QS model name alone is
+  not enough to identify a supported device.
+- Includes manual FM tuning, conditional AM, Radio+ stations/favorites,
+  LOCAL/DX readback and source-based play/pause. The existing interface is unchanged.
+- Uses one-way tuning with frequency/band confirmation, without replaying an
+  unconfirmed command or reopening audio after every channel change.
+- The same [MCU limitations](#k4811-limitations) apply: no automatic scan,
+  station seek, preset preview or Radio+ favorites navigation from native wheel keys.
+  Firmware wheel actions remain with the stock service; Radio+ reads the resulting
+  frequency/band without sending a second tune command.
+- ARM/SI47925 type 1 and Allwinner type 2 remain blocked. Their inspected services
+  can complete delayed initialization/unmute work after an audio-source change;
+  a safe cancellation mechanism has not been established. Other types are blocked too.
+- If the pair matches but the tuner type is unsupported, **Settings → General →
+  About app** reports that runtime type. Do not replace firmware or stock services
+  to force recognition.
+
+This is limited experimental touch-control support, **not full Junsun V7-equivalent
+support** or confirmation for all Hizpo units. Speaker audio, reception, physical
+wheel behavior and sleep/wake still need testing on the exact matching device.
+
 ## Changes in 0.16.1-dev31 — Experimental 3
 
 - Added touch-control support for the inspected **K4811 MCU implementation**:

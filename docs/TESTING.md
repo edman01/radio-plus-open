@@ -51,6 +51,13 @@ FM mode. Android media-control tests do not validate or replace that route;
 NWD is offered as experimental touch-control support, not Junsun V7-equivalent support.
 Experimental 3 enables only K4811 MCU/type 0. Allwinner adapter tests do not mean
 that its development profile is enabled in the released APK.
+Development version 0.16.1-dev32 adds the separately inspected G5 MCU service pair.
+G5 tests cover exact pair recognition, read-only rejection of unsupported runtime
+types, one-way tuning/readback, FM/AM grids, source handoff, rapid play/pause,
+unsupported scan rejection and isolation from native raw media-key events.
+They use synthetic Binder endpoints; the supplied firmware is inspected, not
+installed or executed in the emulator. These checks do not prove a device's
+installed services or runtime tuner match this profile.
 See [supported models and limitations](COMPATIBILITY.md).
 
 Media-control tests cover station-list and favorites order, single-press handling,
