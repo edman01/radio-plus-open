@@ -5,6 +5,33 @@ import java.util.Locale;
 import static org.junit.Assert.*;
 
 public final class RadioBackendProfileTest {
+    @Test public void spdRequiresExactRadioAndBothSourceFrameworkDependencies() {
+        RadioBackendProfile spd = RadioBackendProfile.SPD_V9_34;
+        assertEquals(spd, RadioBackendProfile.forApkSha256(RadioBackendProfile.SPD_RADIO_SHA256));
+        assertTrue(spd.isSpd());
+        assertTrue(spd.experimental);
+        assertTrue(spd.isEnabledForDeviceControl());
+        assertFalse(spd.isNwd());
+        assertFalse(spd.isTs());
+        assertEquals("com.spd.radio", spd.stockPackage());
+        assertTrue(RadioBackendProfile.verifiedSpdDependencies(
+                RadioBackendProfile.SPD_FRAMEWORK_SHA256.toUpperCase(Locale.ROOT),
+                RadioBackendProfile.SPD_SERVICES_SHA256.toUpperCase(Locale.ROOT)));
+        for (String wrong : new String[]{null, "", "com.spd.radio", "Junsun V9 Plus", "14",
+                RadioBackendProfile.SPD_RADIO_SHA256}) {
+            assertFalse(RadioBackendProfile.verifiedSpdDependencies(wrong,
+                    RadioBackendProfile.SPD_SERVICES_SHA256));
+            assertFalse(RadioBackendProfile.verifiedSpdDependencies(
+                    RadioBackendProfile.SPD_FRAMEWORK_SHA256, wrong));
+        }
+        assertEquals(RadioBackendProfile.UNKNOWN, RadioBackendProfile.forApkSha256("com.spd.radio"));
+        assertEquals(RadioBackendProfile.UNKNOWN, RadioBackendProfile.forApkSha256("Junsun V9 Plus"));
+        assertEquals(RadioBackendProfile.UNKNOWN,
+                RadioBackendProfile.forApkSha256(RadioBackendProfile.SPD_FRAMEWORK_SHA256));
+        assertEquals(RadioBackendProfile.UNKNOWN,
+                RadioBackendProfile.forApkSha256(RadioBackendProfile.SPD_SERVICES_SHA256));
+    }
+
     @Test public void reglinkInspectionNeverEnablesUnresolvedAudioOwnership() {
         assertEquals(RadioBackendProfile.REGLINK_S540,
                 RadioBackendProfile.forApkSha256(RadioBackendProfile.REGLINK_S540_SERVICE_SHA256));

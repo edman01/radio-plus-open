@@ -10,6 +10,10 @@ compatibility with those devices has not been verified.
 · [Supported models](docs/COMPATIBILITY.md#experimental-support).
 *Experimental radio support has not been tested on real head units.*
 
+[Development profiles and changes](docs/EXPERIMENTAL.md) include the new SPD /
+Junsun V9 Plus profile and its [OpenRadioFM source acknowledgement](THIRD_PARTY_NOTICES.md#openradiofm).
+This newer profile is not yet included in the downloadable Experimental 3 APK.
+
 ![Radio+ on a head unit](docs/images/radio-plus-head-unit-demo.png)
 
 *AI-assisted illustration with fictional stations and logos. Logos are not included in the app.*

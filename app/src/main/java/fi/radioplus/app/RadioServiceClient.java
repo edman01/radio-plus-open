@@ -363,9 +363,9 @@ final class RadioServiceClient {
                 try {
                     action.run(current);
                     if (isCurrentPoll(current, generation)) pollNow(generation, forceStateDispatch);
-                } catch (NwdRadioApi.CommandRejectedException rejected) {
+                } catch (NwdRadioApi.CommandRejectedException | SpdRadioApi.CommandRejectedException rejected) {
                     if (!isCurrentPoll(current, generation)) return;
-                    Log.w(TAG, "NWD command unavailable; connection and source left unchanged", rejected);
+                    Log.w(TAG, "Radio command unavailable; connection and source left unchanged", rejected);
                     notifyError(current, generation,
                             tr("Radio-ohjaus epäonnistui", "Radio control failed"));
                     pollNow(generation, forceStateDispatch);
@@ -400,6 +400,18 @@ final class RadioServiceClient {
         // requested station is already current. Periodic polls stay deduplicated.
         perform(current, generation, true, remote -> {
             if (!isCurrentPoll(remote, generation)) return;
+            if (remote instanceof SpdRadioApi) {
+                SpdRadioApi spd = (SpdRadioApi) remote;
+                spd.validateTuningTarget(targetBand, frequency);
+                if (!isCurrentPoll(remote, generation)) return;
+                if (!spd.requestPlayAudioForTuning(() -> isCurrentPoll(remote, generation))) {
+                    throw new SpdRadioApi.CommandRejectedException("SPD playback was not confirmed");
+                }
+                if (!spd.tuneToBand(targetBand, frequency, () -> isCurrentPoll(remote, generation))) {
+                    throw new SpdRadioApi.CommandRejectedException("SPD tuning was not confirmed");
+                }
+                return;
+            }
             if (remote instanceof NwdRadioApi) {
                 try { ((NwdRadioApi) remote).validateTuningTarget(targetBand, frequency); }
                 catch (RemoteException error) {
@@ -566,13 +578,17 @@ final class RadioServiceClient {
         try {
             NwdRadioApi.Frequency nwdFrequency = current instanceof NwdRadioApi
                     ? ((NwdRadioApi) current).frequency() : null;
-            int band = nwdFrequency == null ? current.getCurrentBand() : nwdFrequency.band();
-            int frequency = nwdFrequency == null ? current.getCurrentFreq() : nwdFrequency.khz;
+            SpdRadioProbe.Frequency spdFrequency = current instanceof SpdRadioApi
+                    ? ((SpdRadioApi) current).frequency() : null;
+            int band = spdFrequency != null ? spdFrequency.grid.band
+                    : nwdFrequency == null ? current.getCurrentBand() : nwdFrequency.band();
+            int frequency = spdFrequency != null ? spdFrequency.grid.frequency
+                    : nwdFrequency == null ? current.getCurrentFreq() : nwdFrequency.khz;
             if (!FrequencyRules.isValid(band, frequency)) {
                 return;
             }
-            String serviceRdsName = RadioMetadataReader.clean(nwdFrequency == null
-                    ? current.getCurrentFreqRdsPs() : nwdFrequency.name);
+            String serviceRdsName = RadioMetadataReader.clean(spdFrequency != null ? spdFrequency.ps
+                    : nwdFrequency == null ? current.getCurrentFreqRdsPs() : nwdFrequency.name);
             RadioMetadataReader.Metadata metadata = RadioApiFactory.usesHcnFramework(current)
                     ? metadataReader.read() : null;
             if (nwdFrequency != null) {

@@ -65,6 +65,20 @@ installed or executed in the emulator. These checks do not prove a device's
 installed services or runtime tuner match this profile.
 See [supported models and limitations](COMPATIBILITY.md).
 
+Development version **0.16.1-dev34** adds synthetic SPD tests for exact profile
+and framework recognition, the stock Binder read/command layout, coherent FM/AM
+snapshots, AM 900 kHz without FM scaling, manual readback and station-store
+persistence, and unchanged-frequency Tune without another hardware command.
+Audio tests exercise source-owned play/pause, a delayed PLAY followed by PAUSE,
+explicit-only recovery from an unresolved audio request, and stale lifecycle
+guards. Manual-tuning tests cover a delayed activation timeout, safe cleanup on
+the unchanged source, and preservation of an older pending playback request.
+Implicit reconnection cannot acquire another source or resume a paused radio.
+They also verify that passive reads, unsupported features and native
+raw media keys do not submit extra commands. These tests use simulated endpoints;
+they do not validate radio reception, audible sound, native queue completion,
+steering-wheel operation or suspend/resume on a V9 Plus.
+
 Media-control tests cover station-list and favorites order, single-press handling,
 Android media-key routing, and avoiding a repeated audio handoff during adjacent
 station changes and direct on-screen station selection. They also cover resuming

@@ -651,9 +651,9 @@ public final class RadioPlaybackService extends MediaBrowserService {
             return;
         }
         Log.w(TAG, "Stock radio connection lost: " + reason);
-        if (radio instanceof NwdRadioApi
-                || (boundDetection != null && boundDetection.profile.isNwd())) {
-            // The shared NWD cache can return this same API object after a
+        if (radio instanceof NwdRadioApi || radio instanceof SpdRadioApi
+                || (boundDetection != null && (boundDetection.profile.isNwd() || boundDetection.profile.isSpd()))) {
+            // The shared backend cache can return this same API object after a
             // rebind. Identity alone must not revive a pre-loss queued tune
             // or its in-flight continuation; keep HCN/TS recovery unchanged.
             playbackEpoch++;
@@ -700,6 +700,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
     private void pausePlayback() {
         SteeringDiagnosticTrace.get().event("playback", "pause-request");
         IRadioServiceAPI current = radio;
+        if (current instanceof SpdRadioApi) ((SpdRadioApi) current).cancelPendingAudioStart();
         pendingNwdPause = current instanceof NwdRadioApi
                 && ((NwdRadioApi) current).markPendingAudioCancellation()
                 ? new PendingNwdPause((NwdRadioApi) current,
@@ -882,6 +883,12 @@ public final class RadioPlaybackService extends MediaBrowserService {
         }
         RadioPlaybackHealthReader.Snapshot snapshot = readPlaybackHealth();
         if (!isCurrentPlayback(epoch, current)) return;
+        if (current instanceof SpdRadioApi && !explicitTakeover
+                && !(snapshot.radioOwnsSource() && snapshot.muteKnown && !snapshot.muted)) {
+            // A rebind or app reopen is observation, not new permission to
+            // switch away from another source or resume a paused stock radio.
+            throw new SpdRadioApi.CommandRejectedException("SPD resume requires an explicit playback request");
+        }
         boolean requestFocus = oemFocusState.shouldRequestFocus(
                 snapshot.sourceKnown,
                 snapshot.radioOwnsSource(),
@@ -894,9 +901,15 @@ public final class RadioPlaybackService extends MediaBrowserService {
         if (OemFocusInteropPolicy.shouldRequestRoute(oemRouteActive, requestFocus)) {
             // Match the stock RadioAppManager: select the analog radio source
             // before asking FMPlugService to unmute it through audio focus.
-            oemRouteActive = current.requestPlayAudio();
+            oemRouteActive = current instanceof SpdRadioApi
+                    ? ((SpdRadioApi) current).requestPlayAudio(
+                            () -> isCurrentPlayback(epoch, current), explicitTakeover)
+                    : current.requestPlayAudio();
             if (current instanceof NwdRadioApi && !oemRouteActive) {
                 throw new NwdRadioApi.CommandRejectedException("NWD source takeover is not available");
+            }
+            if (current instanceof SpdRadioApi && !oemRouteActive) {
+                throw new SpdRadioApi.CommandRejectedException("SPD playback source was not confirmed");
             }
             oemFocusState.markRouteRequested();
             Log.i(TAG, oemRouteActive
@@ -1093,15 +1106,21 @@ public final class RadioPlaybackService extends MediaBrowserService {
     }
 
     private boolean usesSourceExitBackend() {
-        return radio instanceof TsRadioApi || radio instanceof NwdRadioApi
+        return radio instanceof TsRadioApi || radio instanceof NwdRadioApi || radio instanceof SpdRadioApi
                 || (boundDetection != null && (boundDetection.profile.isTs()
-                    || boundDetection.profile.isNwd()));
+                    || boundDetection.profile.isNwd() || boundDetection.profile.isSpd()));
     }
 
     private RadioPlaybackHealthReader.Snapshot readPlaybackHealth() {
         IRadioServiceAPI current = radio;
         if (current == null) return new RadioPlaybackHealthReader.Snapshot(false, "", false, false);
         if (current instanceof NwdRadioApi) return ((NwdRadioApi) current).readHealth();
+        if (current instanceof SpdRadioApi) {
+            try { return ((SpdRadioApi) current).readHealth(); }
+            catch (RuntimeException error) {
+                return new RadioPlaybackHealthReader.Snapshot(false, "", false, false);
+            }
+        }
         if (!(current instanceof TsRadioApi)) {
             if (usesSourceExitBackend()) return new RadioPlaybackHealthReader.Snapshot(false, "", false, false);
             return playbackHealthReader.read();
@@ -1117,6 +1136,20 @@ public final class RadioPlaybackService extends MediaBrowserService {
     private boolean setTunerMuted(boolean muted) {
         IRadioServiceAPI current = radio;
         if (current == null) return false;
+        if (current instanceof SpdRadioApi) {
+            if (!muted || playbackRequested) return false;
+            if (Looper.myLooper() == Looper.getMainLooper()) {
+                executeRadioCommand("pause SPD source", (connected, epoch) -> {
+                    if (!playbackRequested && connected == current && playbackEpoch == epoch) {
+                        ((SpdRadioApi) connected).pauseRadioSource(
+                                () -> !playbackRequested && connected == radio && playbackEpoch == epoch);
+                    }
+                });
+                return false;
+            }
+            try { return ((SpdRadioApi) current).pauseRadioSource(() -> !playbackRequested && current == radio); }
+            catch (RemoteException | RuntimeException error) { return false; }
+        }
         if (current instanceof NwdRadioApi) {
             if (!muted || playbackRequested) return false;
             if (Looper.myLooper() == Looper.getMainLooper()) {
@@ -1175,8 +1208,10 @@ public final class RadioPlaybackService extends MediaBrowserService {
         setPlaybackRequested(true);
         long requestRevision = playbackRequestRevision;
         executeRadioCommand(next ? "next preset" : "previous preset", (current, epoch) -> {
-            int band = normalizeBand(current.getCurrentBand());
-            int frequency = current.getCurrentFreq();
+            SpdRadioProbe.Frequency spd = current instanceof SpdRadioApi
+                    ? ((SpdRadioApi) current).frequency() : null;
+            int band = spd == null ? normalizeBand(current.getCurrentBand()) : spd.grid.band;
+            int frequency = spd == null ? current.getCurrentFreq() : spd.grid.frequency;
             FavoriteStation target = FavoriteNavigator.selectInStoredOrder(
                     stations,
                     band,
@@ -1275,6 +1310,10 @@ public final class RadioPlaybackService extends MediaBrowserService {
     }
 
     private boolean finishConfirmedTuneRoute(IRadioServiceAPI current) throws RemoteException {
+        if (current instanceof SpdRadioApi) {
+            RadioPlaybackHealthReader.Snapshot health = ((SpdRadioApi) current).readHealth();
+            return health.radioOwnsSource() && health.muteKnown && !health.muted;
+        }
         if (current instanceof NwdRadioApi) {
             // NWD selected and checked source 4 before/during its tune. A later
             // source handoff must not be undone by a redundant tail Play.
@@ -1287,6 +1326,10 @@ public final class RadioPlaybackService extends MediaBrowserService {
             throws RemoteException {
         if (!isCurrentPlayback(epoch, current)) return false;
         int normalizedTarget = normalizeBand(target.band);
+        if (current instanceof SpdRadioApi) {
+            return ((SpdRadioApi) current).tuneToBand(normalizedTarget, target.frequency,
+                    () -> isCurrentPlayback(epoch, current));
+        }
         if (current instanceof NwdRadioApi) {
             ((NwdRadioApi) current).validateTuningTarget(normalizedTarget, target.frequency);
             // NWD owns asynchronous confirmation and unresolved-command state.
@@ -1369,12 +1412,16 @@ public final class RadioPlaybackService extends MediaBrowserService {
     private boolean validateStationTarget(IRadioServiceAPI current, FavoriteStation target,
             long epoch, long requestRevision, boolean previouslyRequested) {
         if (!isCurrentPlayback(epoch, current)) return false;
-        if (!(current instanceof NwdRadioApi)) return true;
+        if (!(current instanceof NwdRadioApi) && !(current instanceof SpdRadioApi)) return true;
         try {
-            ((NwdRadioApi) current).validateTuningTarget(normalizeBand(target.band), target.frequency);
+            if (current instanceof SpdRadioApi) {
+                ((SpdRadioApi) current).validateTuningTarget(normalizeBand(target.band), target.frequency);
+            } else {
+                ((NwdRadioApi) current).validateTuningTarget(normalizeBand(target.band), target.frequency);
+            }
             return isCurrentPlayback(epoch, current);
         } catch (RemoteException | RuntimeException error) {
-            Log.w(TAG, "NWD station target is not available; playback source left unchanged", error);
+            Log.w(TAG, "Radio station target is not available; playback source left unchanged", error);
             mainHandler.post(() -> {
                 if (!isCurrentPlayback(epoch, current)
                         || playbackRequestRevision != requestRevision) return;
@@ -1422,12 +1469,16 @@ public final class RadioPlaybackService extends MediaBrowserService {
                     // audio back from the source the user selected meanwhile.
                     Log.w(TAG, "NWD command unavailable: " + command, error);
                     settleRejectedNwdCommand(current, epoch, requestRevision);
+                } catch (SpdRadioApi.CommandRejectedException error) {
+                    Log.w(TAG, "SPD command unavailable: " + command, error);
+                    settleRejectedSpdCommand((SpdRadioApi) current, epoch, requestRevision);
                 } catch (RemoteException | RuntimeException | LinkageError error) {
                     SteeringDiagnosticTrace.get().event("oem", "command-failed: " + command);
                     Log.w(TAG, "Stock radio command failed: " + command, error);
                     mainHandler.post(() -> {
                         if (radio == current && !stopping
-                                && (!(current instanceof NwdRadioApi) || playbackEpoch == epoch)) {
+                                && (!(current instanceof NwdRadioApi || current instanceof SpdRadioApi)
+                                        || playbackEpoch == epoch)) {
                             handleOemConnectionLoss("command failed: " + command);
                         }
                     });
@@ -1458,6 +1509,34 @@ public final class RadioPlaybackService extends MediaBrowserService {
         });
     }
 
+    private void settleRejectedSpdCommand(SpdRadioApi current, long epoch, long requestRevision) {
+        if (!isCurrentPlayback(epoch, current) || playbackRequestRevision != requestRevision) return;
+        RadioPlaybackHealthReader.Snapshot health;
+        try { health = current.readHealth(); }
+        catch (RuntimeException error) { health = null; }
+        if (current.hasPendingAudioStart()
+                && !(health != null && health.radioOwnsSource() && health.muteKnown && !health.muted)) {
+            // A timed-out PLAY can still be accepted in the OEM queue. Queue
+            // only our own source-specific PAUSE behind it, provided the
+            // captured owner is still stable. Never replay PLAY or a tune.
+            current.cancelPendingAudioStart();
+            try {
+                current.pauseRadioSource(() -> isCurrentPlayback(epoch, current)
+                        && playbackRequestRevision == requestRevision);
+                health = current.readHealth();
+            } catch (RemoteException | RuntimeException error) { health = null; }
+        }
+        boolean stillPlaying = health != null && health.radioOwnsSource() && health.muteKnown && !health.muted;
+        mainHandler.post(() -> {
+            if (stopping || radio != current || playbackEpoch != epoch || playbackRequestRevision != requestRevision) return;
+            pendingWidgetStation = null;
+            pendingRadioCommand = null;
+            pendingRadioCommandName = "";
+            oemRouteActive = stillPlaying;
+            if (!stillPlaying) setPlaybackRequested(false);
+        });
+    }
+
     private boolean isCurrentNwdRequest(IRadioServiceAPI current, long epoch, long requestRevision) {
         return !stopping && radio == current && playbackEpoch == epoch
                 && playbackRequestRevision == requestRevision;
@@ -1479,13 +1558,15 @@ public final class RadioPlaybackService extends MediaBrowserService {
             return;
         }
         executeRadioCommand("media metadata", (current, epoch) -> {
-            int band = normalizeBand(current.getCurrentBand());
-            int frequency = current.getCurrentFreq();
+            SpdRadioProbe.Frequency spd = current instanceof SpdRadioApi
+                    ? ((SpdRadioApi) current).frequency() : null;
+            int band = spd == null ? normalizeBand(current.getCurrentBand()) : spd.grid.band;
+            int frequency = spd == null ? current.getCurrentFreq() : spd.grid.frequency;
             if (!FrequencyRules.isValid(band, frequency)) {
                 return;
             }
             String rdsName = RadioMetadataReader.clean(
-                    current.getCurrentFreqRdsPs()
+                    spd == null ? current.getCurrentFreqRdsPs() : spd.ps
             );
             mainHandler.post(() -> {
                 if (!stopping && radio == current && playbackEpoch == epoch) {
@@ -1900,9 +1981,10 @@ public final class RadioPlaybackService extends MediaBrowserService {
 
     static boolean shouldIgnoreRawMediaKeys() {
         RadioPlaybackService current = runningInstance;
-        return RadioApiFactory.selectedUsesNwd()
-                || (current != null && (current.radio instanceof NwdRadioApi
-                || (current.boundDetection != null && current.boundDetection.profile.isNwd())));
+        return RadioApiFactory.selectedUsesNwd() || RadioApiFactory.selectedUsesSpd()
+                || (current != null && (current.radio instanceof NwdRadioApi || current.radio instanceof SpdRadioApi
+                || (current.boundDetection != null && (current.boundDetection.profile.isNwd()
+                        || current.boundDetection.profile.isSpd()))));
     }
 
     private void resetRawMediaKeyDecisions() {

@@ -56,6 +56,15 @@ remain with the stock firmware, not Radio+'s favorites order. A Hizpo/Asuret QS
 name or the `com.nwd.radio` UI package alone does not establish this exact profile.
 See [G5 scope and limitations](EXPERIMENTAL.md#development-build-0161-dev33--g5-mcu).
 
+### SPD / Junsun V9 Plus development profile
+
+Source version **0.16.1-dev34** adds a narrowly identified SPD profile for
+`19449.2730.4FBC6B6.5CC38CB.20260130.191936`, with the inspected `com.spd.radio`
+and matching system framework. Manual FM/AM and source-owned play/pause are
+experimental, not confirmed on hardware. Automatic scan, station seek and
+Radio+ steering-wheel navigation are unavailable. This is not in Experimental 3.
+See [functions, limits and OpenRadioFM source credit](EXPERIMENTAL.md#development-build-0161-dev34--spd--junsun-v9-plus).
+
 ## Under investigation
 
 - Xtrons IAP12CTS / IA series

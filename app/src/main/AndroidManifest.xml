@@ -11,6 +11,7 @@
         <package android:name="com.ts.MainUI" />
         <package android:name="com.nwd.radio.service" />
         <package android:name="com.nwd.kernel" />
+        <package android:name="com.spd.radio" />
         <package android:name="com.reglink.services" />
         <package android:name="com.reglink.apps.radio" />
         <package android:name="com.reglink.apps.mtkradio" />

@@ -32,8 +32,8 @@ android {
         applicationId "fi.radioplus.app"
         minSdk 27
         targetSdk 33
-        versionCode 95
-        versionName "0.16.1-dev33"
+        versionCode 96
+        versionName "0.16.1-dev34"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     buildFeatures {

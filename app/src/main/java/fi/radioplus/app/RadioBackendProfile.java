@@ -10,6 +10,7 @@ enum RadioBackendProfile {
     NWD_222("NWD / RadioService 2.2.2 (experimental)", true),
     NWD_230("K4811 / MCU RadioService 2.3.0 (experimental)", true),
     NWD_G5_242("G5 / MCU RadioService 2.4.2 (experimental)", true),
+    SPD_V9_34("SPD / V9 Plus 20260130 (experimental)", true),
     REGLINK_S540("Reglink / S5.40 (control unavailable)", true),
     UNKNOWN("Unrecognized stock radio", false);
 
@@ -42,6 +43,12 @@ enum RadioBackendProfile {
             "3ec4895e2d1a8145f53c53b984f2cfb0e22e34d82f2745cc4fc54e10802a64a9";
     static final String REGLINK_S540_TUNER_SHA256 =
             "f9bba4d7785a5197dc8097a581ba09423d18af0db7801d3ffc5762e7cf020cb8";
+    static final String SPD_RADIO_SHA256 =
+            "955899427a6d437d244dbdedc69b25c313e9ef86e0f2813345fa75ea4f67b57b";
+    static final String SPD_FRAMEWORK_SHA256 =
+            "92bee3db7797db23610bcc71b36893a323aa4faffc95aa7164887fcc4b6eb09c";
+    static final String SPD_SERVICES_SHA256 =
+            "5adc3457d2a58d70f950517bffcaf3f79218b5137aa562c5146f351380069e83";
 
     final String label;
     final boolean experimental;
@@ -60,11 +67,13 @@ enum RadioBackendProfile {
         if (NWD_RADIO_SHA256.equalsIgnoreCase(hash)) return NWD_222;
         if (NWD_230_RADIO_SHA256.equalsIgnoreCase(hash)) return NWD_230;
         if (NWD_G5_RADIO_SHA256.equalsIgnoreCase(hash)) return NWD_G5_242;
+        if (SPD_RADIO_SHA256.equalsIgnoreCase(hash)) return SPD_V9_34;
         if (REGLINK_S540_SERVICE_SHA256.equalsIgnoreCase(hash)) return REGLINK_S540;
         return UNKNOWN;
     }
 
     String stockPackage() {
+        if (isSpd()) return "com.spd.radio";
         if (isReglink()) return "com.reglink.services";
         if (isNwd()) return "com.nwd.radio.service";
         return isTs() ? "com.ts.MainUI" : RadioBackendContract.PACKAGE_NAME;
@@ -86,6 +95,12 @@ enum RadioBackendProfile {
     // have different lifecycle requirements and are rejected by NwdRadioApi.
     boolean isNwdMcu() { return this == NWD_230 || this == NWD_G5_242; }
     boolean isReglink() { return this == REGLINK_S540; }
+    boolean isSpd() { return this == SPD_V9_34; }
+
+    static boolean verifiedSpdDependencies(String framework, String services) {
+        return SPD_FRAMEWORK_SHA256.equalsIgnoreCase(framework)
+                && SPD_SERVICES_SHA256.equalsIgnoreCase(services);
+    }
 
     static boolean verifiedReglinkTriplet(String services, String radio, String tuner) {
         return REGLINK_S540_SERVICE_SHA256.equalsIgnoreCase(services)

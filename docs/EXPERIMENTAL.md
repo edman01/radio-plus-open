@@ -4,6 +4,50 @@ Optional test builds for additional radio implementations.
 **This additional support has not been tested on real head units.**
 Keep the original radio app and its services installed and enabled.
 
+## Development build 0.16.1-dev34 — SPD / Junsun V9 Plus
+
+Adds a separately recognized SPD profile for firmware
+`19449.2730.4FBC6B6.5CC38CB.20260130.191936`. **Not included in the Experimental 3
+download below; not tested on a real head unit.**
+
+- Requires the exact inspected `com.spd.radio` APK and matching system framework.
+  A matching package, Android version or V9 Plus model name alone is insufficient.
+- Manual FM/AM tuning, station saving and Radio+'s own favorites use the tuner's
+  reported frequency grid. FM and AM values are handled separately in kHz.
+- Explicit play/pause uses the stock service and checks the audio-source owner.
+  It does not launch the stock interface, change its saved source identity,
+  reset radio settings or automatically reclaim another app's audio.
+- Band and frequency are read together. Unconfirmed commands are not replayed;
+  station saving uses observed service state, not an optimistic app update.
+- The existing interface is unchanged. This service exposes one FM group and
+  one AM group, not separate FM1/FM2/FM3 tuner banks.
+
+Limitations:
+
+- No automatic scanning, station seek or preset preview in Radio+ yet. Native
+  search and stop commands were identified, but a complete scan/cancel/result
+  import flow has not been implemented or device-tested for this profile.
+- LOCAL/DX is read-only. Native steering buttons remain controlled by the stock
+  firmware and may use its presets rather than Radio+'s stations/favorites.
+  Radio+ does not send a second tune command for the same physical press.
+- Unknown audio ownership, an active stock search, unsupported regional data
+  or an unresolved tune blocks new control requests. A new explicit Play can
+  replace an unresolved play/pause request after fresh ownership checks;
+  reconnecting or polling never retries it automatically.
+- Removing the stock radio task from Android Recents can make the firmware
+  switch away from radio audio. Radio+ does not override that source change.
+- Commands already accepted by the stock service cannot be withdrawn from its
+  queue. A changed or unknown source can prevent safe cleanup; such a request
+  stays unresolved rather than being reported as a completed cancellation.
+- A service-state acknowledgement is **not proof of reception or audible output**.
+  Sound, pause/resume, source handoff and sleep/wake need physical device testing.
+
+The work consulted
+[OpenRadioFM's SPD implementation](https://github.com/kapi21/OpenRadioFM/blob/7e83df8493f8a926f8d4ced05505623081f25341/app/src/main/java/com/example/openradiofm/data/source/SpdEngine.java)
+and independently checked the stock-service contract. The two contracts use
+different transaction and command numbers and are not interchangeable.
+See [source acknowledgement](../THIRD_PARTY_NOTICES.md#openradiofm).
+
 ## Development build 0.16.1-dev33 — G5 MCU
 
 The current source adds a separately recognized **G5 MCU / tuner type 0**
@@ -107,6 +151,14 @@ The app's supported range remains FM 87.5–108.0 MHz in 100 kHz steps and AM
 522–1620 kHz in 9 kHz steps. Targets must also exist on the stock tuner's grid;
 MCU stepping visits their shared valid frequencies. Other regional ranges are
 not supported. The same UI on two devices does not prove the same tuner contract.
+
+## Additional OpenRadioFM-based investigation
+
+[OpenRadioFM](https://github.com/kapi21/OpenRadioFM) is also a technical reference
+for NWD/QS6 and other tuner implementations. Its device list is not Radio+'s
+compatibility list: each stock-service contract needs separate verification.
+The G5 profile above remains limited to the inspected MCU service pair.
+Other G5 tuner types, FYT, Xtrons and ATOTO are not enabled by this work.
 
 ## Download
 

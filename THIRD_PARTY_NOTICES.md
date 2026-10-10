@@ -12,6 +12,18 @@ services. Radio+ uses the software already installed on the head unit.
 Manufacturer APKs, tuner drivers, native libraries, firmware and system signing
 keys are not included. Manufacturer software remains separately licensed.
 
+## OpenRadioFM
+
+[OpenRadioFM](https://github.com/kapi21/OpenRadioFM), copyright 2025–2026 Jimmy80,
+is licensed under the
+[Apache License 2.0](https://github.com/kapi21/OpenRadioFM/blob/7e83df8493f8a926f8d4ced05505623081f25341/LICENSE).
+
+Its SPD interfaces and implementation were consulted as a technical reference
+at commit `7e83df8493f8a926f8d4ced05505623081f25341`. Radio+'s corresponding code
+is independently implemented; no OpenRadioFM source files or binaries are included.
+The acknowledgement does not imply endorsement or verified compatibility with
+OpenRadioFM's supported devices. See [experimental profiles](docs/EXPERIMENTAL.md).
+
 ## Artwork
 
 The public app has no bundled station-logo collection or automatic logo download.
