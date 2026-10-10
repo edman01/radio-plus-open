@@ -44,7 +44,7 @@ Read the [complete limitations](EXPERIMENTAL.md#k4811-limitations) before instal
 
 ### G5 development profile
 
-Source version **0.16.1-dev32** additionally recognizes the inspected
+Source version **0.16.1-dev33** additionally recognizes the inspected
 `G5_NWD_S212851.20260916.201422` RadioService **2.4.2** + KernelService **2.6.2**
 pair, **MCU / runtime tuner type 0 only**. This profile is not in the Experimental 3
 download. Manual FM, conditional AM, Radio+ stations/favorites, LOCAL/DX and
@@ -54,7 +54,7 @@ ARM/Allwinner and other runtime types remain disabled.
 G5 has the same touch-control limitations as K4811 MCU. Native steering controls
 remain with the stock firmware, not Radio+'s favorites order. A Hizpo/Asuret QS
 name or the `com.nwd.radio` UI package alone does not establish this exact profile.
-See [G5 scope and limitations](EXPERIMENTAL.md#development-build-0161-dev32--g5-mcu).
+See [G5 scope and limitations](EXPERIMENTAL.md#development-build-0161-dev33--g5-mcu).
 
 ## Under investigation
 

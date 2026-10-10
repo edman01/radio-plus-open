@@ -341,6 +341,11 @@ final class RadioServiceClient {
     }
 
     private void perform(IRadioServiceAPI current, long generation, RemoteAction action) {
+        perform(current, generation, false, action);
+    }
+
+    private void perform(IRadioServiceAPI current, long generation,
+            boolean forceStateDispatch, RemoteAction action) {
         if (closed) {
             return;
         }
@@ -357,13 +362,13 @@ final class RadioServiceClient {
                 if (!isCurrentPoll(current, generation)) return;
                 try {
                     action.run(current);
-                    if (isCurrentPoll(current, generation)) pollNow(generation);
+                    if (isCurrentPoll(current, generation)) pollNow(generation, forceStateDispatch);
                 } catch (NwdRadioApi.CommandRejectedException rejected) {
                     if (!isCurrentPoll(current, generation)) return;
                     Log.w(TAG, "NWD command unavailable; connection and source left unchanged", rejected);
                     notifyError(current, generation,
                             tr("Radio-ohjaus epäonnistui", "Radio control failed"));
-                    pollNow(generation);
+                    pollNow(generation, forceStateDispatch);
                 } catch (RemoteException | RuntimeException | LinkageError error) {
                     if (!isCurrentPoll(current, generation)) return;
                     Log.e(TAG, "Radio-ohjaus epäonnistui", error);
@@ -391,7 +396,9 @@ final class RadioServiceClient {
             ));
             return;
         }
-        perform(current, generation, remote -> {
+        // An explicit Tune needs a fresh hardware readback even when the
+        // requested station is already current. Periodic polls stay deduplicated.
+        perform(current, generation, true, remote -> {
             if (!isCurrentPoll(remote, generation)) return;
             if (remote instanceof NwdRadioApi) {
                 try { ((NwdRadioApi) remote).validateTuningTarget(targetBand, frequency); }
@@ -528,6 +535,10 @@ final class RadioServiceClient {
     }
 
     private void pollNow(long generation) {
+        pollNow(generation, false);
+    }
+
+    private void pollNow(long generation, boolean forceStateDispatch) {
         IRadioServiceAPI current = service;
         if (!isCurrentPoll(current, generation)) return;
         synchronized (pollingStateLock) {
@@ -543,7 +554,7 @@ final class RadioServiceClient {
                 radioTextStabilizer.reset();
                 lastDispatchedState = null;
             }
-            pollCurrent(current, generation);
+            pollCurrent(current, generation, forceStateDispatch);
         }
     }
 
@@ -551,7 +562,7 @@ final class RadioServiceClient {
         return current != null && !closed && service == current && pollingGeneration == generation;
     }
 
-    private void pollCurrent(IRadioServiceAPI current, long generation) {
+    private void pollCurrent(IRadioServiceAPI current, long generation, boolean forceStateDispatch) {
         try {
             NwdRadioApi.Frequency nwdFrequency = current instanceof NwdRadioApi
                     ? ((NwdRadioApi) current).frequency() : null;
@@ -626,7 +637,7 @@ final class RadioServiceClient {
                     current.currentFreqIsFavorite()
             );
             if (!isCurrentPoll(current, generation)) return;
-            if (state.hasSameContent(lastDispatchedState)) {
+            if (!forceStateDispatch && state.hasSameContent(lastDispatchedState)) {
                 return;
             }
             lastDispatchedState = state;

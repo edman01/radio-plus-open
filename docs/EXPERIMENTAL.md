@@ -4,7 +4,7 @@ Optional test builds for additional radio implementations.
 **This additional support has not been tested on real head units.**
 Keep the original radio app and its services installed and enabled.
 
-## Development build 0.16.1-dev32 — G5 MCU
+## Development build 0.16.1-dev33 — G5 MCU
 
 The current source adds a separately recognized **G5 MCU / tuner type 0**
 profile for RadioService **2.4.2** and KernelService **2.6.2**, inspected in
@@ -19,6 +19,10 @@ download below and has not been verified on a physical head unit.
   LOCAL/DX readback and source-based play/pause. The existing interface is unchanged.
 - Uses one-way tuning with frequency/band confirmation, without replaying an
   unconfirmed command or reopening audio after every channel change.
+- Manual Tune also confirms and saves an already-current frequency. Tests cover
+  confirmed FM/AM saves, repeated tuning without duplicate entries, and station-list
+  reload when reopening the app screen. Names, imported logo references and favorites
+  are preserved; unconfirmed targets are not saved.
 - The same [MCU limitations](#k4811-limitations) apply: no automatic scan,
   station seek, preset preview or Radio+ favorites navigation from native wheel keys.
   Firmware wheel actions remain with the stock service; Radio+ reads the resulting

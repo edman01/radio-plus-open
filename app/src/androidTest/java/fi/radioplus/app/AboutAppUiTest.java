@@ -4,10 +4,13 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Instrumentation;
 import android.content.ActivityNotFoundException;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.graphics.Rect;
+import android.os.IBinder;
 import android.os.SystemClock;
 import android.text.Layout;
 import android.view.View;
@@ -25,10 +28,12 @@ import androidx.test.runner.lifecycle.Stage;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 
 import org.junit.After;
@@ -282,6 +287,164 @@ public final class AboutAppUiTest {
         checkMcuTouchControls(RadioBackendProfile.NWD_G5_242, true);
     }
 
+    @Test public void g5ManualFmAmStationsPersistWithoutDuplicatesOrChangingFavorites() throws Exception {
+        assumeTrue("Window inspection requires API 29+", android.os.Build.VERSION.SDK_INT >= 29);
+        StationStore catalog = new StationStore(context);
+        FavoriteStation custom = new FavoriteStation(0, 98300, "My saved G5 station", "qa-g5-logo");
+        catalog.replaceOrder(Collections.singletonList(custom));
+        Map<String, ?> favoritesBefore = new HashMap<>(context.getSharedPreferences(
+                "radio_plus_favorites", Context.MODE_PRIVATE).getAll());
+        K4811InteropTest.Endpoint endpoint = new K4811InteropTest.Endpoint();
+        NwdRadioApi api = new NwdRadioApi(RadioBackendProfile.NWD_G5_242,
+                endpoint, endpoint.audio.routing);
+        withNwdTuner(RadioBackendProfile.NWD_G5_242, api, () -> {
+            openManualTuningThroughMenu();
+            instrumentation.runOnMainSync(() -> {
+                AlertDialog dialog = (AlertDialog) field(MainActivity.class, "manualTuningDialog", activity);
+                TextView higher = findText(dialog.getWindow().getDecorView(), "+");
+                assertNotNull("Manual FM step-up", higher);
+                assertTrue(higher.performClick());
+            });
+            awaitUiBand(0, 98200);
+            assertManualInput("98.2", true);
+            assertEquals(9820, endpoint.lastTuneFrequency);
+            assertNull("A live step is saved when the manual dialog closes", catalog.find(0, 98200));
+            closeManualTuning();
+            assertNotNull("Closing saves the confirmed FM station", catalog.find(0, 98200));
+            assertEquals(2, catalog.load().size());
+
+            openManualTuningThroughMenu();
+            tuneManualInput("98.3");
+            awaitUiBand(0, 98300);
+            awaitManualCatalogCapture();
+            assertStationMetadata(catalog.find(0, 98300), custom);
+            tuneManualInput("98.3");
+            awaitManualCatalogCapture();
+            assertEquals("Repeated Tune must update, not duplicate, a station", 2, catalog.load().size());
+            assertStationMetadata(catalog.find(0, 98300), custom);
+
+            instrumentation.runOnMainSync(() -> ((RadioButton)
+                    field(MainActivity.class, "manualAmChoice", activity)).performClick());
+            awaitUiBand(3, 999);
+            tuneManualInput("900");
+            awaitUiBand(3, 900);
+            awaitManualCatalogCapture();
+            assertNotNull("Explicit AM Tune saves the confirmed station", catalog.find(3, 900));
+            assertEquals("FM MHz and AM kHz remain distinct catalog entries", 3, catalog.load().size());
+            tuneManualInput("900");
+            awaitManualCatalogCapture();
+            closeManualTuning();
+            assertEquals("Repeated Tune and Close must not append duplicates", 3, catalog.load().size());
+            for (int command : new int[]{3, 4, 6, 7, 8, 27}) {
+                assertEquals("Manual saving must not scan or alter other MCU settings", 0L, endpoint.count(command));
+            }
+            assertTrue("An already active radio must not restart its audio source", endpoint.audio.sent.isEmpty());
+            assertEquals(favoritesBefore, context.getSharedPreferences(
+                    "radio_plus_favorites", Context.MODE_PRIVATE).getAll());
+        });
+
+        // Relaunch only after the synthetic tuner fixture has been restored.
+        instrumentation.runOnMainSync(activity::finish);
+        instrumentation.waitForIdleSync();
+        startPreview();
+        StationStore reopened = new StationStore(context);
+        assertEquals(3, reopened.load().size());
+        assertNotNull(reopened.find(0, 98200));
+        assertNotNull(reopened.find(3, 900));
+        assertStationMetadata(reopened.find(0, 98300), custom);
+        assertEquals(favoritesBefore, context.getSharedPreferences(
+                "radio_plus_favorites", Context.MODE_PRIVATE).getAll());
+        instrumentation.runOnMainSync(() -> assertTrue(activity.findViewById(R.id.stations_button).performClick()));
+        instrumentation.waitForIdleSync();
+        instrumentation.runOnMainSync(() -> {
+            FavoriteAdapter adapter = (FavoriteAdapter) field(MainActivity.class, "favoriteAdapter", activity);
+            assertEquals("Saved stations are loaded into the actual station-list UI", 3, adapter.getCount());
+            Set<String> displayed = new HashSet<>();
+            for (int i = 0; i < adapter.getCount(); i++) displayed.add(adapter.getItem(i).key());
+            assertTrue(displayed.contains("0:98200"));
+            assertTrue(displayed.contains("0:98300"));
+            assertTrue(displayed.contains("3:900"));
+            assertStationMetadata(adapter.getItem(0), custom);
+        });
+        assertNoPlayback();
+    }
+
+    @Test public void g5UnconfirmedManualTargetIsNotSavedWhenDialogCloses() throws Exception {
+        assumeTrue("Window inspection requires API 29+", android.os.Build.VERSION.SDK_INT >= 29);
+        StationStore catalog = new StationStore(context);
+        Map<String, ?> catalogBefore = new HashMap<>(context.getSharedPreferences(
+                "radio_plus_station_catalog", Context.MODE_PRIVATE).getAll());
+        Map<String, ?> favoritesBefore = new HashMap<>(context.getSharedPreferences(
+                "radio_plus_favorites", Context.MODE_PRIVATE).getAll());
+        K4811InteropTest.Endpoint endpoint = new K4811InteropTest.Endpoint();
+        endpoint.neverAcknowledge = true;
+        NwdRadioApi api = new NwdRadioApi(RadioBackendProfile.NWD_G5_242,
+                endpoint, endpoint.audio.routing);
+        withNwdTuner(RadioBackendProfile.NWD_G5_242, api, () -> {
+            openManualTuningThroughMenu();
+            tuneManualInput("98.2");
+            await(() -> endpoint.count(1) == 1L, "The requested tune must reach the synthetic MCU");
+            awaitUiBand(0, 98100);
+            assertNull("Sending a tune command is not a confirmed station", catalog.find(0, 98200));
+            closeManualTuning();
+            assertNull("Closing must not save the unconfirmed requested frequency", catalog.find(0, 98200));
+        });
+        assertEquals("Unconfirmed tuning must not modify the station catalog", catalogBefore,
+                context.getSharedPreferences("radio_plus_station_catalog", Context.MODE_PRIVATE).getAll());
+        assertEquals("Manual catalog capture must not alter favorites", favoritesBefore,
+                context.getSharedPreferences("radio_plus_favorites", Context.MODE_PRIVATE).getAll());
+    }
+
+    private void openManualTuningThroughMenu() {
+        instrumentation.runOnMainSync(() -> assertTrue(activity.findViewById(R.id.auto_scan_button).performClick()));
+        instrumentation.waitForIdleSync();
+        instrumentation.runOnMainSync(() -> {
+            int listId = activity.getResources().getIdentifier("select_dialog_listview", "id", "android");
+            ListView choices = null;
+            for (View root : WindowInspector.getGlobalWindowViews()) {
+                ListView candidate = root.findViewById(listId);
+                if (candidate != null && candidate.isShown()) choices = candidate;
+            }
+            assertNotNull("Manual tuning menu must open", choices);
+            assertEquals("G5 only offers the verified manual workflow", 1, choices.getAdapter().getCount());
+            assertEquals(activity.getString(R.string.tuning_manual), choices.getAdapter().getItem(0));
+            assertTrue(choices.performItemClick(choices.getChildAt(0), 0, choices.getAdapter().getItemId(0)));
+        });
+        instrumentation.waitForIdleSync();
+    }
+
+    private void tuneManualInput(String frequency) {
+        instrumentation.runOnMainSync(() -> {
+            ((EditText) field(MainActivity.class, "manualTuningInput", activity)).setText(frequency);
+            assertTrue(((AlertDialog) field(MainActivity.class, "manualTuningDialog", activity))
+                    .getButton(AlertDialog.BUTTON_POSITIVE).performClick());
+        });
+    }
+
+    private void closeManualTuning() {
+        instrumentation.runOnMainSync(() -> assertTrue(((AlertDialog)
+                field(MainActivity.class, "manualTuningDialog", activity))
+                .getButton(AlertDialog.BUTTON_NEGATIVE).performClick()));
+        instrumentation.waitForIdleSync();
+        assertNull(field(MainActivity.class, "manualTuningDialog", activity));
+    }
+
+    private void awaitManualCatalogCapture() {
+        await(() -> {
+            boolean[] captured = {false};
+            instrumentation.runOnMainSync(() -> captured[0] = ((Integer)
+                    field(MainActivity.class, "pendingManualCatalogFrequency", activity)) == -1);
+            return captured[0];
+        }, "A confirmed Tune must finish its pending catalog capture");
+    }
+
+    private static void assertStationMetadata(FavoriteStation actual, FavoriteStation expected) {
+        assertNotNull(actual);
+        assertEquals(expected.key(), actual.key());
+        assertEquals("User station name must survive tuning and reopening", expected.name, actual.name);
+        assertEquals("User logo token must survive tuning and reopening", expected.logo, actual.logo);
+    }
+
     private void checkMcuTouchControls(RadioBackendProfile profile, boolean exerciseBands) throws Exception {
         assumeTrue("Window inspection requires API 29+", android.os.Build.VERSION.SDK_INT >= 29);
         K4811InteropTest.Endpoint endpoint = new K4811InteropTest.Endpoint();
@@ -385,7 +548,37 @@ public final class AboutAppUiTest {
         Object oldService = service.get(client), oldDetection = latest.get(null);
         Object oldResolved = resolved.get(null);
         boolean oldPreview = preview.getBoolean(activity);
+        // The real manual dialog starts the playback service. Its APK discovery
+        // would replace this synthetic profile with UNKNOWN on a stock emulator.
+        // Bind passively first, then hold discovery while the fake UI endpoint is
+        // installed. Playback-service routing is covered by its separate tests.
+        AtomicBoolean playbackBound = new AtomicBoolean();
+        ServiceConnection playbackConnection = new ServiceConnection() {
+            @Override public void onServiceConnected(ComponentName name, IBinder binder) {
+                playbackBound.set(true);
+            }
+            @Override public void onServiceDisconnected(ComponentName name) {
+                playbackBound.set(false);
+            }
+        };
+        boolean bindingHeld = context.bindService(new Intent(context, RadioPlaybackService.class)
+                .setAction("android.media.browse.MediaBrowserService"), playbackConnection,
+                Context.BIND_AUTO_CREATE);
+        assertTrue("Passively bind the UI fixture's playback service", bindingHeld);
+        Field inspecting = RadioPlaybackService.class.getDeclaredField("inspectingBackend");
+        inspecting.setAccessible(true);
+        Object[] playback = {null};
+        boolean[] oldInspecting = {false};
         try {
+            await(playbackBound::get, "Passive playback service binding must complete");
+            instrumentation.runOnMainSync(() -> {
+                playback[0] = field(RadioPlaybackService.class, "runningInstance", null);
+                assertNotNull(playback[0]);
+                try {
+                    oldInspecting[0] = inspecting.getBoolean(playback[0]);
+                    inspecting.setBoolean(playback[0], true);
+                } catch (ReflectiveOperationException error) { throw new AssertionError(error); }
+            });
             service.set(client, api); preview.setBoolean(activity, false);
             latest.set(null, new RadioApiFactory.Detection(profile, "", "", ""));
             resolved.set(null, api);
@@ -402,9 +595,13 @@ public final class AboutAppUiTest {
                     if (manual != null) manual.dismiss();
                 });
                 context.stopService(new Intent(context, RadioPlaybackService.class));
+                context.unbindService(playbackConnection);
+                bindingHeld = false;
                 await(() -> field(RadioPlaybackService.class, "runningInstance", null) == null,
                         "Release UI test playback service");
             } finally {
+                if (bindingHeld) context.unbindService(playbackConnection);
+                if (playback[0] != null) inspecting.setBoolean(playback[0], oldInspecting[0]);
                 service.set(client, oldService); preview.setBoolean(activity, oldPreview);
                 latest.set(null, oldDetection);
                 resolved.set(null, oldResolved);

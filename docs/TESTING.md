@@ -55,7 +55,12 @@ Development version 0.16.1-dev32 adds the separately inspected G5 MCU service pa
 G5 tests cover exact pair recognition, read-only rejection of unsupported runtime
 types, one-way tuning/readback, FM/AM grids, source handoff, rapid play/pause,
 unsupported scan rejection and isolation from native raw media-key events.
-They use synthetic Binder endpoints; the supplied firmware is inspected, not
+Development version 0.16.1-dev33 also tests manual FM/AM catalog saving, duplicate
+prevention, preserved station names/logo references/favorites, and station-list
+reload after reopening the Activity. Same-frequency Tune delivers fresh readback;
+periodic polls remain deduplicated, and stale binding deliveries are discarded.
+These are emulator tests, not proof of process-death persistence or radio reception.
+They use synthetic Binder endpoints; the firmware is inspected, not
 installed or executed in the emulator. These checks do not prove a device's
 installed services or runtime tuner match this profile.
 See [supported models and limitations](COMPATIBILITY.md).

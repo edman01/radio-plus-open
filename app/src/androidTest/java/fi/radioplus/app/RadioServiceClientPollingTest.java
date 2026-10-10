@@ -258,6 +258,74 @@ public final class RadioServiceClientPollingTest {
         } finally { f.close(); }
     }
 
+    @Test public void explicitSameFrequencyTuneDeliversFreshUnchangedHardwareState() throws Exception {
+        Fixture f = new Fixture(); K4811InteropTest.Endpoint endpoint = new K4811InteropTest.Endpoint();
+        setService(f.client, new NwdRadioApi(RadioBackendProfile.NWD_G5_242,
+                endpoint, endpoint.audio.routing));
+        try {
+            invoke(f.client, "pollNow"); f.idle();
+            assertEquals(1, f.states.size());
+            long readsBefore = endpoint.count(2);
+            f.client.tuneTo(0, 98100);
+            awaitActions(actionExecutor(f.client)); f.idle();
+            assertTrue("An explicit Tune must reread the tuner", endpoint.count(2) > readsBefore);
+            assertEquals("The unchanged readback must reach manual-tuning confirmation", 2, f.states.size());
+            assertTrue(f.states.get(0).hasSameContent(f.states.get(1)));
+            assertNotSame("Do not replay the cached state object", f.states.get(0), f.states.get(1));
+            assertEquals("An already-current MCU frequency does not need another tune command", 0L,
+                    endpoint.count(1));
+            assertTrue(endpoint.audio.sent.isEmpty()); assertTrue(f.errors.isEmpty());
+        } finally { f.close(); }
+    }
+
+    @Test public void periodicPollsStayDeduplicatedAfterExplicitTuneReadback() throws Exception {
+        Fixture f = new Fixture(); K4811InteropTest.Endpoint endpoint = new K4811InteropTest.Endpoint();
+        setService(f.client, new NwdRadioApi(RadioBackendProfile.NWD_G5_242,
+                endpoint, endpoint.audio.routing));
+        try {
+            invoke(f.client, "pollNow"); f.idle();
+            f.client.tuneTo(0, 98100);
+            awaitActions(actionExecutor(f.client)); f.idle();
+            assertEquals(2, f.states.size());
+            long readsBefore = endpoint.count(2);
+            invoke(f.client, "pollNow"); invoke(f.client, "pollNow"); f.idle();
+            assertTrue("Periodic polling still reads hardware", endpoint.count(2) > readsBefore);
+            assertEquals("Explicit Tune must not leave deduplication disabled", 2, f.states.size());
+            assertTrue(f.errors.isEmpty());
+        } finally { f.close(); }
+    }
+
+    @Test public void queuedForcedTuneReadbackIsDiscardedAfterBindingOrGenerationChanges() throws Exception {
+        for (boolean sameEndpoint : new boolean[]{false, true}) {
+            Fixture f = new Fixture(); K4811InteropTest.Endpoint original = new K4811InteropTest.Endpoint();
+            NwdRadioApi originalApi = new NwdRadioApi(RadioBackendProfile.NWD_G5_242,
+                    original, original.audio.routing);
+            K4811InteropTest.Endpoint replacement = new K4811InteropTest.Endpoint();
+            NwdRadioApi replacementApi = new NwdRadioApi(RadioBackendProfile.NWD_G5_242,
+                    replacement, replacement.audio.routing);
+            setService(f.client, originalApi);
+            try {
+                invoke(f.client, "pollNow"); f.idle();
+                assertEquals(1, f.states.size());
+                long readsBefore = original.count(2);
+                f.instrumentation.runOnMainSync(() -> {
+                    f.client.tuneTo(0, 98100);
+                    // The worker queues a real, forced readback while main-thread
+                    // delivery is blocked; changing its binding must invalidate it.
+                    awaitActions(actionExecutor(f.client));
+                    changeBinding(f, sameEndpoint, replacementApi);
+                });
+                f.idle();
+                assertTrue(original.count(2) > readsBefore);
+                assertEquals("Forced delivery must retain both lifecycle guards", 1, f.states.size());
+                f.client.tuneTo(0, 98100);
+                awaitActions(actionExecutor(f.client)); f.idle();
+                assertEquals("The current binding can still deliver its own readback", 2, f.states.size());
+                assertTrue(f.errors.isEmpty());
+            } finally { f.close(); }
+        }
+    }
+
     @Test public void queuedMutationsAreDiscardedAfterBindingOrGenerationChanges() throws Exception {
         for (boolean sameEndpoint : new boolean[]{false, true}) {
             Fixture f = new Fixture(); BlockingMcuEndpoint original = new BlockingMcuEndpoint(-1);
