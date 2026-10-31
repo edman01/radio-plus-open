@@ -82,6 +82,8 @@ public final class RadioPlaybackService extends MediaBrowserService {
             "fi.radioplus.app.action.MEDIA_NEXT";
     private static final String ACTION_TAKE_OVER_PLAYBACK =
             "fi.radioplus.app.action.TAKE_OVER_PLAYBACK";
+    private static final String ACTION_OPEN_UI =
+            "fi.radioplus.app.action.OPEN_UI";
     static final String ACTION_TUNE_STATION =
             "fi.radioplus.app.action.TUNE_WIDGET_STATION";
     static final String ACTION_TUNE_UI_STATION =
@@ -269,8 +271,12 @@ public final class RadioPlaybackService extends MediaBrowserService {
         RadioPlaybackService current = runningInstance;
         // Reopening the screen is not a Play command. Preserve both ongoing
         // radio playback and an intentional pause without another focus/PCM
-        // handoff. A cold launch retains the normal radio startup behavior.
-        if (current == null || current.stopping) ensureRunning(context);
+        // handoff. A cold launch first checks whether the stock radio already
+        // plays, rather than treating screen creation as an explicit Play.
+        if (current == null || current.stopping) {
+            context.startForegroundService(new Intent(context, RadioPlaybackService.class)
+                    .setAction(ACTION_OPEN_UI));
+        }
     }
 
     static void tuneStation(Context context, FavoriteStation station) {
@@ -443,6 +449,10 @@ public final class RadioPlaybackService extends MediaBrowserService {
         }
         if (ACTION_TAKE_OVER_PLAYBACK.equals(action)) {
             requestPlayback(true);
+            return START_NOT_STICKY;
+        }
+        if (ACTION_OPEN_UI.equals(action)) {
+            requestPlaybackForUi();
             return START_NOT_STICKY;
         }
 
@@ -694,6 +704,37 @@ public final class RadioPlaybackService extends MediaBrowserService {
         executeRadioCommand("play", (current, epoch) -> {
             activateOemPlayback(current, explicitTakeover, epoch);
             Log.i(TAG, "Stock radio background playback requested");
+        });
+    }
+
+    private void requestPlaybackForUi() {
+        // Inspect before activating the shared input gain too: even that write
+        // can disturb an already audible OEM route after process recreation.
+        setPlaybackRequested(true, false);
+        long requestRevision = playbackRequestRevision;
+        executeRadioCommand("open radio screen", (current, epoch) -> {
+            RadioPlaybackHealthReader.Snapshot health = readPlaybackHealth();
+            if (!isCurrentPlayback(epoch, current)
+                    || playbackRequestRevision != requestRevision) return;
+            boolean hcnOwnsSource = RadioBackendContract.PACKAGE_NAME.equals(health.sourcePackage)
+                    || health.sourcePackage.startsWith(RadioBackendContract.PACKAGE_NAME + "/");
+            if (RadioApiFactory.supportsSeparateAudioFocus(current)
+                    && OemFocusInteropPolicy.shouldAdoptPlayingRadioForUi(
+                            health.sourceKnown, hcnOwnsSource, health.muteKnown, health.muted,
+                            oemFocusState.wasFocusReleasedByRadioPlus())) {
+                // Adopt observed playback, not the manufacturer's focus handle.
+                // No source selection, focus/mute/gain write, retune or PCM pulse.
+                oemRouteActive = true;
+                oemFocusState.markRouteRequested();
+                oemFocusState.markFocusResumed();
+                activatedPlaybackEpoch = epoch;
+                uiTakeoverRequired = false;
+                Log.i(TAG, "Already-playing stock radio adopted without audio reinitialization");
+                return;
+            }
+            // Unknown, paused or external playback still needs the established
+            // startup path. Explicit Play commands never use the adoption path.
+            activateOemPlayback(current, true, epoch);
         });
     }
 
@@ -2147,6 +2188,10 @@ public final class RadioPlaybackService extends MediaBrowserService {
     }
 
     private void setPlaybackRequested(boolean requested) {
+        setPlaybackRequested(requested, true);
+    }
+
+    private void setPlaybackRequested(boolean requested, boolean activateInputGain) {
         playbackRequestRevision++;
         if (requested) {
             pendingNwdPause = null;
@@ -2164,7 +2209,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
             pendingRadioCommand = null;
         }
         if (radioVolumeGuard != null) {
-            radioVolumeGuard.setActive(requested
+            radioVolumeGuard.setActive(requested && activateInputGain
                     && RadioApiFactory.supportsSeparateAudioFocus(radio));
         }
         updatePlaybackState();

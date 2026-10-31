@@ -8,6 +8,16 @@ import org.junit.Test;
 
 public final class OemFocusInteropPolicyTest {
     @Test
+    public void uiAdoptionRequiresEveryPositiveHealthSignalAndNoExplicitRelease() {
+        for (int flags = 0; flags < 32; flags++) {
+            assertEquals("adoption flags=" + Integer.toBinaryString(flags), flags == 7,
+                    OemFocusInteropPolicy.shouldAdoptPlayingRadioForUi(
+                            (flags & 1) != 0, (flags & 2) != 0, (flags & 4) != 0,
+                            (flags & 8) != 0, (flags & 16) != 0));
+        }
+    }
+
+    @Test
     public void tuningTakeoverCoversEveryOwnershipAndHealthCombination() {
         for (int flags = 0; flags < 32; flags++) {
             boolean activeInPlaybackEpoch = (flags & 1) != 0;

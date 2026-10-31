@@ -101,6 +101,25 @@ public final class RadioBackendProfileTest {
                 RadioBackendProfile.forApkSha256(RadioBackendProfile.V7_APK_SHA256));
         assertFalse(RadioBackendProfile.HCN_CURRENT_31.experimental);
     }
+    @Test public void september2026V7UpdateRetainsTheOriginalFirmwareContract() {
+        assertEquals("985143a87eb4ad7bcd0f8763c240a013ccba695a1c64e2cc09ff3a0cfa56870b",
+                RadioBackendProfile.V7_20260918_APK_SHA256);
+        for (String hash : new String[]{RadioBackendProfile.V7_APK_SHA256,
+                RadioBackendProfile.V7_20260918_APK_SHA256}) {
+            RadioBackendProfile profile = RadioBackendProfile.forApkSha256(hash);
+            assertEquals(RadioBackendProfile.HCN_CURRENT_31, profile);
+            assertEquals("com.hcn.autoradio", profile.stockPackage());
+            assertTrue(profile.isEnabledForDeviceControl());
+            assertEquals(profile, RadioBackendProfile.forApkSha256(hash.toUpperCase(Locale.ROOT)));
+        }
+    }
+    @Test public void updatedV7StillRequiresAnExactInspectedApkFingerprint() {
+        String hash = RadioBackendProfile.V7_20260918_APK_SHA256;
+        for (String unknown : new String[]{" " + hash, hash + " ", hash.substring(1), hash + "0",
+                "V.1.0.202609181544-mt8768-beta", "MQ001_2026.09.18.19.50"}) {
+            assertEquals(RadioBackendProfile.UNKNOWN, RadioBackendProfile.forApkSha256(unknown));
+        }
+    }
     @Test public void inspectedMt8163SelectsLegacyNotV7() {
         assertEquals(RadioBackendProfile.HCN_LEGACY_25,
                 RadioBackendProfile.forApkSha256(RadioBackendProfile.MT8163_APK_SHA256));

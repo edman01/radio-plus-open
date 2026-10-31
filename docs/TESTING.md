@@ -2,20 +2,30 @@
 
 ## Physical device testing
 
-The maintainer reports Radio+ confirmed working on their physical **Junsun V7 running Android 13**.
+The maintainer reports Radio+ confirmed working on their physical **Junsun V7**.
+The original tested firmware is `MQ001_2025.12.29.16.58_6_6826_G`, reporting
+Android 13 / API 33 despite an Android 15 label in OEM settings.
 Next/previous steering-wheel controls were confirmed working with the correction
 included in community beta 4. One press changes one station, and the brief audio
 interruption after the new station starts has been resolved on this tested unit.
 The optional accessibility service was not needed for these next/previous buttons.
 On-screen station selection was also confirmed without the delayed interruption.
-Playback continuity when reopening the app still needs verification on the head unit.
-Other testing has been emulator-only; no other head-unit model is verified.
-Results apply to this tested unit; other firmware versions may behave differently.
+The owner also reports **dev36 working after updating to firmware
+`MQ001_2026.09.18.19.50`**, with stock `com.hcn.autoradio` version
+`V.1.0.202609181544-mt8768-beta`. This general confirmation does not establish
+that every feature was separately retested, or the updated firmware's API level.
+Community beta 5 retains the original firmware support and the dev35 fix that
+avoids an extra audio handoff when opening Radio+ over an already-playing radio.
+Playback continuity and individual functions should still be checked on each firmware.
+No other head-unit model has been physically verified.
+Results apply to this tested unit and the firmware versions listed above;
+other firmware versions may behave differently.
 
 ## Known issues
 
 Next/previous steering-wheel controls are fixed on the tested Junsun V7 / Android
-13 configuration. Other head units and firmware variants remain unverified.
+13 configuration. Dev36 is reported working on the updated V7 firmware, without
+separate confirmation of every steering command. Other head units remain unverified.
 Steering-wheel mute behavior needs separate testing. Successful volume control
 does not establish compatibility with every steering command. Behavior depends
 on how the firmware routes button events; test while parked.
@@ -30,6 +40,8 @@ collection. These checks do not verify radio hardware or audible playback.
 
 Experimental radio support has automated tests for radio detection, frequency
 handling and playback commands. It has not been tested on real head units.
+Community beta 5 includes the older HCN, TS, K4811 MCU, G5 MCU and SPD profiles;
+inclusion in the same APK does not change their experimental status.
 Experimental 2 adds regression tests for TS frequency-to-step conversion,
 invalid or changing tuning grids, cancellation during band changes, on-screen
 seek and step directions, access to manual tuning when automatic scanning is
@@ -85,6 +97,12 @@ station changes and direct on-screen station selection. They also cover resuming
 from pause, explicit audio takeover, and preserving playback or pause when
 reopening the app. About-app tests cover the displayed version, project link,
 and visible Back navigation between settings and its subdialogs.
+
+Dev36 adds recognition tests for the updated V7 stock APK while retaining the
+previous HCN profiles. HCN callback tests check the callback descriptor and payload
+contract. The dev35 UI-open regression checks preserve the already-playing or
+intentionally paused state without a redundant focus/source handoff. These tests
+do not reproduce the firmware's analog audio path.
 
 Documentation images are [illustrations](images/README.md), not hardware test evidence.
 

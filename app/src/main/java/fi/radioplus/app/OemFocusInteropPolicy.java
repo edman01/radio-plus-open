@@ -5,6 +5,19 @@ final class OemFocusInteropPolicy {
     private OemFocusInteropPolicy() {
     }
 
+    static boolean shouldAdoptPlayingRadioForUi(
+            boolean sourceKnown,
+            boolean hcnOwnsSource,
+            boolean muteKnown,
+            boolean muted,
+            boolean focusReleasedByRadioPlus
+    ) {
+        // Only a screen opening may adopt confirmed existing HCN playback.
+        // Explicit Play keeps its stale-focus replacement/recovery behavior.
+        return sourceKnown && hcnOwnsSource && muteKnown && !muted
+                && !focusReleasedByRadioPlus;
+    }
+
     static boolean shouldRequestFocus(
             boolean firstRouteRequestSinceBinding,
             boolean explicitlyReleasedByRadioPlus,

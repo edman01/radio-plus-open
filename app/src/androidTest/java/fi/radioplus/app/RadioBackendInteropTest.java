@@ -49,6 +49,8 @@ public final class RadioBackendInteropTest {
             if (code == 1 || code == 3 || code == 4) binderArgument = data.readStrongBinder();
             if (code == 14) frequency = intArgument = data.readInt();
             if (code == 15) stringArgument = data.readString();
+            if (!legacy && code == 16) intArgument = data.readInt();
+            if (!legacy && code == 21) { data.readInt(); data.readInt(); }
             assertEquals("Unexpected arguments for transaction " + code, 0, data.dataAvail());
             reply.writeNoException();
             if (legacy) {
@@ -148,6 +150,38 @@ public final class RadioBackendInteropTest {
         assertTrue(api.IsAS()); assertTrue(api.IsScan());
         assertTrue(api.requestPlayAudio()); api.requestAudioFocus(); api.releaseAudioFocus();
         assertEquals(Arrays.asList(17,18,19,20,23,25,29,30,31), tuner.calls);
+    }
+
+    @Test public void bothV7FirmwareFingerprintsUseTheSameFull31MethodPrefix() throws Exception {
+        for (String hash : new String[]{RadioBackendProfile.V7_APK_SHA256,
+                RadioBackendProfile.V7_20260918_APK_SHA256}) {
+            Tuner tuner = new Tuner(false);
+            IRadioServiceAPI api = RadioApiFactory.create(RadioBackendProfile.forApkSha256(hash), tuner);
+            IRadioCallBack callback = new IRadioCallBack.Stub() {
+                @Override public void onEvent(int event, String value) { }
+            };
+            api.registerRadioClientBinder(new Binder());
+            api.unRegisterRadioClientBinder();
+            api.registerRadioCallback(callback);
+            api.unRegisterRadioCallback(callback);
+            api.onBandEvent(); api.onASEvent(); api.onPSEvent(); api.onLocDxEvent();
+            api.onSeekDownEvent(); api.onSeekUpEvent(); api.onManualUpEvent(); api.onManualDownEvent();
+            api.onScanEvent(); api.gotoFreq(101_700); api.gotoFreq2("101700"); api.gotoFreqIndex(2);
+            api.favoriteCurrentFreq();
+            assertEquals(0, api.getCurrentBand());
+            assertEquals(101_700, api.getCurrentFreq());
+            assertEquals("QA station", api.getCurrentFreqRdsPs());
+            assertTrue(api.getFreqIsFavorite(0, 101_700));
+            assertTrue(api.currentFreqIsFavorite());
+            assertTrue(api.IsAS()); assertTrue(api.IsPS()); assertTrue(api.IsScan());
+            assertTrue(api.IsSeek()); assertTrue(api.IsStereo()); assertTrue(api.IsDxLocal());
+            assertTrue(api.requestPlayAudio()); api.requestAudioFocus(); api.releaseAudioFocus();
+            List<Integer> expected = new ArrayList<>();
+            for (int transaction = 1; transaction <= 31; transaction++) expected.add(transaction);
+            assertEquals("Firmware " + hash, expected, tuner.calls);
+            assertTrue(RadioApiFactory.supportsSeparateAudioFocus(api));
+            assertTrue(RadioApiFactory.supportsOemFavorites(api));
+        }
     }
 
     @Test public void unknownAndMismatchingBindersFailClosed() throws Exception {

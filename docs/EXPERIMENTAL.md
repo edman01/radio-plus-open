@@ -1,14 +1,32 @@
 # Experimental APK builds
 
-Optional test builds for additional radio implementations.
+Test profiles for additional radio implementations, included in community beta 5.
 **This additional support has not been tested on real head units.**
 Keep the original radio app and its services installed and enabled.
+
+## Current download — community beta 5 (dev36)
+
+[Download community beta 5](https://github.com/edman01/radio-plus-open/releases/tag/v0.16.1-community-beta5)
+includes the older HCN, TS, K4811 MCU, G5 MCU and SPD profiles described below.
+Only the Junsun V7 has physical-device confirmation. Other profiles remain
+experimental, with their existing scan, audio and native-button limitations.
+
+- APK: `RadioPlus-0.16.1-dev36.apk`, without bundled station logos.
+- Installed version: `0.16.1-dev36-play` · version code: `98`.
+- Package: `fi.radioplus.app.play`; Android 8.1+ and a recognized stock backend required.
+- The interface and custom-logo import are unchanged.
+
+Dev36 adds support for Junsun V7 firmware `MQ001_2026.09.18.19.50` and retains
+its earlier firmware support, the dev35 playback-continuity fix and the existing
+experimental profiles. See the [release notes](RELEASE.md) for the V7 changes.
+The older Experimental 3 download is retained [below](#download) for reference;
+it does not include G5 or SPD support.
 
 ## Development build 0.16.1-dev34 — SPD / Junsun V9 Plus
 
 Adds a separately recognized SPD profile for firmware
-`19449.2730.4FBC6B6.5CC38CB.20260130.191936`. **Not included in the Experimental 3
-download below; not tested on a real head unit.**
+`19449.2730.4FBC6B6.5CC38CB.20260130.191936`. **Included in community beta 5,
+not in the older Experimental 3 APK; not tested on a real head unit.**
 
 - Requires the exact inspected `com.spd.radio` APK and matching system framework.
   A matching package, Android version or V9 Plus model name alone is insufficient.
@@ -50,10 +68,10 @@ See [source acknowledgement](../THIRD_PARTY_NOTICES.md#openradiofm).
 
 ## Development build 0.16.1-dev33 — G5 MCU
 
-The current source adds a separately recognized **G5 MCU / tuner type 0**
-profile for RadioService **2.4.2** and KernelService **2.6.2**, inspected in
-`G5_NWD_S212851.20260916.201422`. This is not included in the Experimental 3
-download below and has not been verified on a physical head unit.
+Added in dev33, the separately recognized **G5 MCU / tuner type 0** profile
+requires RadioService **2.4.2** and KernelService **2.6.2**, inspected in
+`G5_NWD_S212851.20260916.201422`. This is included in community beta 5, not in
+the older Experimental 3 APK, and has not been verified on a physical head unit.
 
 - Both installed service APK fingerprints must match the inspected pair.
   The runtime tuner type is checked before tuner or audio commands are sent.
@@ -143,9 +161,8 @@ service removal is requested. Do not install another device's stock apps to forc
 
 The NWD UI package `com.nwd.radio` is not the tuner service. The matching
 `com.nwd.radio.service` and `com.nwd.kernel` APKs are both required for recognition.
-RadioService 2.1.8, the Allwinner 2.2.2 profile and the exact unidentified Hizpo
-device reported on Reddit are not enabled by this release. Xtrons and ATOTO
-support is not included.
+RadioService 2.1.8, the Allwinner 2.2.2 profile and other unrecognized NWD
+variants are not enabled. Xtrons and ATOTO support is not included.
 
 The app's supported range remains FM 87.5–108.0 MHz in 100 kHz steps and AM
 522–1620 kHz in 9 kHz steps. Targets must also exist on the stock tuner's grid;
@@ -162,7 +179,13 @@ Other G5 tuner types, FYT, Xtrons and ATOTO are not enabled by this work.
 
 ## Download
 
-[Download Experimental 3](https://github.com/edman01/radio-plus-open/releases/tag/v0.16.1-experimental3)
+### Older release — Experimental 3 (dev31)
+
+[Download older Experimental 3](https://github.com/edman01/radio-plus-open/releases/tag/v0.16.1-experimental3)
+
+This is an older build. For current V7 support and all enabled experimental
+profiles, use [community beta 5](#current-download--community-beta-5-dev36).
+Experimental 3 includes older HCN, TS and K4811 MCU profiles, but not G5 or SPD.
 
 - `RadioPlus-0.16.1-experimental3.apk`: signed APK without bundled station logos.
 - `SHA256SUMS.txt`: checksum for the APK.
@@ -170,11 +193,10 @@ Other G5 tuner types, FYT, Xtrons and ATOTO are not enabled by this work.
 Installed version: `0.16.1-dev31-play` · version code: `93`.
 Package: `fi.radioplus.app.play`. Requires Android 8.1+ and a recognized stock backend.
 
-This updates the community app rather than installing alongside it. An older
-community APK cannot normally be installed over a higher version code.
-Uninstalling removes saved stations, logos and settings. To stay on the
-hardware-tested Junsun V7 release, use
-[community beta 4](https://github.com/edman01/radio-plus-open/releases/tag/v0.16.1-community-beta4).
+All these builds update the same community app rather than installing alongside
+it. Beta 5 has version code 98; the older Experimental 3 APK cannot normally be
+installed over it. Do not uninstall merely to downgrade: uninstalling removes
+saved stations, logos and settings.
 
 ## Earlier changes
 
