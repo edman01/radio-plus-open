@@ -1,6 +1,24 @@
 # Privacy
 
-Updated 5 October 2026. This describes the GitHub community build.
+## Opt-in Reglink device-test log
+
+Only the explicitly enabled Reglink test build keeps a bounded technical log in
+app-private storage (two files, about 128 KiB total). It records the app version,
+inspected radio-APK fingerprints, runtime tuner/source states, numeric tuning
+commands, results and error categories. App crash records omit exception messages
+and retain only limited Radio+ code locations. Suggested checks are guidance, not
+proof of a diagnosis or audible reception.
+
+No device identifiers, location, contact details, station names, typed text,
+logos, document URIs or full Android logcat are collected by this logger. It does
+not transmit anything. Export requires **About app → Export support log**, an
+explanation/confirmation and a save location chosen through Android's document
+picker. You decide whether and where to send that exported text file. Uninstalling
+or clearing app data removes the private log; separately exported copies remain
+where you saved them. This logging is disabled in normal builds.
+
+Updated 13 November 2026. This describes the GitHub community build and the
+separately enabled Reglink test logger above.
 
 ## Local data
 

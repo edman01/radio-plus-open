@@ -22,6 +22,46 @@ experimental profiles. See the [release notes](RELEASE.md) for the V7 changes.
 The older Experimental 3 download is retained [below](#download) for reference;
 it does not include G5 or SPD support.
 
+## Development-only preview dev37 — Reglink S5.74
+
+**Not included in the published community beta 5 APK. Not tested on a physical
+head unit. Disabled in normal source builds.** See the opt-in build command in
+[BUILD.md](BUILD.md#reglink-s574-device-test-build).
+
+This stock-assisted experiment requires the exact inspected combination of
+`com.reglink.services`, `com.reglink.apps.radio` and `com.reglink.apps.mtkradio`.
+The runtime tuner must be an external MCU implementation (4754, 4755 or 7786).
+The native MTK FM implementation and other firmware combinations remain blocked.
+
+- Start the stock radio, press Home, then open Radio+. Leave the stock radio
+  running in the background: it retains audio-source and focus ownership.
+- Implements FM/AM frequency tuning, manual steps, scan-result collection and
+  Radio+'s station/favorites storage using confirmed tuner readback. Frequency
+  commands are not retried automatically. Reception and actual scan results
+  still require a physical-device test.
+- Does not replace the stock MediaHub client, select an audio source, request
+  audio focus, change volume or send its own power/global-mute commands.
+- A missing, changed, mixed or externally muted source blocks new commands.
+  Source loss during a scan discards its results rather than stopping another
+  owner's tuner. Restart Radio+ before another scan after that interruption.
+- No independent cold-start audio, Radio+ pause/resume, station seek, LOCAL/DX,
+  integrated RDS daemon or Radio+ favorites navigation from native wheel keys.
+  Stock buttons retain their own behavior; Radio+ does not send a second tune.
+- The interface is unchanged. Closing or reclaiming the stock radio can stop
+  audio. An accepted tuner command may itself have OEM audio side effects;
+  readback and simulated protocol tests do not prove audible output or safe
+  behavior through phone calls, navigation prompts or ACC sleep/wake.
+
+This is a limited device-test preview, not full Junsun V7-equivalent support.
+Do not install replacement stock APKs or change factory settings to force it.
+
+The opt-in test APK includes a bounded, persistent technical log. To send it:
+reproduce the issue, open **Settings → General → About app → Export support log**,
+then save the text file and attach it to your report. The report includes detected
+APK fingerprints, tuner/source states, tuning/scan outcomes, sanitized app crash
+locations and suggested next checks. It cannot verify audible sound. Logs stay
+private until you export and send them; nothing is uploaded automatically.
+
 ## Development build 0.16.1-dev34 — SPD / Junsun V9 Plus
 
 Adds a separately recognized SPD profile for firmware

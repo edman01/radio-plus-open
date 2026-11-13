@@ -66,6 +66,7 @@ public final class MainActivity extends Activity implements
     private static final int FAVORITES_PER_PAGE = 6;
     private static final int REQUEST_STATION_LOGO = 701;
     private static final int REQUEST_PLAYBACK_NOTIFICATIONS = 702;
+    private static final int REQUEST_SUPPORT_LOG = 703;
     private static final long TUNE_SELECTION_GRACE_MS = 2500L;
     private static final long UNNAMED_STATION_PROMPT_DELAY_MS = 1800L;
     private static final long PAGE_EXIT_ANIMATION_MS = 85L;
@@ -196,6 +197,7 @@ public final class MainActivity extends Activity implements
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        SupportTestLog.init(this);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         configureSystemBars();
         setContentView(R.layout.activity_main);
@@ -328,6 +330,25 @@ public final class MainActivity extends Activity implements
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_SUPPORT_LOG) {
+            if (resultCode == RESULT_OK && data != null && data.getData() != null) {
+                Uri destination = data.getData();
+                logoExecutor.execute(() -> {
+                    boolean saved = false;
+                    try (java.io.OutputStream output = getContentResolver().openOutputStream(destination, "wt")) {
+                        if (output != null) {
+                            output.write(SupportTestLog.exportSnapshot().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                            saved = true;
+                        }
+                    } catch (java.io.IOException | RuntimeException ignored) { }
+                    final boolean success = saved;
+                    mainHandler.post(() -> { if (!destroyed) toast(success
+                            ? tr("Vianmääritysloki tallennettu. Voit lähettää tiedoston kehittäjälle.", "Support log saved. You can send the file to the developer.")
+                            : tr("Lokin tallennus epäonnistui", "Could not save the support log")); });
+                });
+            }
+            return;
+        }
         if (requestCode != REQUEST_STATION_LOGO) {
             return;
         }
@@ -677,13 +698,15 @@ public final class MainActivity extends Activity implements
 
     private void showAboutDialog() {
         if (destroyed || isFinishing() || (aboutDialog != null && aboutDialog.isShowing())) return;
-        AlertDialog dialog = new AlertDialog.Builder(this)
+        AlertDialog.Builder builder = new AlertDialog.Builder(this)
                 .setTitle(R.string.about_title)
                 .setMessage(getString(R.string.about_version, BuildConfig.VERSION_NAME)
                         + "\n\n" + PROJECT_URL + "\n\n" + RadioApiFactory.description(this))
                 .setPositiveButton(R.string.about_open_github, null)
-                .setNegativeButton(R.string.settings_back, null)
-                .create();
+                .setNegativeButton(R.string.settings_back, null);
+        if (BuildConfig.REGLINK_STOCK_ASSISTED) builder.setNeutralButton(
+                tr("Vie vianmääritysloki", "Export support log"), (ignored, which) -> exportSupportLog());
+        AlertDialog dialog = builder.create();
         aboutDialog = dialog;
         dialog.setOnDismissListener(ignored -> {
             if (aboutDialog == dialog) aboutDialog = null;
@@ -700,6 +723,23 @@ public final class MainActivity extends Activity implements
                 toast(getString(R.string.about_browser_unavailable));
             }
         });
+    }
+
+    private void exportSupportLog() {
+        showCarDialog(new AlertDialog.Builder(this)
+                .setTitle(tr("Vianmääritysloki", "Support log"))
+                .setMessage(tr("Tiedosto sisältää version, radioprofiilin, virityskomennot, tekniset tilat ja mahdollisen kaatumisen koodipaikat. Ei nimiä, sijaintia tai koko Android-lokia. Tallennat ja lähetät tiedoston itse.",
+                        "The file contains the version, radio profile, tuning commands, technical states and app crash locations. No names, location or full Android log. You choose where to save and send it."))
+                .setNegativeButton(tr("Peruuta", "Cancel"), null)
+                .setPositiveButton(tr("Tallenna", "Save"), (ignored, which) -> {
+                    try {
+                        startActivityForResult(new Intent(Intent.ACTION_CREATE_DOCUMENT)
+                                .addCategory(Intent.CATEGORY_OPENABLE).setType("text/plain")
+                                .putExtra(Intent.EXTRA_TITLE, "RadioPlus-dev37-support.txt"), REQUEST_SUPPORT_LOG);
+                    } catch (ActivityNotFoundException | SecurityException failure) {
+                        toast(tr("Tiedoston tallennusvalikko ei ole käytettävissä", "Document picker is unavailable"));
+                    }
+                }));
     }
 
     private void showSteeringKeySetup() {
@@ -2050,6 +2090,10 @@ public final class MainActivity extends Activity implements
                 activeFavoriteKey,
                 playbackActive
         )) {
+            if (RadioApiFactory.selectedUsesReglink()) {
+                toast(tr("Käytä tauotukseen vakioradion ohjausta.", "Use the stock radio controls to pause."));
+                return;
+            }
             playbackPausedByStationTap = true;
             pendingTuneKey = "";
             pendingTuneAt = 0L;

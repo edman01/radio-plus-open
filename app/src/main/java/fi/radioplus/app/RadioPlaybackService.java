@@ -32,6 +32,7 @@ import android.service.media.MediaBrowserService;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.ViewConfiguration;
+import android.widget.Toast;
 
 import com.hcn.autoradio.IRadioServiceAPI;
 
@@ -370,6 +371,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
     @Override
     public void onCreate() {
         super.onCreate();
+        SupportTestLog.init(this);
         runningInstance = this;
         favoriteStore = new FavoriteStore(this);
         stationStore = new StationStore(this);
@@ -661,8 +663,9 @@ public final class RadioPlaybackService extends MediaBrowserService {
             return;
         }
         Log.w(TAG, "Stock radio connection lost: " + reason);
-        if (radio instanceof NwdRadioApi || radio instanceof SpdRadioApi
-                || (boundDetection != null && (boundDetection.profile.isNwd() || boundDetection.profile.isSpd()))) {
+        if (radio instanceof NwdRadioApi || radio instanceof SpdRadioApi || radio instanceof ReglinkRadioApi
+                || (boundDetection != null && (boundDetection.profile.isNwd() || boundDetection.profile.isSpd()
+                    || boundDetection.profile.isReglink()))) {
             // The shared backend cache can return this same API object after a
             // rebind. Identity alone must not revive a pre-loss queued tune
             // or its in-flight continuation; keep HCN/TS recovery unchanged.
@@ -739,6 +742,14 @@ public final class RadioPlaybackService extends MediaBrowserService {
     }
 
     private void pausePlayback() {
+        if (radio instanceof ReglinkRadioApi || RadioApiFactory.selectedUsesReglink()) {
+            // This OEM MCU service implements shutdown via GLOBAL mute. Do not
+            // pretend playback stopped or mute the user's next audio source.
+            Toast.makeText(this, AppLanguage.text(this,
+                    "Tauotus ei ole käytössä Reglink-testissä. Käytä vakioradion ohjausta.",
+                    "Pause is unavailable in this Reglink test. Use the stock radio controls."), Toast.LENGTH_LONG).show();
+            return;
+        }
         SteeringDiagnosticTrace.get().event("playback", "pause-request");
         IRadioServiceAPI current = radio;
         if (current instanceof SpdRadioApi) ((SpdRadioApi) current).cancelPendingAudioStart();
@@ -909,6 +920,14 @@ public final class RadioPlaybackService extends MediaBrowserService {
     )
             throws RemoteException {
         if (!isCurrentPlayback(epoch, current)) return;
+        if (current instanceof ReglinkRadioApi) {
+            // Stock-assisted only: no focus request, source switch, PCM marker,
+            // power/unmute or gain write, even for an explicit Play or UI open.
+            oemRouteActive = ((ReglinkRadioApi) current).requestStockPlayback();
+            activatedPlaybackEpoch = epoch;
+            uiTakeoverRequired = false;
+            return;
+        }
         boolean separateFocus = RadioApiFactory.supportsSeparateAudioFocus(current);
         if (separateFocus && OemFocusInteropPolicy.shouldReplaceFocusRequest(
                 explicitTakeover,
@@ -1147,14 +1166,15 @@ public final class RadioPlaybackService extends MediaBrowserService {
     }
 
     private boolean usesSourceExitBackend() {
-        return radio instanceof TsRadioApi || radio instanceof NwdRadioApi || radio instanceof SpdRadioApi
+        return radio instanceof TsRadioApi || radio instanceof NwdRadioApi || radio instanceof SpdRadioApi || radio instanceof ReglinkRadioApi
                 || (boundDetection != null && (boundDetection.profile.isTs()
-                    || boundDetection.profile.isNwd() || boundDetection.profile.isSpd()));
+                    || boundDetection.profile.isNwd() || boundDetection.profile.isSpd() || boundDetection.profile.isReglink()));
     }
 
     private RadioPlaybackHealthReader.Snapshot readPlaybackHealth() {
         IRadioServiceAPI current = radio;
         if (current == null) return new RadioPlaybackHealthReader.Snapshot(false, "", false, false);
+        if (current instanceof ReglinkRadioApi) return ((ReglinkRadioApi) current).readHealth();
         if (current instanceof NwdRadioApi) return ((NwdRadioApi) current).readHealth();
         if (current instanceof SpdRadioApi) {
             try { return ((SpdRadioApi) current).readHealth(); }
@@ -1177,6 +1197,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
     private boolean setTunerMuted(boolean muted) {
         IRadioServiceAPI current = radio;
         if (current == null) return false;
+        if (current instanceof ReglinkRadioApi) return false;
         if (current instanceof SpdRadioApi) {
             if (!muted || playbackRequested) return false;
             if (Looper.myLooper() == Looper.getMainLooper()) {
@@ -1367,6 +1388,10 @@ public final class RadioPlaybackService extends MediaBrowserService {
             throws RemoteException {
         if (!isCurrentPlayback(epoch, current)) return false;
         int normalizedTarget = normalizeBand(target.band);
+        if (current instanceof ReglinkRadioApi) {
+            return ((ReglinkRadioApi) current).tuneToBand(normalizedTarget, target.frequency,
+                    () -> isCurrentPlayback(epoch, current));
+        }
         if (current instanceof SpdRadioApi) {
             return ((SpdRadioApi) current).tuneToBand(normalizedTarget, target.frequency,
                     () -> isCurrentPlayback(epoch, current));
@@ -1453,9 +1478,12 @@ public final class RadioPlaybackService extends MediaBrowserService {
     private boolean validateStationTarget(IRadioServiceAPI current, FavoriteStation target,
             long epoch, long requestRevision, boolean previouslyRequested) {
         if (!isCurrentPlayback(epoch, current)) return false;
-        if (!(current instanceof NwdRadioApi) && !(current instanceof SpdRadioApi)) return true;
+        if (!(current instanceof NwdRadioApi) && !(current instanceof SpdRadioApi)
+                && !(current instanceof ReglinkRadioApi)) return true;
         try {
-            if (current instanceof SpdRadioApi) {
+            if (current instanceof ReglinkRadioApi) {
+                ((ReglinkRadioApi) current).validateTuningTarget(normalizeBand(target.band), target.frequency);
+            } else if (current instanceof SpdRadioApi) {
                 ((SpdRadioApi) current).validateTuningTarget(normalizeBand(target.band), target.frequency);
             } else {
                 ((NwdRadioApi) current).validateTuningTarget(normalizeBand(target.band), target.frequency);
@@ -1504,6 +1532,23 @@ public final class RadioPlaybackService extends MediaBrowserService {
                 if (stopping || playbackEpoch != epoch || radio != current) return;
                 try {
                     action.run(current, epoch);
+                } catch (ReglinkRadioApi.CommandRejectedException error) {
+                    // Drop the request; a stock source change is not permission
+                    // to rebind and replay a tune or steal audio back.
+                    RadioPlaybackHealthReader.Snapshot health = ((ReglinkRadioApi) current).readHealth();
+                    boolean audible = health.radioOwnsSource() && health.muteKnown && !health.muted;
+                    mainHandler.post(() -> {
+                        if (stopping || radio != current || playbackEpoch != epoch
+                                || playbackRequestRevision != requestRevision) return;
+                        pendingWidgetStation = null;
+                        pendingRadioCommand = null;
+                        pendingRadioCommandName = "";
+                        oemRouteActive = audible;
+                        if (!audible) setPlaybackRequested(false);
+                        Toast.makeText(this, AppLanguage.text(this,
+                                "Käynnistä vakioradio ensin ja jätä se taustalle.",
+                                "Start the stock radio first and leave it running in the background."), Toast.LENGTH_LONG).show();
+                    });
                 } catch (NwdRadioApi.CommandRejectedException error) {
                     // Busy/readiness/source rejection is not Binder death. A
                     // rebind would replay the pending target and could steal
@@ -1514,11 +1559,12 @@ public final class RadioPlaybackService extends MediaBrowserService {
                     Log.w(TAG, "SPD command unavailable: " + command, error);
                     settleRejectedSpdCommand((SpdRadioApi) current, epoch, requestRevision);
                 } catch (RemoteException | RuntimeException | LinkageError error) {
+                    SupportTestLog.failure(SupportTestLog.Event.ENDPOINT_ERROR, error);
                     SteeringDiagnosticTrace.get().event("oem", "command-failed: " + command);
                     Log.w(TAG, "Stock radio command failed: " + command, error);
                     mainHandler.post(() -> {
                         if (radio == current && !stopping
-                                && (!(current instanceof NwdRadioApi || current instanceof SpdRadioApi)
+                                && (!(current instanceof NwdRadioApi || current instanceof SpdRadioApi || current instanceof ReglinkRadioApi)
                                         || playbackEpoch == epoch)) {
                             handleOemConnectionLoss("command failed: " + command);
                         }
@@ -1919,12 +1965,14 @@ public final class RadioPlaybackService extends MediaBrowserService {
 
             @Override
             public void onSkipToNext() {
+                if (RadioApiFactory.selectedUsesReglink() || radio instanceof ReglinkRadioApi) return;
                 SteeringDiagnosticTrace.get().event("transport", "next");
                 selectAdjacentStation(true);
             }
 
             @Override
             public void onSkipToPrevious() {
+                if (RadioApiFactory.selectedUsesReglink() || radio instanceof ReglinkRadioApi) return;
                 SteeringDiagnosticTrace.get().event("transport", "previous");
                 selectAdjacentStation(false);
             }
@@ -1939,12 +1987,14 @@ public final class RadioPlaybackService extends MediaBrowserService {
 
             @Override
             public void onFastForward() {
+                if (RadioApiFactory.selectedUsesReglink() || radio instanceof ReglinkRadioApi) return;
                 SteeringDiagnosticTrace.get().event("transport", "fast-forward");
                 selectAdjacentStation(true);
             }
 
             @Override
             public void onRewind() {
+                if (RadioApiFactory.selectedUsesReglink() || radio instanceof ReglinkRadioApi) return;
                 SteeringDiagnosticTrace.get().event("transport", "rewind");
                 selectAdjacentStation(false);
             }
@@ -2022,10 +2072,10 @@ public final class RadioPlaybackService extends MediaBrowserService {
 
     static boolean shouldIgnoreRawMediaKeys() {
         RadioPlaybackService current = runningInstance;
-        return RadioApiFactory.selectedUsesNwd() || RadioApiFactory.selectedUsesSpd()
-                || (current != null && (current.radio instanceof NwdRadioApi || current.radio instanceof SpdRadioApi
+        return RadioApiFactory.selectedUsesNwd() || RadioApiFactory.selectedUsesSpd() || RadioApiFactory.selectedUsesReglink()
+                || (current != null && (current.radio instanceof NwdRadioApi || current.radio instanceof SpdRadioApi || current.radio instanceof ReglinkRadioApi
                 || (current.boundDetection != null && (current.boundDetection.profile.isNwd()
-                        || current.boundDetection.profile.isSpd()))));
+                        || current.boundDetection.profile.isSpd() || current.boundDetection.profile.isReglink()))));
     }
 
     private void resetRawMediaKeyDecisions() {

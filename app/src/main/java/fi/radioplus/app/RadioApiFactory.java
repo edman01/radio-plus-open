@@ -29,6 +29,8 @@ final class RadioApiFactory {
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static volatile Detection latest;
     private static volatile NwdRadioApi resolvedNwd;
+    private static volatile ReglinkRadioApi resolvedReglink;
+    private static final ReglinkRadioConnectionCache reglinkConnections = new ReglinkRadioConnectionCache();
     private static SpdAudioSourceReader spdSource;
     private static final SpdRadioConnectionCache spdConnections = new SpdRadioConnectionCache();
     private static final Map<String, String> cachedFileHashes = new HashMap<>();
@@ -68,8 +70,10 @@ final class RadioApiFactory {
 
     static void detect(Context context, DetectionCallback callback) {
         Context application = context.getApplicationContext();
+        SupportTestLog.init(application);
         INSPECTOR.execute(() -> {
             Detection detection = inspectInstalled(application);
+            SupportTestLog.event(SupportTestLog.Event.DETECTED, detection.profile.ordinal(), 0);
             if (latest == null || latest.profile != detection.profile
                     || !latest.sha256.equals(detection.sha256)) resolvedNwd = null;
             latest = detection;
@@ -98,7 +102,10 @@ final class RadioApiFactory {
                             || nwdAudio.usesDecoderLifecycle() != decoder)) {
                         nwdAudio = new NwdAudioRouting(application, decoder);
                     }
-                    if (detection.profile.isSpd()) {
+                    if (detection.profile == RadioBackendProfile.REGLINK_S574_ASSISTED
+                            && detection.profile.isEnabledForDeviceControl()) {
+                        api = reglinkConnections.resolve(binder);
+                    } else if (detection.profile.isSpd()) {
                         if (spdSource == null) spdSource = new SpdAudioSourceReader(application);
                         api = spdConnections.resolve(binder, spdSource);
                     } else {
@@ -107,12 +114,17 @@ final class RadioApiFactory {
                                 : create(detection.profile, binder);
                     }
                 } catch (RemoteException | RuntimeException error) {
+                    SupportTestLog.failure(SupportTestLog.Event.BIND_ERROR, error);
+                    SupportTestLog.problem(SupportTestLog.Problem.ENDPOINT_FAILED);
                     detection = new Detection(RadioBackendProfile.UNKNOWN, detection.stockPackage, detection.stockVersion,
                             detection.sha256, endpointProblem(error));
                 }
             }
             latest = detection;
             resolvedNwd = api instanceof NwdRadioApi ? (NwdRadioApi) api : null;
+            resolvedReglink = api instanceof ReglinkRadioApi ? (ReglinkRadioApi) api : null;
+            SupportTestLog.event(api == null ? SupportTestLog.Event.BIND_ERROR : SupportTestLog.Event.CONNECTED,
+                    detection.profile.ordinal(), 0);
             IRadioServiceAPI resolved = api;
             Detection result = detection;
             MAIN.post(() -> callback.onResolved(resolved, result));
@@ -175,6 +187,7 @@ final class RadioApiFactory {
                         candidate.sha256, radio.sha256, tuner.sha256)) {
                     candidate = unknown(stockPackage, candidate.stockVersion,
                             "The Reglink radio service combination has not been verified");
+                    SupportTestLog.problem(SupportTestLog.Problem.STOCK_COMBINATION);
                 }
             }
             if (candidate.profile.isSpd() && !verifiedSpdFramework()) {
@@ -183,6 +196,9 @@ final class RadioApiFactory {
                         "The SPD audio-source framework has not been verified");
             }
             if (candidate.profile != RadioBackendProfile.UNKNOWN && !candidate.profile.isEnabledForDeviceControl()) {
+                if (candidate.profile == RadioBackendProfile.REGLINK_S574_ASSISTED) {
+                    SupportTestLog.problem(SupportTestLog.Problem.TEST_BUILD_REQUIRED);
+                }
                 candidate = new Detection(RadioBackendProfile.UNKNOWN, stockPackage,
                         candidate.stockVersion, candidate.sha256, candidate.profile.isReglink()
                         ? "Reglink audio ownership is not supported; control is disabled in this build"
@@ -224,10 +240,14 @@ final class RadioApiFactory {
                 return unknown(stockPackage, version, "The stock radio APK could not be inspected");
             }
             String hash = sha256(apk);
+            SupportTestLog.apk(stockPackage, hash);
             if (length != apk.length() || modified != apk.lastModified()) {
                 return unknown(stockPackage, version, "The stock radio changed during inspection; reopen Radio+");
             }
             RadioBackendProfile profile = RadioBackendProfile.forApkSha256(hash);
+            if (profile == RadioBackendProfile.UNKNOWN && "com.reglink.services".equals(stockPackage)) {
+                SupportTestLog.problem(SupportTestLog.Problem.STOCK_APK_UNKNOWN);
+            }
             if (!stockPackage.equals(profile.stockPackage())) profile = RadioBackendProfile.UNKNOWN;
             Detection detection = new Detection(profile, stockPackage, version, hash,
                     profile == RadioBackendProfile.UNKNOWN
@@ -306,7 +326,8 @@ final class RadioApiFactory {
     }
 
     static boolean supportsScanning(IRadioServiceAPI api) {
-        return usesHcnFramework(api) || (api instanceof NwdRadioApi && ((NwdRadioApi) api).supportsScanning());
+        return usesHcnFramework(api) || (api instanceof NwdRadioApi && ((NwdRadioApi) api).supportsScanning())
+                || (api instanceof ReglinkRadioApi && ((ReglinkRadioApi) api).isStockAssisted());
     }
     static boolean supportsLocalMode(IRadioServiceAPI api) {
         return api != null && !(api instanceof TsRadioApi) && !(api instanceof ReglinkRadioApi)
@@ -318,11 +339,12 @@ final class RadioApiFactory {
         NwdRadioApi api = resolvedNwd;
         return detection != null && (detection.profile == RadioBackendProfile.HCN_CURRENT_31
                 || detection.profile == RadioBackendProfile.HCN_LEGACY_25
+                || (detection.profile == RadioBackendProfile.REGLINK_S574_ASSISTED && liveReglink())
                 || (detection.profile.isNwd() && api != null && api.asBinder().isBinderAlive() && api.supportsScanning()));
     }
     static boolean selectedSupportsLocalMode() {
         Detection detection = latest;
-        return selectedSupportsScanning()
+        return (selectedSupportsScanning() && !selectedUsesReglink())
                 || (detection != null && detection.profile.isNwd() && liveNwd());
     }
     private static boolean liveNwd() {
@@ -337,10 +359,18 @@ final class RadioApiFactory {
         Detection detection = latest;
         return detection != null && "com.spd.radio".equals(detection.stockPackage);
     }
+    static boolean selectedUsesReglink() {
+        Detection detection = latest;
+        return detection != null && "com.reglink.services".equals(detection.stockPackage);
+    }
+    private static boolean liveReglink() {
+        ReglinkRadioApi api = resolvedReglink;
+        return api != null && api.asBinder().isBinderAlive() && api.isStockAssisted();
+    }
     static boolean selectedSupportsTuning() {
         Detection detection = latest;
         return detection != null && detection.profile != RadioBackendProfile.UNKNOWN
-                && !detection.profile.isReglink();
+                && (!detection.profile.isReglink() || (detection.profile.isEnabledForDeviceControl() && liveReglink()));
     }
     static boolean selectedSupportsStationSeek() {
         Detection detection = latest;

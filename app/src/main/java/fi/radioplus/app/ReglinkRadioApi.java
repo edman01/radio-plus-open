@@ -14,13 +14,9 @@ import java.util.Set;
 import java.util.function.BooleanSupplier;
 
 /**
- * Dormant, independently authored protocol foundation for the inspected S5.40
- * Reglink services. NOT a usable playback backend: factory device control must
- * remain disabled until audio and steering ownership are verified. No vendor
- * implementation is loaded and no explicit power/shutdown, regional grid,
- * audio focus or source-switch commands are sent. OEM tune/scan commands may
- * implicitly power or unmute the tuner, so these protocol methods must remain
- * unreachable from device control without a future proven ownership gate.
+ * Independently authored tuner protocol. The opt-in S5.74 test path keeps the
+ * real stock application as audio owner; it never claims its MediaHub identity.
+ * The single-argument constructor is the protocol test foundation only.
  */
 final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
     static final String COMMON_DESCRIPTOR = "com.reglink.services.IDroidService";
@@ -33,7 +29,7 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
 
     /** A rejected target is not a broken binding and must not cause auto-replay. */
     static final class CommandRejectedException extends RemoteException {
-        CommandRejectedException(String message) { super(message); }
+        CommandRejectedException(String message) { super(message); SupportTestLog.event(SupportTestLog.Event.COMMAND_REJECTED); }
     }
 
     static final class Snapshot {
@@ -66,6 +62,7 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
     private final IBinder common;
     private final IBinder radio;
     private final ReglinkCapabilityReader.Snapshot capabilities;
+    private final ReglinkStockSession stockSession;
     private final Object operationLock = new Object();
     private final Object stateLock = new Object();
     private volatile boolean closed;
@@ -81,9 +78,9 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
     private int pendingFrequency;
     private long tuneGeneration;
     private boolean tuneDispatching;
-    // This tracks our request, NOT exclusive OEM ownership. The wire protocol
-    // carries no request IDs; a future live backend still needs verified
-    // cross-client exclusion before invoking any of these mutation methods.
+    // Request bookkeeping, not exclusive OEM ownership. The assisted path
+    // observes the stock owner and rejects observable interference, but cannot
+    // identify every concurrent same-band OEM request without wire request IDs.
     private boolean scanOwned;
     private boolean scanStarted;
     private boolean scanComplete;
@@ -94,7 +91,13 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
     private long scanRequestedAt;
     private final Set<Integer> scanResults = new LinkedHashSet<>();
 
-    ReglinkRadioApi(IBinder common) throws RemoteException {
+    ReglinkRadioApi(IBinder common) throws RemoteException { this(common, false); }
+
+    static ReglinkRadioApi stockAssisted(IBinder common) throws RemoteException {
+        return new ReglinkRadioApi(common, true);
+    }
+
+    private ReglinkRadioApi(IBinder common, boolean assisted) throws RemoteException {
         if (common == null || !COMMON_DESCRIPTOR.equals(common.getInterfaceDescriptor())) {
             throw new RemoteException("Unexpected Reglink service Binder");
         }
@@ -104,8 +107,17 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
         // Read independently identified hardware facts before fetching Radio.
         capabilities = ReglinkCapabilityReader.read(common);
         if (capabilities.kind == ReglinkCapabilityReader.Kind.UNKNOWN) {
+            SupportTestLog.problem(SupportTestLog.Problem.HARDWARE_NOT_READY);
             throw new RemoteException("Reglink hardware capabilities are not verified");
         }
+        // Native FM uses a different audio renderer and remains disabled here.
+        if (assisted && capabilities.kind != ReglinkCapabilityReader.Kind.EXTERNAL_FM_AM) {
+            SupportTestLog.problem(SupportTestLog.Problem.TUNER_NOT_SUPPORTED);
+            throw new RemoteException("Reglink test build requires the external MCU tuner");
+        }
+        stockSession = assisted ? new ReglinkStockSession(common) : null;
+        if (assisted) SupportTestLog.event(SupportTestLog.Event.CAPABILITIES, capabilities.kind.ordinal(),
+                Integer.parseInt(capabilities.module));
         radio = transact(common, COMMON_DESCRIPTOR, 2,
                 data -> data.writeString("Radio"), Parcel::readStrongBinder);
         if (radio == null || !RADIO_DESCRIPTOR.equals(radio.getInterfaceDescriptor())) {
@@ -115,6 +127,54 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
         // A valid coherent readback must therefore also exist before accepting it.
         Snapshot initial = snapshot();
         if (!supportsBand(initial.band)) throw new RemoteException("Reglink tuner is not ready");
+        if (assisted) startObserving();
+    }
+
+    boolean isStockAssisted() { return stockSession != null; }
+    boolean isClosed() { return closed; }
+
+    private void requireStockRoute() throws RemoteException {
+        if (stockSession == null) return;
+        boolean scanMute;
+        synchronized (stateLock) { scanMute = scanOwned && !scanInvalidated; }
+        try { stockSession.requireRoute(scanMute); }
+        catch (RemoteException failure) {
+            synchronized (stateLock) {
+                if (scanOwned || scanComplete) {
+                    SupportTestLog.problem(SupportTestLog.Problem.SOURCE_CHANGED_DURING_SCAN);
+                    invalidateScanLocked();
+                }
+            }
+            throw failure;
+        }
+    }
+
+    RadioPlaybackHealthReader.Snapshot readHealth() {
+        try {
+            if (stockSession == null) return new RadioPlaybackHealthReader.Snapshot(false, "", false, false);
+            ReglinkStockSession.State route = stockSession.read();
+            if (!route.stockOwnsRoute) {
+                synchronized (stateLock) { if (scanOwned || scanComplete) invalidateScanLocked(); }
+            }
+            Snapshot state = snapshot();
+            return new RadioPlaybackHealthReader.Snapshot(true,
+                    route.stockOwnsRoute ? "com.reglink.apps.radio" : "other",
+                    true, route.globallyMuted || !state.powered);
+        } catch (RemoteException | RuntimeException failure) {
+            return new RadioPlaybackHealthReader.Snapshot(false, "", false, false);
+        }
+    }
+
+    boolean requestStockPlayback() throws RemoteException {
+        synchronized (operationLock) {
+            if (stockSession == null) return false;
+            revalidateCapabilities();
+            requireStockRoute();
+            if (snapshot().powered) return true; // Adopt; never reinitialize audible radio.
+            // Unlike the core fallback, this external service's shutdown/play
+            // changes GLOBAL media mute. It is not a source-local pause API.
+            throw new CommandRejectedException("Start the stock radio first; audio takeover is disabled");
+        }
     }
 
     private static <T> T transact(IBinder binder, String descriptor, int code,
@@ -180,6 +240,7 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
             capabilitiesInvalidated = true;
             throw new CommandRejectedException("Reglink hardware changed; reconnect before control");
         }
+        requireStockRoute();
     }
 
     /** Read-only; never substitutes callback scan progress for the tuned frequency. */
@@ -251,12 +312,14 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
     }
 
     boolean tuneToBand(int band, int khz, BooleanSupplier stillCurrent) throws RemoteException {
+        if (stockSession != null) SupportTestLog.event(SupportTestLog.Event.TUNE_REQUEST, band, khz);
         synchronized (operationLock) {
             if (!canContinue(stillCurrent)) return false;
             revalidateCapabilities();
             validateTuningTarget(band, khz);
             if (!canContinue(stillCurrent)) return false;
             Snapshot current = requireReadyForMutation();
+            if (stockSession != null && !current.powered) throw new CommandRejectedException("Resume the stock radio before tuning");
             String name = ReglinkTuningRules.nativeBand(band);
             int raw = ReglinkTuningRules.rawFrequency(band, khz);
             if (!canContinue(stillCurrent)) return false;
@@ -280,10 +343,15 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
             long deadline = SystemClock.elapsedRealtime() + TUNE_WAIT_MS;
             do {
                 if (!canContinue(stillCurrent)) return false;
+                requireStockRoute();
                 Snapshot observed = snapshot();
-                if (name.equals(observed.rawBand) && observed.rawFrequency == raw) return true;
+                if (name.equals(observed.rawBand) && observed.rawFrequency == raw) {
+                    if (stockSession != null) SupportTestLog.event(SupportTestLog.Event.TUNE_CONFIRMED, band, khz);
+                    return true;
+                }
                 SystemClock.sleep(50);
             } while (SystemClock.elapsedRealtime() < deadline);
+            if (stockSession != null) SupportTestLog.problem(SupportTestLog.Problem.TUNE_UNCONFIRMED);
             return false;
         }
     }
@@ -410,10 +478,12 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
     }
 
     boolean startScan(BooleanSupplier stillCurrent) throws RemoteException {
+        if (stockSession != null) SupportTestLog.event(SupportTestLog.Event.SCAN_REQUEST);
         synchronized (operationLock) {
             if (!canContinue(stillCurrent)) return false;
             revalidateCapabilities();
             Snapshot current = requireReadyForMutation();
+            if (stockSession != null && !current.powered) throw new CommandRejectedException("Resume the stock radio before scanning");
             if (!supportsBand(current.band)) throw new CommandRejectedException("Reglink band unavailable");
             if (!canContinue(stillCurrent)) return false;
             ensureObserver();
@@ -467,6 +537,7 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
             long deadline = SystemClock.elapsedRealtime() + SCAN_STOP_WAIT_MS;
             do {
                 if (!canContinue(stillCurrent)) return false;
+                requireStockRoute();
                 Snapshot observed = snapshot();
                 if (!observed.scanning) {
                     synchronized (stateLock) {
@@ -496,6 +567,7 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
                 }
             }
             if (!stopScan(stillCurrent) || !canContinue(stillCurrent)) {
+                SupportTestLog.problem(SupportTestLog.Problem.SCAN_UNCONFIRMED);
                 throw new CommandRejectedException("Reglink scan completion is not confirmed");
             }
             synchronized (stateLock) {
@@ -506,6 +578,7 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
                 int[] result = new int[scanResults.size()];
                 int index = 0;
                 for (Integer frequency : scanResults) result[index++] = frequency;
+                if (stockSession != null) SupportTestLog.event(SupportTestLog.Event.SCAN_RESULTS, band, result.length);
                 return result;
             }
         }
@@ -584,7 +657,7 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
     @Override public String getCurrentFreqRdsPs() { return ""; } // Separate optional RDS daemon, not this ABI.
     @Override public boolean currentFreqIsFavorite() { return false; }
     @Override public boolean getFreqIsFavorite(int band, int khz) { return false; }
-    @Override public boolean requestPlayAudio() { return false; }
+    @Override public boolean requestPlayAudio() throws RemoteException { return requestStockPlayback(); }
     @Override public void requestAudioFocus() throws RemoteException { throw unavailable(); }
     @Override public void releaseAudioFocus() throws RemoteException { throw unavailable(); }
     @Override public void onLocDxEvent() throws RemoteException { throw unavailable(); }

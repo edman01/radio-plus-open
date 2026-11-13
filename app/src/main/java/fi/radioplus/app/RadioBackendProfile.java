@@ -12,6 +12,7 @@ enum RadioBackendProfile {
     NWD_G5_242("G5 / MCU RadioService 2.4.2 (experimental)", true),
     SPD_V9_34("SPD / V9 Plus 20260130 (experimental)", true),
     REGLINK_S540("Reglink / S5.40 (control unavailable)", true),
+    REGLINK_S574_ASSISTED("Reglink / S5.74 (stock-assisted test)", true),
     UNKNOWN("Unrecognized stock radio", false);
 
     // Inspected APK fingerprints only; no vendor binaries or implementations are bundled.
@@ -46,6 +47,10 @@ enum RadioBackendProfile {
             "3ec4895e2d1a8145f53c53b984f2cfb0e22e34d82f2745cc4fc54e10802a64a9";
     static final String REGLINK_S540_TUNER_SHA256 =
             "f9bba4d7785a5197dc8097a581ba09423d18af0db7801d3ffc5762e7cf020cb8";
+    static final String REGLINK_S574_SERVICE_SHA256 =
+            "0e963fcdb73c8360e54fb6c9a42434ff3e9c52aabd61e9d8b83207bfc39f1df1";
+    static final String REGLINK_S574_RADIO_SHA256 =
+            "5339be867f92841c9530955244b905aaf6a0ec461ac5a8f8ef5f1e94f8832073";
     static final String SPD_RADIO_SHA256 =
             "955899427a6d437d244dbdedc69b25c313e9ef86e0f2813345fa75ea4f67b57b";
     static final String SPD_FRAMEWORK_SHA256 =
@@ -73,6 +78,7 @@ enum RadioBackendProfile {
         if (NWD_G5_RADIO_SHA256.equalsIgnoreCase(hash)) return NWD_G5_242;
         if (SPD_RADIO_SHA256.equalsIgnoreCase(hash)) return SPD_V9_34;
         if (REGLINK_S540_SERVICE_SHA256.equalsIgnoreCase(hash)) return REGLINK_S540;
+        if (REGLINK_S574_SERVICE_SHA256.equalsIgnoreCase(hash)) return REGLINK_S574_ASSISTED;
         return UNKNOWN;
     }
 
@@ -98,7 +104,7 @@ enum RadioBackendProfile {
     // contract: one-way tuning and source-only audio. Their ARM/AW implementations
     // have different lifecycle requirements and are rejected by NwdRadioApi.
     boolean isNwdMcu() { return this == NWD_230 || this == NWD_G5_242; }
-    boolean isReglink() { return this == REGLINK_S540; }
+    boolean isReglink() { return this == REGLINK_S540 || this == REGLINK_S574_ASSISTED; }
     boolean isSpd() { return this == SPD_V9_34; }
 
     static boolean verifiedSpdDependencies(String framework, String services) {
@@ -107,8 +113,10 @@ enum RadioBackendProfile {
     }
 
     static boolean verifiedReglinkTriplet(String services, String radio, String tuner) {
-        return REGLINK_S540_SERVICE_SHA256.equalsIgnoreCase(services)
-                && REGLINK_S540_RADIO_SHA256.equalsIgnoreCase(radio)
+        return ((REGLINK_S540_SERVICE_SHA256.equalsIgnoreCase(services)
+                && REGLINK_S540_RADIO_SHA256.equalsIgnoreCase(radio))
+                || (REGLINK_S574_SERVICE_SHA256.equalsIgnoreCase(services)
+                && REGLINK_S574_RADIO_SHA256.equalsIgnoreCase(radio)))
                 && REGLINK_S540_TUNER_SHA256.equalsIgnoreCase(tuner);
     }
 
@@ -116,6 +124,7 @@ enum RadioBackendProfile {
         // An inspected ABI is not proof of safe audio/key ownership. Reglink's
         // stock teardown can mute another client; its native FM path also
         // requires the stock "radio" client name. Do not claim that singleton.
+        if (this == REGLINK_S574_ASSISTED) return BuildConfig.REGLINK_STOCK_ASSISTED;
         return this != UNKNOWN && this != NWD_222 && !isReglink();
     }
 

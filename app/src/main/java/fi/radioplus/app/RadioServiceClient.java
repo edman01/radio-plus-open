@@ -256,6 +256,8 @@ final class RadioServiceClient {
                 mainHandler.postDelayed(connectionWatchdog, BIND_TIMEOUT_MS);
             }
         } catch (SecurityException error) {
+            SupportTestLog.problem(SupportTestLog.Problem.SERVICE_ACCESS_DENIED);
+            SupportTestLog.failure(SupportTestLog.Event.BIND_ERROR, error);
             bound = false;
             Log.e(TAG, "Palveluun sitoutuminen estettiin", error);
             notifyConnection(false, tr(
@@ -264,6 +266,7 @@ final class RadioServiceClient {
             ));
             scheduleRebind();
         } catch (RuntimeException error) {
+            SupportTestLog.failure(SupportTestLog.Event.BIND_ERROR, error);
             bound = false;
             Log.e(TAG, "Palveluun sitoutuminen epäonnistui", error);
             notifyConnection(false, tr(
@@ -363,13 +366,16 @@ final class RadioServiceClient {
                 try {
                     action.run(current);
                     if (isCurrentPoll(current, generation)) pollNow(generation, forceStateDispatch);
-                } catch (NwdRadioApi.CommandRejectedException | SpdRadioApi.CommandRejectedException rejected) {
+                } catch (NwdRadioApi.CommandRejectedException | SpdRadioApi.CommandRejectedException
+                        | ReglinkRadioApi.CommandRejectedException rejected) {
                     if (!isCurrentPoll(current, generation)) return;
                     Log.w(TAG, "Radio command unavailable; connection and source left unchanged", rejected);
                     notifyError(current, generation,
                             tr("Radio-ohjaus epäonnistui", "Radio control failed"));
                     pollNow(generation, forceStateDispatch);
                 } catch (RemoteException | RuntimeException | LinkageError error) {
+                    SupportTestLog.failure(SupportTestLog.Event.ENDPOINT_ERROR, error);
+                    SupportTestLog.event(SupportTestLog.Event.ENDPOINT_ERROR, 1, 0);
                     if (!isCurrentPoll(current, generation)) return;
                     Log.e(TAG, "Radio-ohjaus epäonnistui", error);
                     String message = tr(
@@ -400,6 +406,13 @@ final class RadioServiceClient {
         // requested station is already current. Periodic polls stay deduplicated.
         perform(current, generation, true, remote -> {
             if (!isCurrentPoll(remote, generation)) return;
+            if (remote instanceof ReglinkRadioApi) {
+                if (!((ReglinkRadioApi) remote).tuneToBand(targetBand, frequency,
+                        () -> isCurrentPoll(remote, generation))) {
+                    throw new ReglinkRadioApi.CommandRejectedException("Reglink tuning was not confirmed");
+                }
+                return;
+            }
             if (remote instanceof SpdRadioApi) {
                 SpdRadioApi spd = (SpdRadioApi) remote;
                 spd.validateTuningTarget(targetBand, frequency);
@@ -473,6 +486,23 @@ final class RadioServiceClient {
         try {
             actionExecutor.submit(() -> {
                 if (!isCurrentPoll(current, generation)) return;
+                if (current instanceof ReglinkRadioApi) {
+                    int[] frequencies = new int[0];
+                    boolean complete = false;
+                    try {
+                        frequencies = sanitizePresets(band, ((ReglinkRadioApi) current).readScanPresets(band,
+                                () -> isCurrentPoll(current, generation)));
+                        complete = true;
+                    } catch (RemoteException | RuntimeException error) {
+                        Log.w(TAG, "Reglink scan results were not confirmed", error);
+                    }
+                    final int[] results = frequencies;
+                    final boolean available = complete;
+                    mainHandler.post(() -> {
+                        if (isCurrentPoll(current, generation)) callback.onResult(band, results, available);
+                    });
+                    return;
+                }
                 if (current instanceof NwdRadioApi) {
                     if (!((NwdRadioApi) current).supportsScanning()) {
                         mainHandler.post(() -> {
@@ -576,13 +606,15 @@ final class RadioServiceClient {
 
     private void pollCurrent(IRadioServiceAPI current, long generation, boolean forceStateDispatch) {
         try {
+            ReglinkRadioApi.Snapshot reglink = current instanceof ReglinkRadioApi
+                    ? ((ReglinkRadioApi) current).snapshot() : null;
             NwdRadioApi.Frequency nwdFrequency = current instanceof NwdRadioApi
                     ? ((NwdRadioApi) current).frequency() : null;
             SpdRadioProbe.Frequency spdFrequency = current instanceof SpdRadioApi
                     ? ((SpdRadioApi) current).frequency() : null;
-            int band = spdFrequency != null ? spdFrequency.grid.band
+            int band = reglink != null ? reglink.band : spdFrequency != null ? spdFrequency.grid.band
                     : nwdFrequency == null ? current.getCurrentBand() : nwdFrequency.band();
-            int frequency = spdFrequency != null ? spdFrequency.grid.frequency
+            int frequency = reglink != null ? reglink.khz : spdFrequency != null ? spdFrequency.grid.frequency
                     : nwdFrequency == null ? current.getCurrentFreq() : nwdFrequency.khz;
             if (!FrequencyRules.isValid(band, frequency)) {
                 return;
@@ -661,6 +693,8 @@ final class RadioServiceClient {
                 if (isCurrentPoll(current, generation)) listener.onStateChanged(state);
             });
         } catch (RemoteException | RuntimeException | LinkageError error) {
+            SupportTestLog.failure(SupportTestLog.Event.ENDPOINT_ERROR, error);
+            SupportTestLog.event(SupportTestLog.Event.ENDPOINT_ERROR, 2, 0);
             if (!isCurrentPoll(current, generation)) return;
             Log.e(TAG, "Radiotilan lukeminen epäonnistui", error);
             String message = tr(

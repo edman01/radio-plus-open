@@ -32,8 +32,10 @@ android {
         applicationId "fi.radioplus.app"
         minSdk 27
         targetSdk 33
-        versionCode 98
-        versionName "0.16.1-dev36"
+        versionCode 99
+        versionName "0.16.1-dev37" + (project.findProperty("reglinkStockAssisted") == "true" ? "-reglink-test" : "")
+        buildConfigField "boolean", "REGLINK_STOCK_ASSISTED",
+                (project.findProperty("reglinkStockAssisted") == "true").toString()
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     buildFeatures {
