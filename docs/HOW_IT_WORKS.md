@@ -81,7 +81,9 @@ for a stock preset reported just before the next Android DOWN: the last confirme
 wheel selection is the starting point unless another station is already established.
 If the only conflicting evidence is an old poll, navigation follows the live
 tuner just as it did in Community Beta 5.
-An already active radio route is not requested again for a warm wheel step.
+An already active V7 radio route is not requested again on a wheel step,
+screen arrow or station tile. Opening an already audible radio remains passive;
+the first deliberate station selection after that can register Radio+ for media buttons.
 A frequency change alone is not a button press. In experimental builds, the
 **About app → Export support log** report distinguishes observed tuner changes
 from received list commands while the ordinary radio screen is open.
@@ -94,6 +96,15 @@ it cannot handle commands that the firmware never exposes to Android.
 On V7 units that deliver next/previous through Android media controls, no
 accessibility service is needed. Enable the optional service only if the
 buttons do not work on your head unit.
+
+If the V7 steering test shows only tuner changes (`keys=0`), leave the radio
+playing. Under **Settings → General → Steering-wheel buttons → Restore
+steering-wheel controls**, Radio+ can ask Android to route media buttons to it
+again. This does not enable accessibility, change presets, tune a station or
+request audio focus. It uses one short local audio marker, then releases it.
+No marker is played repeatedly in the background. A completed request is not
+proof of delivery: test two separate presses against the displayed list while
+parked. This cannot redirect keys handled entirely inside the head unit.
 
 Starting playback registers Radio+ for Android media controls. Changing stations
 during playback reuses the active radio source to avoid an unnecessary audio

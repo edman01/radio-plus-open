@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="steering_restore_route">Ripristina i comandi al volante</string>
+    <string name="steering_restore_requested">Richiesta inviata. Prova il tasto Avanti sul volante.</string>
+    <string name="steering_restore_unavailable">Avvia la radio e riprova.</string>
     <string name="steering_automatic_hint">"I tasti al volante funzionano normalmente in modo automatico tramite i controlli multimediali di Android. Sul Junsun V7 testato funzionano senza questo servizio di accessibilità. Attiva il servizio facoltativo solo se i tasti non funzionano sulla tua autoradio."</string>
     <string name="steering_test_buttons">"Prova tasti"</string>
     <string name="steering_test_title">"Test dei tasti al volante"</string>

@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="steering_restore_route">Rétablir les commandes au volant</string>
+    <string name="steering_restore_requested">Commandes au volant demandées. Essayez Suivant au volant.</string>
+    <string name="steering_restore_unavailable">Lancez la radio, puis réessayez.</string>
     <string name="steering_automatic_hint">"Les commandes au volant fonctionnent généralement automatiquement via les commandes multimédias Android. Sur le Junsun V7 testé, elles fonctionnent sans ce service d’accessibilité. Activez ce service facultatif uniquement si les boutons ne fonctionnent pas sur votre autoradio."</string>
     <string name="steering_test_buttons">"Tester les boutons"</string>
     <string name="steering_test_title">"Test des commandes au volant"</string>

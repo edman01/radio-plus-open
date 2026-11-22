@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="steering_restore_route">Direksiyon kumandasını geri yükle</string>
+    <string name="steering_restore_requested">Direksiyon kumandası istendi. Direksiyondaki Sonraki tuşunu deneyin.</string>
+    <string name="steering_restore_unavailable">Radyoyu çalmaya başlatıp tekrar deneyin.</string>
     <string name="steering_automatic_hint">"Direksiyon tuşları genellikle Android medya kontrolleri üzerinden otomatik olarak çalışır. Test edilen Junsun V7’de bu erişilebilirlik hizmeti olmadan çalışırlar. İsteğe bağlı hizmeti yalnızca cihazınızda tuşlar çalışmıyorsa etkinleştirin."</string>
     <string name="steering_test_buttons">"Tuşları test et"</string>
     <string name="steering_test_title">"Direksiyon tuşu testi"</string>

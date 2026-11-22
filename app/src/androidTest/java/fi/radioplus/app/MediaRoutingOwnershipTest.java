@@ -272,6 +272,50 @@ public final class MediaRoutingOwnershipTest {
         }
     }
 
+    @Test public void v7RepairWithoutAccessibilityRecoversNextFromAnotherDefaultSession() throws Exception {
+        assumeTrue("Use the separate emulator-only media player",
+                Boolean.parseBoolean(InstrumentationRegistry.getArguments().getString("externalFixture")));
+        instrumentation.runOnMainSync(() -> setField(service, "boundDetection",
+                new RadioApiFactory.Detection(RadioBackendProfile.HCN_CURRENT_31, "", "", "")));
+        playAndAwaitReleasedPulse();
+        try {
+            sendFixtureCommand("pulse");
+            await(() -> EXTERNAL_FIXTURE_PACKAGE.equals(sessions.getMediaKeyEventSessionPackageName()),
+                    "The competing player must own Android's real default key route first");
+            MediaController other = new MediaController(context, sessions.getMediaKeyEventSession());
+            await(() -> other.getPlaybackState() != null
+                    && other.getPlaybackState().getState() == PlaybackState.STATE_PAUSED
+                    && audio.getActivePlaybackConfigurations().isEmpty(), "Competing track was not released");
+            SteeringDiagnosticTrace.get().begin();
+            long down = SystemClock.uptimeMillis();
+            audio.dispatchMediaKeyEvent(new KeyEvent(down, down, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_NEXT, 0));
+            audio.dispatchMediaKeyEvent(new KeyEvent(down, down + 1, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_NEXT, 0));
+            SystemClock.sleep(700);
+            drainServiceCommands();
+            assertTrue(SteeringDiagnosticTrace.get().report().contains("keys=0 "));
+            assertEquals(0, tuner.tunes().size());
+
+            int focus = tuner.focusRequests, releases = tuner.focusReleases;
+            instrumentation.runOnMainSync(() -> assertTrue(RadioPlaybackService.requestWheelRouteRepair()));
+            await(() -> controller.getSessionToken().equals(sessions.getMediaKeyEventSession()),
+                    "The recovery request did not restore the default Android media-key target");
+            await(() -> "completed".equals(pulseStatus()) && audio.getActivePlaybackConfigurations().isEmpty(),
+                    "Recovery must release its audio track");
+            drainServiceCommands();
+            assertEquals("Recovery must not retune or cycle OEM focus", 0, tuner.tunes().size());
+            assertEquals(focus, tuner.focusRequests);
+            assertEquals(releases, tuner.focusReleases);
+            expectSystemTune(KeyEvent.KEYCODE_MEDIA_NEXT, CHARLIE, 0);
+            expectSystemTune(KeyEvent.KEYCODE_MEDIA_NEXT, BRAVO, 0);
+            new StationNavigationStore(context).setFavoritesSelected(false); // ALPHA, BRAVO, CHARLIE
+            expectSystemTune(KeyEvent.KEYCODE_MEDIA_PREVIOUS, ALPHA, 0);
+            expectSystemTune(KeyEvent.KEYCODE_MEDIA_NEXT, BRAVO, 0);
+        } finally {
+            SteeringDiagnosticTrace.get().clear();
+            sendFixtureCommand("stop");
+        }
+    }
+
     private void sendFixtureCommand(String action) {
         context.startActivity(new Intent()
                 .setComponent(new ComponentName(EXTERNAL_FIXTURE_PACKAGE,
@@ -300,6 +344,10 @@ public final class MediaRoutingOwnershipTest {
     }
 
     private void expectSystemTune(int keyCode, FavoriteStation expected) throws Exception {
+        expectSystemTune(keyCode, expected, 1);
+    }
+
+    private void expectSystemTune(int keyCode, FavoriteStation expected, int expectedRouteRequests) throws Exception {
         assertEquals("Check default ownership before every untargeted key",
                 controller.getSessionToken(), sessions.getMediaKeyEventSession());
         drainServiceCommands();
@@ -326,8 +374,8 @@ public final class MediaRoutingOwnershipTest {
                 claimBefore, (long) (Long) field(RadioPlaybackService.class, "routingClaimId", service));
         assertEquals("Steady navigation must not cycle OEM audio focus", focusBefore, tuner.focusRequests);
         assertEquals("Steady navigation must not release OEM audio focus", releasesBefore, tuner.focusReleases);
-        assertEquals("Only the immediate post-confirmation route request is allowed; no delayed restore",
-                routesBefore + 1, tuner.routeRequests);
+        assertEquals("The V7 must retain its warm route; no delayed restore on any profile",
+                routesBefore + expectedRouteRequests, tuner.routeRequests);
         assertEquals("Exactly one station per system media key press", before + 1, tuner.tunes().size());
         assertEquals("Actual OEM command must follow the favorites' stored order", expected, tuner.tunes().get(before));
         assertEquals(expected.band, tuner.current().band);

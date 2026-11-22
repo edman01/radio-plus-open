@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="steering_restore_route">Obnovit ovládání na volantu</string>
+    <string name="steering_restore_requested">Požadavek odeslán. Zkuste na volantu stisknout Další.</string>
+    <string name="steering_restore_unavailable">Spusťte přehrávání rádia a zkuste to znovu.</string>
     <string name="steering_automatic_hint">"Tlačítka na volantu obvykle fungují automaticky prostřednictvím ovládání médií v Androidu. Na testovaném Junsun V7 fungují bez této služby usnadnění. Volitelnou službu zapněte pouze tehdy, pokud tlačítka na vašem autorádiu nefungují."</string>
     <string name="steering_test_buttons">"Testovat tlačítka"</string>
     <string name="steering_test_title">"Test tlačítek na volantu"</string>

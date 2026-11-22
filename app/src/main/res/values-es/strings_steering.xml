@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="steering_restore_route">Recuperar los mandos del volante</string>
+    <string name="steering_restore_requested">Se ha solicitado el control. Prueba el botón Siguiente del volante.</string>
+    <string name="steering_restore_unavailable">Inicia la reproducción de la radio y vuelve a intentarlo.</string>
     <string name="steering_automatic_hint">"Los botones del volante suelen funcionar automáticamente mediante los controles multimedia de Android. En el Junsun V7 probado funcionan sin este servicio de accesibilidad. Activa este servicio opcional solo si los botones no funcionan en tu equipo."</string>
     <string name="steering_test_buttons">"Probar botones"</string>
     <string name="steering_test_title">"Prueba de botones del volante"</string>

@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="steering_restore_route">Palauta rattiohjaus</string>
+    <string name="steering_restore_requested">Rattiohjausta pyydetty. Kokeile ratin Seuraava-painiketta.</string>
+    <string name="steering_restore_unavailable">Käynnistä radion toisto ja yritä uudelleen.</string>
     <string name="steering_automatic_hint">"Rattipainikkeet toimivat yleensä automaattisesti Androidin mediakomentojen kautta. Testatulla Junsun V7:llä ne toimivat ilman tätä esteettömyyspalvelua. Ota valinnainen palvelu käyttöön vain, jos painikkeet eivät toimi omassa soittimessasi."</string>
     <string name="steering_test_buttons">"Testaa painikkeet"</string>
     <string name="steering_test_title">"Rattipainiketesti"</string>

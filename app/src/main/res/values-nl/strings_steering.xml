@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="steering_restore_route">Stuurwielbediening herstellen</string>
+    <string name="steering_restore_requested">Stuurwielbediening aangevraagd. Probeer Volgende op het stuur.</string>
+    <string name="steering_restore_unavailable">Start de radio en probeer het opnieuw.</string>
     <string name="steering_automatic_hint">"Stuurwielknoppen werken meestal automatisch via de mediabediening van Android. Op de geteste Junsun V7 werken ze zonder deze toegankelijkheidsservice. Schakel de optionele service alleen in als de knoppen op je autoradio niet werken."</string>
     <string name="steering_test_buttons">"Knoppen testen"</string>
     <string name="steering_test_title">"Test van stuurwielknoppen"</string>

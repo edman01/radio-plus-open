@@ -611,6 +611,44 @@ public final class MediaControlsTest {
                 new RadioApiFactory.Detection(RadioBackendProfile.HCN_CURRENT_31, "", "", "")));
     }
 
+    @Test public void warmV7TileAndScreenArrowDoNotHandTheMediaKeysBackToStock() throws Exception {
+        verifyV7Profile();
+        long coldClaim = routingClaimId();
+        expectTune(() -> RadioPlaybackService.tuneStation(context, ALPHA, true), ALPHA);
+        awaitRoutingClaimCompleted(coldClaim, 3);
+        long claim = routingClaimId();
+        int routes = tuner.routeRequests, focus = tuner.focusRequests;
+        expectTune(() -> RadioPlaybackService.tuneStation(context, BRAVO, true), BRAVO);
+        assertEquals("A warm tile must not reselect the stock FM source", routes, tuner.routeRequests);
+        navigation.setFavoritesSelected(false);
+        expectTune(() -> RadioPlaybackService.skipStation(context, true), ALPHA); // catalog wrap
+        assertEquals("Neither may the in-app arrow", routes, tuner.routeRequests);
+        assertEquals(focus, tuner.focusRequests);
+        assertEquals(claim, routingClaimId());
+    }
+
+    @Test public void wheelRepairCannotStartPlaybackOrFollowTheUserIntoAnotherApp() throws Exception {
+        assertFalse(RadioPlaybackService.supportsWheelRouteRepair());
+        instrumentation.runOnMainSync(() -> assertFalse(RadioPlaybackService.requestWheelRouteRepair()));
+        verifyV7Profile();
+        instrumentation.runOnMainSync(() -> assertFalse(RadioPlaybackService.requestWheelRouteRepair()));
+        long coldClaim = routingClaimId();
+        assertEquals(0, tuner.routeRequests);
+        expectTune(() -> RadioPlaybackService.tuneStation(context, ALPHA, true), ALPHA);
+        awaitRoutingClaimCompleted(coldClaim, 3);
+        int routes = tuner.routeRequests;
+        instrumentation.runOnMainSync(() -> {
+            assertTrue(RadioPlaybackService.requestWheelRouteRepair());
+            RadioPlaybackService.noteUiBackgrounded();
+        });
+        SystemClock.sleep(1_100);
+        drainServiceCommands();
+        assertEquals("A dismissed foreground request must not touch the stock route", routes, tuner.routeRequests);
+        controls().pause();
+        await(() -> controller.getPlaybackState().getState() == PlaybackState.STATE_PAUSED, "Pause did not apply");
+        instrumentation.runOnMainSync(() -> assertFalse(RadioPlaybackService.requestWheelRouteRepair()));
+    }
+
     @Test public void consecutiveV7NextUsesTheLastConfirmedTileWhenStockMovesBeforeAndroidDown() throws Exception {
         verifyV7Profile();
         FavoriteStation[] row = new FavoriteStation[6];

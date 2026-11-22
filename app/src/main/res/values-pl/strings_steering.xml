@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="steering_restore_route">Przywróć sterowanie z kierownicy</string>
+    <string name="steering_restore_requested">Wysłano żądanie. Naciśnij przycisk Dalej na kierownicy.</string>
+    <string name="steering_restore_unavailable">Włącz radio i spróbuj ponownie.</string>
     <string name="steering_automatic_hint">"Przyciski na kierownicy zwykle działają automatycznie dzięki sterowaniu multimediami w Androidzie. Na przetestowanym Junsun V7 działają bez tej usługi ułatwień dostępu. Włącz tę opcjonalną usługę tylko wtedy, gdy przyciski nie działają w Twoim radiu."</string>
     <string name="steering_test_buttons">"Testuj przyciski"</string>
     <string name="steering_test_title">"Test przycisków na kierownicy"</string>

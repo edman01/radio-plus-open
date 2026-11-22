@@ -33,10 +33,17 @@ final class RadioPlaybackHealthReader {
             this.muted = muted;
         }
 
-        boolean radioOwnsSource() {
+        boolean hcnOwnsSource() {
             return RadioBackendContract.PACKAGE_NAME.equals(sourcePackage)
-                    || sourcePackage.startsWith(RadioBackendContract.PACKAGE_NAME + "/")
-                    || "com.ts.MainUI".equals(sourcePackage)
+                    || sourcePackage.startsWith(RadioBackendContract.PACKAGE_NAME + "/");
+        }
+
+        boolean audibleHcnRoute() {
+            return sourceKnown && hcnOwnsSource() && muteKnown && !muted;
+        }
+
+        boolean radioOwnsSource() {
+            return hcnOwnsSource() || "com.ts.MainUI".equals(sourcePackage)
                     || "com.nwd.radio.service".equals(sourcePackage)
                     || "com.spd.radio".equals(sourcePackage)
                     || "com.reglink.apps.radio".equals(sourcePackage);

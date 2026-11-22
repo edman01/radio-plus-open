@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="steering_restore_route">Återställ rattstyrningen</string>
+    <string name="steering_restore_requested">Rattstyrning har begärts. Prova Nästa på ratten.</string>
+    <string name="steering_restore_unavailable">Starta radiouppspelningen och försök igen.</string>
     <string name="steering_automatic_hint">"Rattknapparna fungerar vanligtvis automatiskt via Androids mediekontroller. På den testade Junsun V7 fungerar de utan den här tillgänglighetstjänsten. Aktivera den valfria tjänsten endast om knapparna inte fungerar på din bilstereo."</string>
     <string name="steering_test_buttons">"Testa knappar"</string>
     <string name="steering_test_title">"Test av rattknappar"</string>

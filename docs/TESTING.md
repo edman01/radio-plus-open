@@ -29,6 +29,14 @@ order. Radio+ now uses the station playing before the physical press when a
 fresh reading is available on the verified HCN V7 profiles. The stock tuner
 moving during a press is covered by emulator tests; this change still needs a
 physical retest. Other head units remain unverified for this behavior.
+In Experimental Test Build 11, the V7 steering diagnostic also showed tuner
+changes with no keys delivered. Test Build 12 additionally avoids redundant
+stock-source requests on screen navigation and provides a foreground
+media-button route recovery. This addresses Android routing, not firmware-only
+commands. Parked device retest: leave accessibility off, select a station in
+Favorites, press Next twice, and check the two consecutive tiles. Repeat in
+Stations. If keys still miss Radio+, use **Restore steering-wheel controls**
+once and repeat; a changed frequency on its own is not a successful key test.
 Steering-wheel mute behavior needs separate testing. Successful volume control
 does not establish compatibility with every steering command. Behavior depends
 on how the firmware routes button events; test while parked.

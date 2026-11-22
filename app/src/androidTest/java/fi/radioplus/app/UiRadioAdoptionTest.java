@@ -218,6 +218,44 @@ public final class UiRadioAdoptionTest {
         assertAdoptedWithoutAudioWrites(claimBefore);
     }
 
+    @Test public void verifiedV7AdoptionClaimsKeysOnlyOnFirstDeliberateStationSelection() throws Exception {
+        instrumentation.runOnMainSync(() -> setField(service, "boundDetection",
+                new RadioApiFactory.Detection(RadioBackendProfile.HCN_CURRENT_31, "", "", "")));
+        long before = claimId();
+        openUi();
+        assertAdoptedWithoutAudioWrites(before);
+        RadioPlaybackService.tuneStation(context, STATION, true);
+        await(() -> claimId() > before && "completed".equals(field(RadioPlaybackService.class,
+                "routingPulseStatus", service)), "Selecting a station never registered Android media playback");
+        drain();
+        long firstClaim = claimId();
+        assertEquals("A still-audible FM source must not be requested again after the marker", 0, tuner.routes);
+        assertEquals(0, tuner.focusRequests);
+        assertEquals(0, tuner.focusReleases);
+        assertTrue(sawPcm);
+        int writes = tuner.tunes;
+        RadioPlaybackService.tuneStation(context, STATION, true);
+        await(() -> tuner.tunes > writes, "Second tile command not processed");
+        SystemClock.sleep(OBSERVE_MS);
+        drain();
+        assertEquals("Do not play another marker for every station", firstClaim, claimId());
+        assertEquals(0, tuner.routes);
+    }
+
+    @Test public void repairLeavesAnExternalSourceAloneEvenIfRadioSessionIsStillPlaying() throws Exception {
+        instrumentation.runOnMainSync(() -> setField(service, "boundDetection",
+                new RadioApiFactory.Detection(RadioBackendProfile.HCN_CURRENT_31, "", "", "")));
+        long before = claimId();
+        openUi();
+        assertAdoptedWithoutAudioWrites(before);
+        source.packageName = "com.spd.radio"; // Another radio package is still external to this HCN endpoint.
+        instrumentation.runOnMainSync(() -> assertTrue(RadioPlaybackService.requestWheelRouteRepair()));
+        await(() -> "skipped-external-source".equals(field(RadioPlaybackService.class,
+                "routingPulseStatus", service)), "The foreground recovery did not yield to another source");
+        assertNoAudioWrites();
+        assertFalse(sawPcm);
+    }
+
     @Test public void explicitPlayAfterAdoptionStillPerformsTheOwnershipHandoff() throws Exception {
         long claimBefore = claimId();
         openUi();

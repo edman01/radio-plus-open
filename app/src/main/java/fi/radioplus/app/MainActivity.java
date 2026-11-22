@@ -776,6 +776,24 @@ public final class MainActivity extends Activity implements
             showUnverifiedBackendFeature();
             return;
         }
+        if (!debugPreview && RadioPlaybackService.supportsWheelRouteRepair()) {
+            AlertDialog options = new AlertDialog.Builder(this).setTitle(R.string.settings_steering)
+                    .setItems(new String[]{getString(R.string.steering_restore_route),
+                            getString(R.string.steering_test_buttons), getString(R.string.steering_open_settings)},
+                            (ignored, which) -> {
+                                if (which == 0) toast(getString(RadioPlaybackService.requestWheelRouteRepair()
+                                        ? R.string.steering_restore_requested : R.string.steering_restore_unavailable));
+                                else if (which == 1) showSteeringDiagnostics();
+                                else showSteeringAccessSetup();
+                            }).setNegativeButton(R.string.settings_back, null).create();
+            options.show();
+            styleCarDialog(options);
+            return;
+        }
+        showSteeringAccessSetup();
+    }
+
+    private void showSteeringAccessSetup() {
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle(R.string.settings_steering)
                 .setMessage(getString(R.string.steering_automatic_hint) + "\n\n"

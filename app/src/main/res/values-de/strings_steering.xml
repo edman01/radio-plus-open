@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="steering_restore_route">Lenkradsteuerung wiederherstellen</string>
+    <string name="steering_restore_requested">Lenkradsteuerung angefordert. Teste die Weiter-Taste am Lenkrad.</string>
+    <string name="steering_restore_unavailable">Starte die Radiowiedergabe und versuche es erneut.</string>
     <string name="steering_automatic_hint">"Lenkradtasten funktionieren normalerweise automatisch über die Android-Mediensteuerung. Auf dem getesteten Junsun V7 funktionieren sie ohne diesen Bedienungshilfendienst. Aktivieren Sie den optionalen Dienst nur, wenn die Tasten auf Ihrem Autoradio nicht funktionieren."</string>
     <string name="steering_test_buttons">"Tasten testen"</string>
     <string name="steering_test_title">"Lenkradtastentest"</string>

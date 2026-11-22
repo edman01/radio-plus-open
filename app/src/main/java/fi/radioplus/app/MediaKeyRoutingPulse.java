@@ -11,7 +11,8 @@ import java.util.function.BooleanSupplier;
 /**
  * A finite, zero-valued PCM registration attempt for an explicit radio request.
  * This does not request audio focus, own a MediaSession, or guarantee media-key ownership.
- * The caller must restore its OEM radio route after this returns, only if its request is current.
+ * After release, the caller must check the analog route and restore only when necessary
+ * and the request is still current. Do not reselect a positively confirmed audible route.
  */
 final class MediaKeyRoutingPulse {
     private static final int SAMPLE_RATE = 48_000;

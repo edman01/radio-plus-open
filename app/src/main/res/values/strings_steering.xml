@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="steering_restore_route">Restore steering-wheel controls</string>
+    <string name="steering_restore_requested">Requested steering-wheel controls. Try Next on the wheel.</string>
+    <string name="steering_restore_unavailable">Start radio playback, then try again.</string>
     <string name="steering_automatic_hint">"Steering-wheel buttons normally work automatically through Android media controls. They work without this accessibility service on the tested Junsun V7. Enable this optional service only if the buttons do not work on your head unit."</string>
     <string name="steering_test_buttons">"Test buttons"</string>
     <string name="steering_test_title">"Steering button test"</string>
