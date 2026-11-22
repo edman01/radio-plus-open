@@ -15,6 +15,7 @@
         <package android:name="com.reglink.services" />
         <package android:name="com.reglink.apps.radio" />
         <package android:name="com.reglink.apps.mtkradio" />
+        <package android:name="yellow.android.rds_daemon" />
     </queries>
 
     <application

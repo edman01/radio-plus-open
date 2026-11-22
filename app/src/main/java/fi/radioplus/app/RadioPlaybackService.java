@@ -1747,7 +1747,8 @@ public final class RadioPlaybackService extends MediaBrowserService {
                         pendingRadioCommandName = "";
                         oemRouteActive = audible;
                         if (!audible) setPlaybackRequested(false);
-                        Toast.makeText(this, AppLanguage.text(this,
+                        Toast.makeText(this, health.radioOwnsSource() ? AppLanguage.text(this,
+                                "Radio-ohjaus epäonnistui", "Radio control failed") : AppLanguage.text(this,
                                 "Käynnistä vakioradio ensin ja jätä se taustalle.",
                                 "Start the stock radio first and leave it running in the background."), Toast.LENGTH_LONG).show();
                     });
@@ -1850,14 +1851,17 @@ public final class RadioPlaybackService extends MediaBrowserService {
             HcnWheelHistory history = wheelHistoryFor(current);
             SpdRadioProbe.Frequency spd = current instanceof SpdRadioApi
                     ? ((SpdRadioApi) current).frequency() : null;
-            int band = spd == null ? normalizeBand(current.getCurrentBand()) : spd.grid.band;
-            int frequency = spd == null ? current.getCurrentFreq() : spd.grid.frequency;
+            ReglinkRadioApi.Snapshot reglink = current instanceof ReglinkRadioApi
+                    ? ((ReglinkRadioApi) current).snapshotForPoll() : null;
+            int band = reglink != null ? reglink.band : spd == null ? normalizeBand(current.getCurrentBand()) : spd.grid.band;
+            int frequency = reglink != null ? reglink.khz : spd == null ? current.getCurrentFreq() : spd.grid.frequency;
             if (!FrequencyRules.isValid(band, frequency)) {
                 return;
             }
             if (history != null) observeHcn(history, band, frequency);
             String rdsName = RadioMetadataReader.clean(
-                    spd == null ? current.getCurrentFreqRdsPs() : spd.ps
+                    reglink != null ? ((ReglinkRadioApi) current).cachedStationName(band, frequency)
+                            : spd == null ? current.getCurrentFreqRdsPs() : spd.ps
             );
             mainHandler.post(() -> {
                 if (!stopping && radio == current && playbackEpoch == epoch) {

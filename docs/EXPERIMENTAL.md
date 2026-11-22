@@ -58,6 +58,29 @@ permission before sending the arrows; Radio+ does not request either. Both
 changes need confirmation on the head unit. S5.74, other tuner modules and the
 Junsun V7 do not use these changes.
 
+**Test Build 11 — follow-up to the [public dev38 test report](https://github.com/edman01/radio-plus-open/issues/4#issuecomment-7078315497) (S6.02 / 4754).**
+To reproduce the tester's version code (112) and experimental flags from the
+project root, use `gradle -I tools/testbuild11.gradle -PexperimentalTestBuild6=true :app:assemblePlayDebug`.
+A self-built debug APK is not an in-place update for the signed tester APK.
+
+The FM/AM button now recalls the station remembered by the stock tuner with one
+command. It no longer forces 531 kHz or 87.5 MHz afterwards. A repeat tap on
+the same displayed band cannot queue a switch back. An explicitly chosen preset
+can still fine-tune after the firmware's mute interval and stable, unmuted
+readback. Radio+ never forces a phone or mixed route back to radio.
+
+After a Reglink scan, Radio+ keeps the found frequencies immediately, without
+retuning every unnamed station for 20 seconds. On S6.02/4754 it can also read
+FM programme names from the verified, already-running optional stock RDS
+service. Only a matching frequency with a valid name is used. A missing,
+different, stopped or empty service leaves the frequency available for manual
+naming; existing user names are preserved. Radio+ does not start an RDS scan
+or enable AF. The long-press station menu now resizes if the host display
+changes during opening; its actions remain scrollable on short screens.
+Physical FM/AM recovery, speaker transients and availability of RDS on the
+reported head unit still need a device test. If a pop occurs, stop band tests
+in Radio+ and use the stock radio for band changes.
+
 **Dev42: optional steering-wheel list navigation (S6.02 / external 4754 only).**
 Stock seek remains the default. Under **Settings → General → Steering-wheel
 buttons**, choose **Follow selected Radio+ list** to try it. With Radio+ on
@@ -81,7 +104,7 @@ wheel behavior has been tested with simulated events, not on a physical car.
   Source loss during a scan discards its results rather than stopping another
   owner's tuner. Restart Radio+ before another scan after that interruption.
 - No independent cold-start audio, Radio+ pause/resume, station seek, LOCAL/DX
-  or integrated RDS daemon. On other profiles, native wheel keys retain their
+  or control of the stock RDS decoder. On other profiles, native wheel keys retain their
   usual behavior.
 - Closing or reclaiming the stock radio can stop
   audio. An accepted tuner command may itself have OEM audio side effects;

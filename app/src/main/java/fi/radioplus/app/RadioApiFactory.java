@@ -108,7 +108,14 @@ final class RadioApiFactory {
                     }
                     if (detection.profile.isAssistedReglink()
                             && detection.profile.isEnabledForDeviceControl()) {
-                        api = reglinkConnections.resolve(binder, detection.profile);
+                        ReglinkRadioApi assisted = reglinkConnections.resolve(binder, detection.profile);
+                        api = assisted;
+                        if (assisted.isS602External4754()) {
+                            Detection daemon = inspectPackage(application, ReglinkRdsNames.PACKAGE);
+                            if (daemon != null && ReglinkRdsNames.APK_SHA256.equals(daemon.sha256)) {
+                                assisted.observeRdsNames(application);
+                            }
+                        }
                     } else if (detection.profile.isSpd()) {
                         if (spdSource == null) spdSource = new SpdAudioSourceReader(application);
                         api = spdConnections.resolve(binder, spdSource);

@@ -12,6 +12,7 @@ import com.hcn.autoradio.IRadioServiceAPI;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -19,6 +20,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -422,6 +424,42 @@ public final class RadioServiceClientPollingTest {
         }
     }
 
+    @Test public void reglinkScanKeepsAllFrequenciesAndReadsNamesWithoutRetuning() throws Exception {
+        for (boolean cacheAvailable : new boolean[]{false, true}) {
+            Fixture f = new Fixture();
+            ReglinkRadioInteropTest.Tuner tuner = new ReglinkRadioInteropTest.Tuner();
+            ReglinkRdsNamesTest.Daemon daemon = new ReglinkRdsNamesTest.Daemon();
+            try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(new ReglinkRadioInteropTest.Common(tuner),
+                    RadioBackendProfile.REGLINK_S602_ASSISTED)) {
+                setService(f.client, api);
+                assertFalse(f.client.canTuneForStationNames());
+                if (cacheAvailable) { api.observeRdsNames(daemon); daemon.connect(daemon.cache); }
+                api.startScan();
+                for (int raw : new int[]{9010, 9810, 10450}) tuner.emit("fm", raw, 13);
+                CountDownLatch delivered = new CountDownLatch(1);
+                AtomicReference<int[]> found = new AtomicReference<>();
+                AtomicReference<Map<Integer, String>> names = new AtomicReference<>();
+                f.client.readPresetFrequencies(0, (band, frequencies, confirmed, ps) -> {
+                    if (confirmed) found.set(frequencies);
+                    names.set(ps); delivered.countDown();
+                });
+                assertTrue(delivered.await(5, TimeUnit.SECONDS));
+                assertArrayEquals(new int[]{90100, 98100, 104500}, found.get());
+                assertEquals(cacheAvailable ? 2 : 0, names.get().size());
+                List<FavoriteStation> catalog = StationCatalog.mergeDiscovered(
+                        java.util.Collections.singletonList(new FavoriteStation(0, 98100, "My station")),
+                        0, found.get(), names.get()).stations;
+                assertEquals(3, catalog.size());
+                for (FavoriteStation s : catalog) assertEquals(s.frequency == 98100 ? "My station"
+                        : cacheAvailable && s.frequency == 104500 ? "FM TEST" : "", s.name);
+                assertEquals(0, tuner.count(6));
+                assertEquals(cacheAvailable ? 3 : 0, daemon.queries.size());
+                setService(f.client, new NwdRadioApi(new Endpoint(), audio()));
+                assertTrue("Live-name backends retain the post-scan pass", f.client.canTuneForStationNames());
+            } finally { f.close(); }
+        }
+    }
+
     @Test public void queuedPresetRequestDoesNotSwitchToANewerBindingOrGeneration() throws Exception {
         for (boolean sameEndpoint : new boolean[]{false, true}) {
             Fixture f = new Fixture(); Endpoint original = new Endpoint(), replacement = new Endpoint();
@@ -434,7 +472,7 @@ public final class RadioServiceClientPollingTest {
             Future<?> blocker = executor.submit(() -> { workerEntered.countDown(); Endpoint.await(releaseWorker); });
             try {
                 assertTrue(workerEntered.await(3, TimeUnit.SECONDS));
-                f.client.readPresetFrequencies(0, (band, values, complete) -> delivered.incrementAndGet());
+                f.client.readPresetFrequencies(0, (band, values, complete, names) -> delivered.incrementAndGet());
                 f.instrumentation.runOnMainSync(() -> changeBinding(f, sameEndpoint, replacementApi));
                 releaseWorker.countDown(); blocker.get(3, TimeUnit.SECONDS); awaitActions(executor); f.idle();
                 assertEquals("An obsolete request must not read either binding", 0,
@@ -451,7 +489,7 @@ public final class RadioServiceClientPollingTest {
             setService(f.client, new NwdRadioApi(original, audio()));
             NwdRadioApi replacementApi = new NwdRadioApi(replacement, audio());
             ExecutorService executor = actionExecutor(f.client); AtomicInteger delivered = new AtomicInteger();
-            RadioServiceClient.PresetResult callback = (band, values, complete) -> delivered.incrementAndGet();
+            RadioServiceClient.PresetResult callback = (band, values, complete, names) -> delivered.incrementAndGet();
             try {
                 f.instrumentation.runOnMainSync(() -> {
                     f.client.readPresetFrequencies(0, callback);
@@ -475,7 +513,7 @@ public final class RadioServiceClientPollingTest {
         setService(f.client, new NwdRadioApi(endpoint, audio()));
         ExecutorService executor = actionExecutor(f.client); AtomicInteger delivered = new AtomicInteger();
         try {
-            f.client.readPresetFrequencies(0, (band, values, complete) -> delivered.incrementAndGet());
+            f.client.readPresetFrequencies(0, (band, values, complete, names) -> delivered.incrementAndGet());
             assertTrue(endpoint.presetStopEntered.await(3, TimeUnit.SECONDS));
             f.instrumentation.runOnMainSync(() -> invoke(f.client, "stopPolling"));
             endpoint.releasePresetStop.countDown(); awaitActions(executor); f.idle();

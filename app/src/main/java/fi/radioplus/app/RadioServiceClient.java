@@ -15,6 +15,7 @@ import com.hcn.autoradio.IRadioServiceAPI;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -41,7 +42,7 @@ final class RadioServiceClient {
     }
 
     interface PresetResult {
-        void onResult(int band, int[] frequencies, boolean vendorMetadataAvailable);
+        void onResult(int band, int[] frequencies, boolean vendorMetadataAvailable, Map<Integer, String> cachedNames);
     }
 
     static final class RadioState {
@@ -338,9 +339,28 @@ final class RadioServiceClient {
         return current != null && RadioApiFactory.usesHcnFramework(current);
     }
 
+    boolean canTuneForStationNames() {
+        IRadioServiceAPI current = service;
+        // Reglink has at most a frequency-keyed, read-only cache. Retuning
+        // every found station cannot ask the stock decoder to fill that cache.
+        return current != null && !(current instanceof ReglinkRadioApi);
+    }
+
     void perform(RemoteAction action) {
         long generation = pollingGeneration;
         perform(service, generation, action);
+    }
+
+    boolean requestBandChange(int displayedBand) {
+        long generation = pollingGeneration;
+        IRadioServiceAPI current = service;
+        if (!isCurrentPoll(current, generation)) return false;
+        perform(current, generation, remote -> {
+            if (remote instanceof ReglinkRadioApi && ((ReglinkRadioApi) remote).isS602External4754()) {
+                ((ReglinkRadioApi) remote).recallBandFrom(displayedBand, () -> isCurrentPoll(remote, generation));
+            } else remote.onBandEvent();
+        });
+        return true;
     }
 
     boolean requestScan(boolean start) {
@@ -518,15 +538,17 @@ final class RadioServiceClient {
                     }
                     final int[] results = frequencies;
                     final boolean available = complete;
+                    Map<Integer, String> names = ((ReglinkRadioApi) current).cachedScanNames(
+                            band, results, () -> isCurrentPoll(current, generation));
                     mainHandler.post(() -> {
-                        if (isCurrentPoll(current, generation)) callback.onResult(band, results, available);
+                        if (isCurrentPoll(current, generation)) callback.onResult(band, results, available, names);
                     });
                     return;
                 }
                 if (current instanceof NwdRadioApi) {
                     if (!((NwdRadioApi) current).supportsScanning()) {
                         mainHandler.post(() -> {
-                            if (isCurrentPoll(current, generation)) callback.onResult(band, new int[0], false);
+                            if (isCurrentPoll(current, generation)) callback.onResult(band, new int[0], false, Collections.emptyMap());
                         });
                         return;
                     }
@@ -544,13 +566,13 @@ final class RadioServiceClient {
                     final int[] results = frequencies;
                     final boolean complete = available;
                     mainHandler.post(() -> {
-                        if (isCurrentPoll(current, generation)) callback.onResult(band, results, complete);
+                        if (isCurrentPoll(current, generation)) callback.onResult(band, results, complete, Collections.emptyMap());
                     });
                     return;
                 }
                 if (current instanceof TsRadioApi || !RadioApiFactory.selectedSupportsScanning()) {
                     mainHandler.post(() -> {
-                        if (isCurrentPoll(current, generation)) callback.onResult(band, new int[0], false);
+                        if (isCurrentPoll(current, generation)) callback.onResult(band, new int[0], false, Collections.emptyMap());
                     });
                     return;
                 }
@@ -559,7 +581,7 @@ final class RadioServiceClient {
                 boolean available = metadataReader.isAvailable();
                 mainHandler.post(() -> {
                     if (isCurrentPoll(current, generation)) {
-                        callback.onResult(band, sanitized, available);
+                        callback.onResult(band, sanitized, available, Collections.emptyMap());
                     }
                 });
             });
@@ -640,7 +662,8 @@ final class RadioServiceClient {
                 return;
             }
             if (isCurrentPoll(current, generation)) RadioPlaybackService.observeVisibleFrequency(current, band, frequency);
-            String serviceRdsName = RadioMetadataReader.clean(spdFrequency != null ? spdFrequency.ps
+            String serviceRdsName = RadioMetadataReader.clean(reglink != null ? ((ReglinkRadioApi) current).cachedStationName(band, frequency)
+                    : spdFrequency != null ? spdFrequency.ps
                     : nwdFrequency == null ? current.getCurrentFreqRdsPs() : nwdFrequency.name);
             RadioMetadataReader.Metadata metadata = RadioApiFactory.usesHcnFramework(current)
                     ? metadataReader.read() : null;

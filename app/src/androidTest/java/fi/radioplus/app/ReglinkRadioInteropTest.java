@@ -19,7 +19,7 @@ import static org.junit.Assert.*;
  */
 public final class ReglinkRadioInteropTest {
     private interface Hook { void run() throws RemoteException; }
-    private static final class Tuner extends Binder {
+    static final class Tuner extends Binder {
         final List<Integer> calls = new ArrayList<>();
         String band = "fm";
         int frequency = 9810;
@@ -257,6 +257,54 @@ public final class ReglinkRadioInteropTest {
         }
     }
 
+    @Test public void s602BandButtonRecallsOnceInEachDirectionAndPresetsStillWork() throws Exception {
+        Tuner t = new Tuner(); t.frequency = 9120; t.rememberedAm = 999;
+        try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(new Common(t), RadioBackendProfile.REGLINK_S602_ASSISTED)) {
+            api.onBandEvent(); assertEquals(999, api.getCurrentFreq());
+            api.onBandEvent(); assertEquals(91200, api.getCurrentFreq());
+            assertTrue(api.tuneToBand(0, 104800));
+            assertEquals(Arrays.asList("am:0", "fm:0", "fm:10480"), t.tunes);
+        }
+    }
+
+    @Test public void s602BandButtonNeverReplaysAnUnconfirmedToggle() throws Exception {
+        Tuner t = new Tuner(); t.deferTune = true;
+        try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(new Common(t), RadioBackendProfile.REGLINK_S602_ASSISTED)) {
+            assertThrows(ReglinkRadioApi.CommandRejectedException.class, api::onBandEvent);
+            assertThrows(ReglinkRadioApi.CommandRejectedException.class, api::onBandEvent);
+            t.deferTune = false; assertTrue(api.tuneToBand(0, 91200));
+            assertEquals(Arrays.asList("am:0", "fm:9120"), t.tunes);
+        }
+    }
+
+    @Test public void queuedBandTapUsesDisplayedBandAndDoesNotInterruptTheStockUnmute() throws Exception {
+        Tuner t = new Tuner(); Common c = new Common(t); long[] dispatched = {0};
+        try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(c, RadioBackendProfile.REGLINK_S602_ASSISTED)) {
+            t.afterTune = () -> dispatched[0] = android.os.SystemClock.elapsedRealtime();
+            api.recallBandFrom(0, () -> true);
+            assertTrue(android.os.SystemClock.elapsedRealtime() - dispatched[0] >= 1500);
+            api.recallBandFrom(0, () -> true); // same displayed button, already on AM
+            api.recallBandFrom(3, () -> false); // activity no longer owns this request
+            c.media.platform = 512; // phone is never a restored radio route
+            assertThrows(ReglinkRadioApi.CommandRejectedException.class, () -> api.recallBandFrom(3, () -> true));
+            assertEquals(Arrays.asList("am:0"), t.tunes);
+        }
+    }
+
+    @Test public void otherReglinkModulesAndProfilesKeepTheirDirectBandButtons() throws Exception {
+        for (RadioBackendProfile p : new RadioBackendProfile[]{
+                RadioBackendProfile.REGLINK_S574_ASSISTED, RadioBackendProfile.REGLINK_S602_ASSISTED}) {
+            for (String module : new String[]{"4754", "4755", "7786"}) {
+                if (p == RadioBackendProfile.REGLINK_S602_ASSISTED && "4754".equals(module)) continue;
+                Tuner t = new Tuner(); Common c = new Common(t); c.shared.module = module;
+                try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(c, p)) {
+                    api.onBandEvent(); api.onBandEvent();
+                    assertEquals(Arrays.asList("am:531", "fm:8750"), t.tunes);
+                }
+            }
+        }
+    }
+
     @Test public void s602BandRecallDoesNotLockPresetsOrRetuneAnAlreadyRestoredStation() throws Exception {
         Tuner t = new Tuner(); t.frequency = 10480;
         try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(new Common(t), RadioBackendProfile.REGLINK_S602_ASSISTED)) {
@@ -293,6 +341,21 @@ public final class ReglinkRadioInteropTest {
                 } else assertFalse(c.media.muted);
             };
             assertTrue(api.tuneToBand(3, 999)); assertEquals(Arrays.asList("am:0", "am:999"), t.tunes);
+        }
+    }
+
+    @Test public void temporaryPowerReadbackDuringBandRecallNeverTriggersPowerOrExtraTune() throws Exception {
+        Tuner t = new Tuner(); t.rememberedAm = 999;
+        try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(new Common(t), RadioBackendProfile.REGLINK_S602_ASSISTED)) {
+            t.afterTune = () -> {
+                t.powered = false;
+                int[] reads = {0};
+                t.beforeBandRead = () -> { if (++reads[0] == 5) t.powered = true; };
+            };
+            api.recallBandFrom(0, () -> true);
+            assertEquals(999, api.getCurrentFreq());
+            assertEquals(Arrays.asList("am:0"), t.tunes);
+            assertEquals(0, t.count(3)); assertEquals(0, t.count(4));
         }
     }
 

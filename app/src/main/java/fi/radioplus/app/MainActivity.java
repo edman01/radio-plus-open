@@ -535,8 +535,11 @@ public final class MainActivity extends Activity implements
     }
 
     private void configureControls() {
-        findViewById(R.id.band_button).setOnClickListener(view ->
-                runRadio(remote -> remote.onBandEvent()));
+        findViewById(R.id.band_button).setOnClickListener(view -> {
+            if (!radioClient.requestBandChange(currentState == null ? -1 : currentState.band)) {
+                toast(tr("Radio ei vastaa — yritä uudelleen", "The radio is not responding — try again"));
+            }
+        });
         findViewById(R.id.seek_down_button).setOnClickListener(view -> seekLowerFrequency());
         findViewById(R.id.seek_up_button).setOnClickListener(view -> seekHigherFrequency());
         findViewById(R.id.step_down_button).setOnClickListener(view -> stepLowerFrequency());
@@ -1743,7 +1746,7 @@ public final class MainActivity extends Activity implements
                 "Viimeistellään asemalistaa…",
                 "Finalizing station list…"
         ));
-        RadioServiceClient.PresetResult completion = (resultBand, frequencies, vendorAvailable) -> {
+        RadioServiceClient.PresetResult completion = (resultBand, frequencies, vendorAvailable, cachedNames) -> {
             if (destroyed) {
                 return;
             }
@@ -1759,10 +1762,12 @@ public final class MainActivity extends Activity implements
                     selected[index++] = frequency;
                 }
             }
+            Map<Integer, String> names = new LinkedHashMap<>(cachedNames);
+            names.putAll(observedScanNames);
             int added = stationStore.mergeDiscovered(
                     resultBand,
                     selected,
-                    observedScanNames
+                    names
             );
             favoritePage = 0;
             favoritePageManuallySelected = false;
@@ -1781,7 +1786,7 @@ public final class MainActivity extends Activity implements
         if (debugPreview) {
             // Preview has no tuner binding. Finish through the same callback
             // without requesting hardware metadata or inventing discovered stations.
-            completion.onResult(band, new int[0], false);
+            completion.onResult(band, new int[0], false, java.util.Collections.emptyMap());
         } else {
             radioClient.readPresetFrequencies(band, completion);
         }
@@ -1818,7 +1823,7 @@ public final class MainActivity extends Activity implements
                 unnamed.add(frequency);
             }
         }
-        if (unnamed.isEmpty() || debugPreview || !radioClient.isConnected()) {
+        if (unnamed.isEmpty() || debugPreview || !radioClient.canTuneForStationNames()) {
             completeScan();
             return;
         }

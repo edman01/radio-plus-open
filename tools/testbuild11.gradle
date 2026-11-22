@@ -1,0 +1,14 @@
+// Optional version label for the issue #4 tester. Normal builds are unchanged.
+beforeProject { project ->
+    if (project.path == ':app') {
+        project.plugins.withId('com.android.application') {
+            if (project.findProperty('experimentalTestBuild6') != 'true') {
+                throw new GradleException('Test Build 11 requires -PexperimentalTestBuild6=true')
+            }
+            project.extensions.getByName('androidComponents').finalizeDsl { dsl ->
+                dsl.defaultConfig.versionCode = 112
+                dsl.defaultConfig.versionName = '0.16.1-experimental-testbuild11'
+            }
+        }
+    }
+}

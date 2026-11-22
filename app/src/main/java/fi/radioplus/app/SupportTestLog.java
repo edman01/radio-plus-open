@@ -16,7 +16,7 @@ final class SupportTestLog {
     enum Event { START, DETECTED, CONNECTED, CAPABILITIES, BIND_ERROR, SOURCE, TUNE_REQUEST, TUNE_CONFIRMED,
         SCAN_REQUEST, SCAN_RESULTS, COMMAND_REJECTED, ENDPOINT_ERROR, OWNER_STABLE, ROUTE, MIX_FLAGS, ROUTE_ACTION,
         BAND_RECALL, TUNE_READBACK, LAUNCHER_PRESET, SESSION_ARROW, WHEEL_LISTENER, WHEEL_OBSERVED, WHEEL_ARROW,
-        HCN_RF_CHANGE, HCN_LIST_STEP, HCN_WHEEL_RESULT }
+        HCN_RF_CHANGE, HCN_LIST_STEP, HCN_WHEEL_RESULT, RDS_SCAN_CACHE }
     enum Problem {
         STOCK_APK_UNKNOWN("The installed stock APK is not recognized. Send the stock radio/services APKs from this same firmware; do not replace them."),
         STOCK_COMBINATION("The three Reglink APKs do not match an inspected set. Send all three installed APKs from the same unit."),
@@ -93,7 +93,7 @@ final class SupportTestLog {
 
     static void apk(String packageName, String sha256) {
         if (!"com.reglink.services".equals(packageName) && !"com.reglink.apps.radio".equals(packageName)
-                && !"com.reglink.apps.mtkradio".equals(packageName)) return;
+                && !"com.reglink.apps.mtkradio".equals(packageName) && !ReglinkRdsNames.PACKAGE.equals(packageName)) return;
         if (sha256 == null || !sha256.matches("[a-fA-F0-9]{64}")) return;
         SupportTestLog log = instance;
         if (log != null) WRITER.execute(() -> log.writeApk(packageName, sha256));
@@ -144,7 +144,8 @@ final class SupportTestLog {
                 + " code=" + BuildConfig.VERSION_CODE + "\n"
                 + "No device identifiers, names, location, user text, logos, URIs or Android logcat.\n"
                 + "TUNE_REQUEST/CONFIRMED: a=band, b=kHz. SOURCE: a=accepted stock route, b=global mute.\n"
-                + "BAND_RECALL: target band/kHz. TUNE_READBACK: last observed band/kHz after timeout. "
+                + "BAND_RECALL: target band/kHz (0 = recall only). TUNE_READBACK: last observed band/kHz after timeout. "
+                + "RDS_SCAN_CACHE: a=0 absent/unverified, 1 verified but unavailable, 2 connected; b=matched station names. "
                 + "LAUNCHER_PRESET: Android key code (87 next, 88 previous).\n"
                 + "SESSION_ARROW: key and mask (1 AGAMA, 2 virtual keyboard, 4/8 zero down/event time, 16 active).\n"
                 + "WHEEL_LISTENER: 0=default, 1=fallback registered, 2=opted in. WHEEL_OBSERVED: 0/1=observer ready; "

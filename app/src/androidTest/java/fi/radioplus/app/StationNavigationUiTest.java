@@ -85,6 +85,44 @@ public final class StationNavigationUiTest {
         }
     }
 
+    @Test public void openStationMenuResizesAfterTransientHostLayoutWithoutASecondLongPress() {
+        StationOptionsDialog[] dialog = new StationOptionsDialog[1];
+        int[] expected = new int[2];
+        try {
+            instrumentation.runOnMainSync(() -> {
+                View host = activity.findViewById(android.R.id.content);
+                int l = host.getLeft(), t = host.getTop(), r = host.getRight(), b = host.getBottom();
+                StationOptionsDialog reference = menuForResizeTest();
+                reference.show();
+                expected[0] = reference.getWindow().getAttributes().width;
+                expected[1] = reference.getWindow().getAttributes().height;
+                reference.dismiss();
+                host.layout(l, t, l + 12, t + 12);
+                try {
+                    dialog[0] = menuForResizeTest();
+                    dialog[0].show();
+                } finally {
+                    host.layout(l, t, r, b);
+                    host.requestLayout();
+                }
+            });
+            instrumentation.waitForIdleSync();
+            instrumentation.runOnMainSync(() -> {
+                assertTrue(dialog[0].isShowing());
+                assertTrue(expected[0] > 12 && expected[1] > 12);
+                assertEquals(expected[0], dialog[0].getWindow().getAttributes().width);
+                assertEquals(expected[1], dialog[0].getWindow().getAttributes().height);
+            });
+        } finally {
+            instrumentation.runOnMainSync(() -> { if (dialog[0] != null) dialog[0].dismiss(); });
+        }
+    }
+
+    private StationOptionsDialog menuForResizeTest() {
+        return new StationOptionsDialog(activity, "A station with a long name", "91.2 MHz",
+                new String[]{"Add to favorites", "Rename", "Change logo", "Reorder stations"}, false, action -> { });
+    }
+
     @Test public void listButtonsPersistSelectionAndRecreationKeepsCatalogNavigation() {
         assertSelectedList(true);
         assertPreviewFrequency(98_100);

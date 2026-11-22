@@ -8,8 +8,10 @@ import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
+import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -21,20 +23,25 @@ final class StationOptionsDialog extends Dialog {
     interface Listener { void selected(int action); }
     private final Activity activity;
     private final int accent;
+    private final View viewport;
+    private final Rect frame = new Rect();
+    private final ViewTreeObserver.OnGlobalLayoutListener resize = this::updateWindowSize;
 
     StationOptionsDialog(Activity activity, String name, String frequency, String[] actions,
             boolean favorite, Listener listener) {
         super(activity, R.style.RadioDialogTheme);
         this.activity = activity;
+        viewport = activity.findViewById(android.R.id.content);
         accent = activity.getColor(R.color.accent);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         LinearLayout root = column();
         root.setPadding(dp(20), dp(16), dp(20), dp(16));
-        root.setBackground(shape(0xff0c121b, 0xff3e4b5c));
         LinearLayout header = row();
         LinearLayout titles = column();
         TextView title = text(name, 26, 0xfff0f3f7);
         title.setTypeface(null, Typeface.BOLD);
+        title.setMaxLines(2);
+        title.setEllipsize(TextUtils.TruncateAt.END);
         if (android.os.Build.VERSION.SDK_INT >= 28) title.setAccessibilityHeading(true);
         titles.addView(title);
         if (!name.equals(frequency)) titles.addView(text(frequency, 18, 0xffa0adbd));
@@ -51,7 +58,8 @@ final class StationOptionsDialog extends Dialog {
         line.bottomMargin = dp(16);
         root.addView(divider, line);
         ScrollView scroll = new ScrollView(activity);
-        LinearLayout choices = column();
+        scroll.setFillViewport(true);
+        scroll.setBackground(shape(0xff0c121b, 0xff3e4b5c));
         for (int i = 0; i < actions.length; i += 2) {
             LinearLayout pair = row();
             for (int j = i; j < Math.min(i + 2, actions.length); j++) {
@@ -65,22 +73,48 @@ final class StationOptionsDialog extends Dialog {
             }
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
             params.bottomMargin = dp(12);
-            choices.addView(pair, params);
+            root.addView(pair, params);
         }
-        scroll.addView(choices);
-        root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
-        setContentView(root);
-        Rect visible = new Rect();
-        activity.getWindow().getDecorView().getWindowVisibleDisplayFrame(visible);
-        View viewport = activity.findViewById(android.R.id.content);
-        int width = Math.max(1, Math.min(dp(880), Math.min(viewport.getWidth(), visible.width()) - dp(32)));
-        int height = Math.max(1, Math.min(dp(340), Math.min(viewport.getHeight(), visible.height()) - dp(32)));
+        // On very short displays or at large font scales the header must
+        // scroll too, otherwise it can consume every pixel above the choices.
+        scroll.addView(root);
+        setContentView(scroll);
         Window window = getWindow();
         if (window != null) {
             window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
             window.setDimAmount(0.8f);
+        }
+    }
+
+    @Override protected void onStart() {
+        super.onStart();
+        viewport.getViewTreeObserver().addOnGlobalLayoutListener(resize);
+        updateWindowSize();
+    }
+
+    @Override protected void onStop() {
+        ViewTreeObserver observer = viewport.getViewTreeObserver();
+        if (observer.isAlive()) observer.removeOnGlobalLayoutListener(resize);
+        super.onStop();
+    }
+
+    private void updateWindowSize() {
+        Window window = getWindow();
+        if (window == null) return;
+        viewport.getWindowVisibleDisplayFrame(frame);
+        int width = extent(viewport.getWidth(), frame.width(), dp(880));
+        int height = extent(viewport.getHeight(), frame.height(), dp(340));
+        if (window.getAttributes().width != width || window.getAttributes().height != height) {
             window.setLayout(width, height);
         }
+    }
+
+    private int extent(int host, int visible, int cap) {
+        // Either measurement can be missing before the first host layout.
+        // Re-evaluate even while the dialog is open (insets, split screen).
+        int available = host > 0 && visible > 0 ? Math.min(host, visible) : Math.max(host, visible);
+        if (available <= 0) return android.view.ViewGroup.LayoutParams.WRAP_CONTENT;
+        return Math.min(cap, available - Math.min(dp(32), available / 10));
     }
 
     private Button button(String label, int color) {

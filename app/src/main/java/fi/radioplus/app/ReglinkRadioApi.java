@@ -9,7 +9,9 @@ import android.os.SystemClock;
 import com.hcn.autoradio.IRadioCallBack;
 import com.hcn.autoradio.IRadioServiceAPI;
 
+import java.util.HashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 
@@ -24,6 +26,9 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
     static final String CALLBACK_DESCRIPTOR = "com.reglink.services.IRadioCallback";
     private static final long TUNE_WAIT_MS = 1600;
     private static final long BAND_RECALL_WAIT_MS = 3200;
+    // S6.02/4754 schedules its source-local unmute 1.5 s after a band change;
+    // the global mute getter alone need not reflect that quiet period.
+    private static final long STOCK_BAND_UNMUTE_MS = 1500;
     private static final long SCAN_STOP_WAIT_MS = 1600;
     private static final long SCAN_START_WAIT_MS = 2500;
     private static final int MAX_SCAN_RESULTS = 512;
@@ -65,6 +70,7 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
     private final ReglinkCapabilityReader.Snapshot capabilities;
     private final ReglinkStockSession stockSession;
     private final boolean s602External4754;
+    private volatile ReglinkRdsNames rdsNames;
     private final Object operationLock = new Object();
     private final Object stateLock = new Object();
     private volatile boolean closed;
@@ -144,6 +150,36 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
     boolean isStockAssisted() { return stockSession != null; }
     boolean isS602External4754() { return s602External4754; }
     boolean isClosed() { return closed; }
+
+    void observeRdsNames(android.content.Context application) {
+        synchronized (operationLock) {
+            if (!s602External4754 || closed || rdsNames != null) return;
+            rdsNames = new ReglinkRdsNames(application);
+            rdsNames.bindIfRunning();
+        }
+    }
+
+    String cachedStationName(int band, int khz) {
+        ReglinkRdsNames cache = rdsNames;
+        return closed || cache == null ? "" : cache.nameAt(band, khz);
+    }
+
+    Map<Integer, String> cachedScanNames(int band, int[] frequencies, BooleanSupplier stillCurrent) {
+        Map<Integer, String> names = new HashMap<>();
+        if (rdsNames != null && FrequencyRules.isFm(band)) {
+            for (int khz : frequencies) {
+                if (!canContinue(stillCurrent)) break;
+                String name = cachedStationName(band, khz);
+                if (!name.isEmpty()) names.put(khz, name);
+            }
+        }
+        if (s602External4754 && canContinue(stillCurrent)) {
+            ReglinkRdsNames cache = rdsNames;
+            SupportTestLog.event(SupportTestLog.Event.RDS_SCAN_CACHE,
+                    cache == null ? 0 : cache.isConnected() ? 2 : 1, names.size());
+        }
+        return names;
+    }
 
     private void requireStockRoute() throws RemoteException {
         if (stockSession == null) return;
@@ -424,8 +460,11 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
         try { call(6, data -> { data.writeString(name); data.writeInt(wireRaw); }, null); }
         finally { synchronized (stateLock) { tuneDispatching = false; } }
         // OEM band recall can temporarily mute its own tuner for ~1.5 seconds.
-        long deadline = wireRaw == 0 ? bandSettlingUntil : SystemClock.elapsedRealtime() + TUNE_WAIT_MS;
-        Snapshot last = null;
+        long sentAt = SystemClock.elapsedRealtime();
+        long recallReadyAt = wireRaw == 0 ? sentAt + STOCK_BAND_UNMUTE_MS : 0;
+        long deadline = sentAt + (wireRaw == 0 ? BAND_RECALL_WAIT_MS : TUNE_WAIT_MS);
+        if (wireRaw == 0) bandSettlingUntil = deadline;
+        Snapshot last = null, previousReadyRecall = null;
         do {
             if (!canContinue(stillCurrent)) return null;
             boolean muted = false;
@@ -440,14 +479,20 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
                 last = null;
             }
             if (last != null) {
-                if (s602External4754 && (!last.powered || last.scanning || last.seeking)) return null;
-                if (!muted && name.equals(last.rawBand)
-                        && (wireRaw == 0 || last.rawFrequency == wireRaw)) {
+                if (s602External4754 && (last.scanning || last.seeking || (!last.powered && wireRaw != 0))) return null;
+                boolean ready = !muted && name.equals(last.rawBand) && (wireRaw != 0 || last.powered);
+                // The first band/frequency publication can precede the stock
+                // mute/restore. Require a second coherent, unmuted observation.
+                if (ready && (wireRaw == 0
+                        ? SystemClock.elapsedRealtime() >= recallReadyAt
+                                && previousReadyRecall != null && sameStation(previousReadyRecall, last)
+                        : last.rawFrequency == wireRaw)) {
                     bandSettlingUntil = 0;
                     return last;
                 }
-            }
-            SystemClock.sleep(50);
+                previousReadyRecall = ready && wireRaw == 0 ? last : null;
+            } else previousReadyRecall = null;
+            SystemClock.sleep(wireRaw == 0 ? 100 : 50);
         } while (SystemClock.elapsedRealtime() < deadline);
         if (s602External4754 && last != null && canContinue(stillCurrent)) {
             synchronized (stateLock) {
@@ -722,12 +767,37 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
     @Override public void onBandEvent() throws RemoteException {
         synchronized (operationLock) {
             Snapshot current = snapshot();
-            // Explicit known safe starting frequency, never OEM magic 0/last-band
-            // semantics. This method remains unreachable from the disabled profile.
             int band = current.band == 3 ? 0 : 3;
+            if (s602External4754) {
+                recallBandFrom(current.band, () -> true);
+                return;
+            }
+            // Other verified tuners retain their explicit band-start frequency.
             if (!tuneToBand(band, band == 3 ? 531 : 87500)) {
                 throw new CommandRejectedException("Reglink band switch unconfirmed");
             }
+        }
+    }
+
+    void recallBandFrom(int displayedBand, BooleanSupplier stillCurrent) throws RemoteException {
+        synchronized (operationLock) {
+            if (!s602External4754 || (displayedBand != 0 && displayedBand != 3) || !canContinue(stillCurrent)) return;
+            int band = displayedBand == 3 ? 0 : 3;
+            String name = ReglinkTuningRules.nativeBand(band);
+            if (snapshot().band != displayedBand) return;
+            revalidateCapabilities();
+            if (!supportsBand(band)) throw new CommandRejectedException("Unsupported Reglink band");
+            Snapshot current = requireReadyForMutation(name, 0);
+            // Two taps on a still-displayed FM band must not switch back to FM
+            // when the second is dequeued after the first has already reached AM.
+            if (current.band != displayedBand) return;
+            if (!current.powered) throw new CommandRejectedException("Stock radio is not playing");
+            // Only a preset/manual tune may fine-tune after the stock recall.
+            SupportTestLog.event(SupportTestLog.Event.BAND_RECALL, band, 0);
+            Snapshot recalled = sendAndObserve(name, 0, 0, current, stillCurrent);
+            if (!canContinue(stillCurrent)) return;
+            if (recalled == null) throw new CommandRejectedException("Reglink band switch unconfirmed");
+            SupportTestLog.event(SupportTestLog.Event.TUNE_CONFIRMED, recalled.band, recalled.khz);
         }
     }
     // Transactions 10/11 are understood, but native seek completion has no
@@ -759,7 +829,12 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
     @Override public boolean IsStereo() throws RemoteException { return snapshot().stereo; }
     @Override public boolean IsPS() { return false; }
     @Override public boolean IsDxLocal() { return false; } // Unknown, capability must remain disabled.
-    @Override public String getCurrentFreqRdsPs() { return ""; } // Separate optional RDS daemon, not this ABI.
+    @Override public String getCurrentFreqRdsPs() throws RemoteException {
+        ReglinkRdsNames cache = rdsNames;
+        if (closed || cache == null || !cache.isConnected()) return "";
+        Snapshot tuned = snapshot();
+        return cache.nameAt(tuned.band, tuned.khz);
+    }
     @Override public boolean currentFreqIsFavorite() { return false; }
     @Override public boolean getFreqIsFavorite(int band, int khz) { return false; }
     @Override public boolean requestPlayAudio() throws RemoteException { return requestStockPlayback(); }
@@ -784,6 +859,8 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
             // Do not stop/power a shared tuner during lifecycle teardown. A scan
             // owner must explicitly stop while it still has ownership first.
             closed = true;
+            if (rdsNames != null) rdsNames.close();
+            rdsNames = null;
             RadioObserver previous;
             synchronized (stateLock) {
                 previous = observer;
