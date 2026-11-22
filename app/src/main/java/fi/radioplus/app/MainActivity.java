@@ -68,7 +68,6 @@ public final class MainActivity extends Activity implements
     private static final int REQUEST_PLAYBACK_NOTIFICATIONS = 702;
     private static final int REQUEST_SUPPORT_LOG = 703;
     private static final long TUNE_SELECTION_GRACE_MS = 2500L;
-    private static final long UNNAMED_STATION_PROMPT_DELAY_MS = 1800L;
     private static final long PAGE_EXIT_ANIMATION_MS = 85L;
     private static final long PAGE_ENTER_ANIMATION_MS = 175L;
     private static final long STATION_REORDER_HOLD_MS = 3000L;
@@ -190,7 +189,6 @@ public final class MainActivity extends Activity implements
     private final Runnable reorderHighlight = this::highlightFavoriteReorderCard;
     private Runnable pendingFavoriteReorder;
     private Runnable pendingFavoriteOptions;
-    private Runnable pendingUnnamedStationPrompt;
 
     private final Runnable autoScanStartTimeoutTask = this::handleAutoScanStartTimeout;
     private final Runnable autoScanHardTimeoutTask = this::handleAutoScanHardTimeout;
@@ -640,10 +638,6 @@ public final class MainActivity extends Activity implements
         pendingTuneAt = 0L;
         favoritePageManuallySelected = false;
         playbackPausedByStationTap = false;
-        if (pendingUnnamedStationPrompt != null) {
-            mainHandler.removeCallbacks(pendingUnnamedStationPrompt);
-            pendingUnnamedStationPrompt = null;
-        }
     }
 
     private void stepLowerFrequency() {
@@ -2148,10 +2142,6 @@ public final class MainActivity extends Activity implements
             playbackPausedByStationTap = true;
             pendingTuneKey = "";
             pendingTuneAt = 0L;
-            if (pendingUnnamedStationPrompt != null) {
-                mainHandler.removeCallbacks(pendingUnnamedStationPrompt);
-                pendingUnnamedStationPrompt = null;
-            }
             showActiveFavorite("", false);
             if (!debugPreview) {
                 RadioPlaybackService.pause(this);
@@ -2174,7 +2164,6 @@ public final class MainActivity extends Activity implements
                     false,
                     true
             ));
-            scheduleUnnamedStationPrompt(station);
             return;
         }
         if (!radioClient.isConnected()) {
@@ -2188,39 +2177,6 @@ public final class MainActivity extends Activity implements
         pendingTuneKey = station.key();
         pendingTuneAt = SystemClock.elapsedRealtime();
         RadioPlaybackService.tuneStation(this, station, fromFavorites);
-        scheduleUnnamedStationPrompt(station);
-    }
-
-    private void scheduleUnnamedStationPrompt(FavoriteStation station) {
-        if (pendingUnnamedStationPrompt != null) {
-            mainHandler.removeCallbacks(pendingUnnamedStationPrompt);
-            pendingUnnamedStationPrompt = null;
-        }
-        if (station == null || !station.name.isEmpty()) {
-            return;
-        }
-        String stationKey = station.key();
-        pendingUnnamedStationPrompt = () -> {
-            pendingUnnamedStationPrompt = null;
-            if (destroyed || isFinishing()) {
-                return;
-            }
-            FavoriteStation latest = findKnownStation(
-                    station.band,
-                    station.frequency
-            );
-            boolean stillSelected = currentState == null
-                    || (currentState.band == station.band
-                    && currentState.frequency == station.frequency)
-                    || pendingTuneKey.equals(stationKey);
-            if (latest != null && latest.name.isEmpty() && stillSelected) {
-                onRename(latest);
-            }
-        };
-        mainHandler.postDelayed(
-                pendingUnnamedStationPrompt,
-                debugPreview ? 250L : UNNAMED_STATION_PROMPT_DELAY_MS
-        );
     }
 
     @Override

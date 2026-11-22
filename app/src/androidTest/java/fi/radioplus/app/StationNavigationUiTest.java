@@ -8,6 +8,7 @@ import android.content.SharedPreferences;
 import android.os.SystemClock;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.GridView;
 
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -145,18 +146,13 @@ public final class StationNavigationUiTest {
                 field(RadioPlaybackService.class, "runningInstance", null));
     }
 
-    @Test public void headerSkipClearsAnEarlierTileSelectionAndRenamePrompt() {
+    @Test public void headerSkipClearsAnEarlierTileSelection() {
         click(R.id.stations_button);
-        android.os.Handler handler = (android.os.Handler)
-                field(MainActivity.class, "mainHandler", activity);
-        Runnable oldPrompt = () -> fail("The old station prompt must be canceled");
         instrumentation.runOnMainSync(() -> {
             setField("pendingTuneKey", "0:92400");
             setField("pendingTuneAt", SystemClock.elapsedRealtime());
             setField("favoritePageManuallySelected", true);
             setField("playbackPausedByStationTap", true);
-            setField("pendingUnnamedStationPrompt", oldPrompt);
-            handler.postDelayed(oldPrompt, 5_000L);
         });
         click(R.id.seek_up_button);
         assertPreviewFrequency(99_700);
@@ -165,8 +161,57 @@ public final class StationNavigationUiTest {
         assertEquals(0L, field(MainActivity.class, "pendingTuneAt", activity));
         assertEquals(false, field(MainActivity.class, "favoritePageManuallySelected", activity));
         assertEquals(false, field(MainActivity.class, "playbackPausedByStationTap", activity));
-        assertNull(field(MainActivity.class, "pendingUnnamedStationPrompt", activity));
-        assertFalse(handler.hasCallbacks(oldPrompt));
+    }
+
+    @Test public void listeningToUnnamedCatalogTilesDoesNotOpenTheEditorUnlessRenameIsChosen() {
+        FavoriteStation first = new FavoriteStation(0, 88600, "");
+        FavoriteStation next = new FavoriteStation(0, 98400, "");
+        instrumentation.runOnMainSync(() -> {
+            new StationStore(context).replaceOrder(java.util.Arrays.asList(first, next));
+            invoke(activity, "showStationCatalog", new Class<?>[]{boolean.class}, false);
+        });
+        tapTile(0);
+        assertPreviewFrequency(first.frequency);
+        assertListeningWithoutDialog();
+        click(R.id.seek_up_button);
+        assertPreviewFrequency(next.frequency);
+        assertListeningWithoutDialog();
+
+        // An intentional long press and Rename still open the real name editor.
+        long down = SystemClock.uptimeMillis();
+        gesture(down, MotionEvent.ACTION_DOWN, 1);
+        SystemClock.sleep(android.view.ViewConfiguration.getLongPressTimeout() + 100L);
+        gesture(down, MotionEvent.ACTION_UP, 1);
+        String rename = AppLanguage.text(context, "Nimeä uudelleen", "Rename");
+        assertTrue(findDialogText(rename).performAction(AccessibilityNodeInfo.ACTION_CLICK));
+        String title = AppLanguage.text(context, "Nimeä ", "Name ") + next.frequencyLabel();
+        assertNotNull(findDialogText(title));
+        instrumentation.sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK);
+    }
+
+    private AccessibilityNodeInfo findDialogText(String text) {
+        long end = SystemClock.uptimeMillis() + TIMEOUT_MS;
+        do {
+            AccessibilityNodeInfo root = instrumentation.getUiAutomation().getRootInActiveWindow();
+            if (root != null) {
+                for (AccessibilityNodeInfo node : root.findAccessibilityNodeInfosByText(text))
+                    if (text.equals(String.valueOf(node.getText()))) return node;
+            }
+            SystemClock.sleep(40);
+        } while (SystemClock.uptimeMillis() < end);
+        throw new AssertionError("Dialog did not show: " + text);
+    }
+    private void tapTile(int index) {
+        long down = SystemClock.uptimeMillis();
+        gesture(down, MotionEvent.ACTION_DOWN, index);
+        gesture(down, MotionEvent.ACTION_UP, index);
+    }
+
+    private void assertListeningWithoutDialog() {
+        SystemClock.sleep(500L); // longer than the old preview rename timer
+        instrumentation.waitForIdleSync();
+        instrumentation.runOnMainSync(() -> assertTrue("Tuning must leave focus in the station list",
+                activity.hasWindowFocus()));
     }
 
     @Test public void favoritesDragCanContinueAfterAnEdgeReleaseWithoutReopeningTheMenu() {

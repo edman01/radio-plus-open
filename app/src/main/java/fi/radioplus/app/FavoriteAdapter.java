@@ -156,8 +156,7 @@ final class FavoriteAdapter extends BaseAdapter {
         boolean favorite = favoriteKeys.contains(station.key());
         boolean unnamed = station.name.isEmpty();
         String displayName = unnamed
-                ? AppLanguage.text(context, "Nimeä ", "Name ")
-                        + compactFrequency(station)
+                ? station.frequencyLabel()
                 : AppLanguage.stationName(context, station.name);
         holder.name.setText(displayName);
         Bitmap customBitmap = customLogoBitmap(station.logo);
@@ -214,21 +213,15 @@ final class FavoriteAdapter extends BaseAdapter {
         holder.itemView.setSelected(selected);
         holder.selectedOutline.setVisibility(selected ? View.VISIBLE : View.GONE);
         holder.itemView.setContentDescription(
-                displayName + ", " + station.frequencyLabel()
+                (unnamed ? displayName : displayName + ", " + station.frequencyLabel())
                         + (favorite
                         ? AppLanguage.text(context, ", suosikki.", ", favorite.")
                         : AppLanguage.text(context, ", ei suosikki.", ", not a favorite."))
-                        + (unnamed
-                        ? AppLanguage.text(
-                                context,
-                                " Napauta kuunnellaksesi ja nimetäksesi.",
-                                " Tap to listen and name the station."
-                        )
-                        : AppLanguage.text(
+                        + AppLanguage.text(
                                 context,
                                 " Paina pitkään muokataksesi.",
                                 " Touch and hold to edit."
-                        ))
+                        )
         );
         holder.favoriteToggle.setImageResource(R.drawable.ic_star_outline_skoda);
         holder.favoriteToggle.setContentDescription(holder.itemView.getContext().getString(
@@ -245,12 +238,6 @@ final class FavoriteAdapter extends BaseAdapter {
         holder.edit.setOnClickListener(view -> listener.onRename(station));
         holder.delete.setOnClickListener(view -> listener.onDelete(station));
         return convertView;
-    }
-
-    private static String compactFrequency(FavoriteStation station) {
-        return station.frequencyLabel()
-                .replace(" MHz", "")
-                .replace(" kHz", "");
     }
 
     void invalidateCustomLogo(String token) {

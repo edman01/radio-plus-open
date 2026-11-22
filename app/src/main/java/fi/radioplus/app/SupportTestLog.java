@@ -15,7 +15,8 @@ import java.util.concurrent.TimeUnit;
 final class SupportTestLog {
     enum Event { START, DETECTED, CONNECTED, CAPABILITIES, BIND_ERROR, SOURCE, TUNE_REQUEST, TUNE_CONFIRMED,
         SCAN_REQUEST, SCAN_RESULTS, COMMAND_REJECTED, ENDPOINT_ERROR, OWNER_STABLE, ROUTE, MIX_FLAGS, ROUTE_ACTION,
-        BAND_RECALL, TUNE_READBACK, LAUNCHER_PRESET, SESSION_ARROW, WHEEL_LISTENER, WHEEL_OBSERVED, WHEEL_ARROW }
+        BAND_RECALL, TUNE_READBACK, LAUNCHER_PRESET, SESSION_ARROW, WHEEL_LISTENER, WHEEL_OBSERVED, WHEEL_ARROW,
+        HCN_RF_CHANGE, HCN_LIST_STEP, HCN_WHEEL_RESULT }
     enum Problem {
         STOCK_APK_UNKNOWN("The installed stock APK is not recognized. Send the stock radio/services APKs from this same firmware; do not replace them."),
         STOCK_COMBINATION("The three Reglink APKs do not match an inspected set. Send all three installed APKs from the same unit."),
@@ -150,6 +151,9 @@ final class SupportTestLog {
                 + "65/66=firmware previous/next notice, not proof Radio+ was offered the key. "
                 + "WHEEL_ARROW: 65/66, b=queued by Radio+ (1) or passed through (0). "
                 + "No notice is inconclusive; some CAN paths bypass the key dispatcher.\n"
+                + "HCN_RF_CHANGE: observed frequency change only, not evidence of a button. "
+                + "HCN_LIST_STEP: a=next (1) or previous (-1); b mask: 1=favorites (else stations), 2=timed key. "
+                + "HCN_WHEEL_RESULT: a=1 already on neighbour, 2 tuned, 0 unconfirmed, -1 unknown origin.\n"
                 + "OWNER_STABLE: a=stock owner on both reads, b=matching routes. ROUTE: platform/model. "
                 + "MIX_FLAGS: mix/flags. ROUTE_ACTION: a=action. Missing route=-1.\n"
                 + "DETECTED/CONNECTED: a=profile enum ordinal. START: a=version code, b=SDK.\n"

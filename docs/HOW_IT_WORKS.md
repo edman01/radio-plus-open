@@ -70,12 +70,22 @@ keys use the same navigation path. Holding a media key still selects one adjacen
 station; tuner seeking remains in **Tuning**. Duplicate deliveries of the same
 identified press are ignored. Radio+ confirms the frequency reported by the
 stock service rather than displaying the requested station as if tuning succeeded.
+Tuning an unnamed station shows its frequency without interrupting playback
+with an editor. To name it, touch and hold its tile and choose **Rename**.
 
 On a verified current HCN/Junsun V7, Radio+ remembers the station from before
 a wheel press. If the stock radio also changes presets, Radio+ uses that starting
 station to find the neighbour in the selected list. If the tuner is already on
-that neighbour, it does not tune again. A frequency change alone is not a button
-press. In AGAMA 6.1.3's **Any active player** mode, its own virtual arrows step
+that neighbour, it does not tune again. For consecutive keys it also accounts
+for a stock preset reported just before the next Android DOWN: the last confirmed
+wheel selection is the starting point unless another station is already established.
+If the only conflicting evidence is an old poll, navigation follows the live
+tuner just as it did in Community Beta 5.
+An already active radio route is not requested again for a warm wheel step.
+A frequency change alone is not a button press. In experimental builds, the
+**About app → Export support log** report distinguishes observed tuner changes
+from received list commands while the ordinary radio screen is open.
+In AGAMA 6.1.3's **Any active player** mode, its own virtual arrows step
 through the selected list immediately; they do not wait for a physical key release.
 
 Firmware must still deliver the key events to Radio+. The optional steering-key

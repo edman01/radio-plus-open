@@ -1193,22 +1193,25 @@ public final class RadioPlaybackService extends MediaBrowserService {
         return activateOemPlayback(current, true, epoch);
     }
 
-    private boolean activateForStationNavigation(IRadioServiceAPI current, long epoch)
-            throws RemoteException {
+    private boolean stationNavigationNeedsTakeover() {
         RadioPlaybackHealthReader.Snapshot health = readPlaybackHealth();
-        boolean takeover = OemFocusInteropPolicy.shouldTakeOverForTuning(
+        return OemFocusInteropPolicy.shouldTakeOverForTuning(
                 activatedPlaybackEpoch == playbackEpoch,
                 oemRouteActive,
                 oemFocusState.wasFocusReleasedByRadioPlus(),
                 health.sourceKnown && !isRadioOrOwnSource(health),
                 health.muteKnown && health.muted
         );
+    }
+
+    private boolean activateForStationNavigation(IRadioServiceAPI current, long epoch)
+            throws RemoteException {
         // Keep cold start, resume and observed source changes on the original
         // takeover path. A healthy next/previous needs only tuning, not another
         // delayed PCM marker. In-app station taps use this same path while the
         // radio screen stays open. Returning from another app, widgets and
         // external media-ID commands retain explicit takeover on unknown ROMs.
-        return activateOemPlayback(current, takeover, epoch);
+        return activateOemPlayback(current, stationNavigationNeedsTakeover(), epoch);
     }
 
     private void resetOemPlaybackOwnership() {
@@ -1343,6 +1346,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
             // A changed tuner with no KEY is useful device evidence, never a
             // navigation command. No frequencies, station names or identifiers.
             SteeringDiagnosticTrace.get().event("tuner", "observed-station-change");
+            SupportTestLog.event(SupportTestLog.Event.HCN_RF_CHANGE);
         }
     }
 
@@ -1365,6 +1369,12 @@ public final class RadioPlaybackService extends MediaBrowserService {
         // Snapshot the list when the command arrives. A later tab change must
         // not redirect a queued press, and no list must ever fall back to seek.
         boolean visibleFavorites = stationNavigationStore.favoritesSelected();
+        if (isVerifiedV7(radio)) {
+            // Device-test log works from the normal station screen; no raw key,
+            // frequency, station name or diagnostic dialog is needed.
+            SupportTestLog.event(SupportTestLog.Event.HCN_LIST_STEP, next ? 1 : -1,
+                    (visibleFavorites ? 1 : 0) | (atReceipt != null ? 2 : 0));
+        }
         List<FavoriteStation> visibleStations = launcherRadio == null ? stationNavigationStore.load(visibleFavorites) : null;
         if (visibleStations != null && visibleStations.isEmpty()) {
             Log.i(TAG, "Media skip ignored: selected station list is empty");
@@ -1393,13 +1403,15 @@ public final class RadioPlaybackService extends MediaBrowserService {
             int frequency = spd == null ? current.getCurrentFreq() : spd.grid.frequency;
             int liveBand = band, liveFrequency = frequency;
             HcnWheelHistory.Point origin = null;
-            if (atReceipt != null && atReceipt == wheelHistoryFor(current)) {
+            HcnWheelHistory wheel = atReceipt != null && atReceipt == wheelHistoryFor(current) ? atReceipt : null;
+            if (wheel != null) {
                 long now = SystemClock.uptimeMillis();
-                origin = atReceipt.beforePress(keyDown, now);
-                if (origin == null && atReceipt.observedMoveDuring(keyDown, now)) {
+                origin = wheel.originForTuner(keyDown, now, liveBand, liveFrequency);
+                if (origin == null && wheel.observedMoveDuring(keyDown, now)) {
                     // E.g. UP-only after a rebind: the tuner already moved, but
                     // we cannot reconstruct its starting point. Never add a second step.
                     SteeringDiagnosticTrace.get().event("navigation", "native-move-without-origin");
+                    SupportTestLog.event(SupportTestLog.Event.HCN_WHEEL_RESULT, -1, 0);
                     mainHandler.post(this::refreshMediaMetadataFromRadio);
                     return;
                 }
@@ -1420,25 +1432,31 @@ public final class RadioPlaybackService extends MediaBrowserService {
                 return;
             } else {
                 if (!validateStationTarget(current, target, epoch, requestRevision, previouslyRequested)) return;
-                if (origin != null && previouslyRequested && oemRouteActive
-                        && isCurrentPlayback(epoch, current) && activatedPlaybackEpoch == epoch
+                boolean reuseWheelRoute = wheel != null && previouslyRequested
+                        && isCurrentPlayback(epoch, current) && !stationNavigationNeedsTakeover();
+                if (origin != null && reuseWheelRoute
                         && RadioTuneConfirmation.matches(normalizeBand(target.band), target.frequency,
                                 liveBand, liveFrequency)) {
                     // This exact physical press already landed on the correct
                     // neighbour through the stock receiver. Don't tune twice.
-                    atReceipt.record(liveBand, liveFrequency, SystemClock.uptimeMillis(), true);
+                    wheel.confirmWheel(liveBand, liveFrequency, SystemClock.uptimeMillis());
                     SteeringDiagnosticTrace.get().event("navigation", "already-on-neighbour");
+                    SupportTestLog.event(SupportTestLog.Event.HCN_WHEEL_RESULT, 1, 0);
                     mainHandler.post(this::refreshMediaMetadataFromRadio);
                     return;
                 }
-                if (launcherRadio == null) activateForStationNavigation(current, epoch);
+                if (launcherRadio == null && !reuseWheelRoute) activateForStationNavigation(current, epoch);
                 boolean tuned = wheelFavorites != null
                         ? launcherRadio.tuneToBand(normalizeBand(target.band), target.frequency,
                                 () -> isCurrentPlayback(epoch, current) && stillVisible.getAsBoolean())
-                        : tuneTo(current, target, epoch);
+                        : tuneTo(current, target, epoch, wheel);
                 SteeringDiagnosticTrace.get().event("tuner", "frequency-confirmed=" + tuned);
+                if (wheel != null) SupportTestLog.event(SupportTestLog.Event.HCN_WHEEL_RESULT, tuned ? 2 : 0, 0);
                 if (tuned && isCurrentPlayback(epoch, current)) {
-                    oemRouteActive = finishConfirmedTuneRoute(current);
+                    // Selecting the stock FM source again on every key can also
+                    // hand media handling back to stock. An owned V7 route only
+                    // needs the frequency write. Cold/resume still establish audio.
+                    if (!reuseWheelRoute) oemRouteActive = finishConfirmedTuneRoute(current);
                     if (launcherRadio == null || wheelFavorites != null) rememberConfirmedList(current, fromFavorites);
                     SteeringDiagnosticTrace.get().event("tuner", "route-reported=" + oemRouteActive);
                     mainHandler.post(this::refreshMediaMetadataFromRadio);
@@ -1556,6 +1574,11 @@ public final class RadioPlaybackService extends MediaBrowserService {
 
     private boolean tuneTo(IRadioServiceAPI current, FavoriteStation target, long epoch)
             throws RemoteException {
+        return tuneTo(current, target, epoch, null);
+    }
+
+    private boolean tuneTo(IRadioServiceAPI current, FavoriteStation target, long epoch,
+            HcnWheelHistory physicalWheel) throws RemoteException {
         if (!isCurrentPlayback(epoch, current)) return false;
         HcnWheelHistory history = wheelHistoryFor(current);
         int normalizedTarget = normalizeBand(target.band);
@@ -1624,7 +1647,11 @@ public final class RadioPlaybackService extends MediaBrowserService {
                     observedBand,
                     observedFrequency
             )) {
-                if (history != null) history.record(observedBand, observedFrequency, SystemClock.uptimeMillis(), true);
+                if (history != null) {
+                    long now = SystemClock.uptimeMillis();
+                    if (history == physicalWheel) history.confirmWheel(observedBand, observedFrequency, now);
+                    else history.record(observedBand, observedFrequency, now, true);
+                }
                 return true;
             }
             if (attempt < RadioTuneConfirmation.MAX_ATTEMPTS) {

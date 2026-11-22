@@ -611,6 +611,51 @@ public final class MediaControlsTest {
                 new RadioApiFactory.Detection(RadioBackendProfile.HCN_CURRENT_31, "", "", "")));
     }
 
+    @Test public void consecutiveV7NextUsesTheLastConfirmedTileWhenStockMovesBeforeAndroidDown() throws Exception {
+        verifyV7Profile();
+        FavoriteStation[] row = new FavoriteStation[6];
+        for (int i = 0; i < row.length; i++) row[i] = new FavoriteStation(0, 95000 + i * 800, "QA " + i);
+        favorites.replaceOrder(Arrays.asList(row));
+        FavoriteStation[] other = {row[5], row[0], row[3], row[1], row[4], row[2]};
+        catalog.replaceOrder(Arrays.asList(other));
+        for (boolean fav : new boolean[]{true, false}) {
+            FavoriteStation[] list = fav ? row : other;
+            navigation.setFavoritesSelected(fav);
+            expectTune(() -> RadioPlaybackService.tuneStation(context, list[0], fav), list[0]);
+            // Let any initial cold audio takeover finish before counting warm key requests.
+            SystemClock.sleep(1_650L);
+            drainServiceCommands();
+            int routes = tuner.routeRequests;
+            int writes = tuner.tunes().size();
+            SteeringDiagnosticTrace.get().begin();
+            SystemClock.sleep(5);
+            pressWithStockMovement(KeyEvent.KEYCODE_MEDIA_NEXT, list[1]);
+            waitBeyondMediaKeyFallback();
+            assertActualStation(list[1]);
+            assertTrue(SteeringDiagnosticTrace.get().report().contains("already-on-neighbour"));
+            assertEquals(writes, tuner.tunes().size());
+
+            // This time the stock preset callback precedes even Android's DOWN timestamp.
+            // Advancing from list[3] here would turn the second Next into a jump to list[4].
+            moveStockTo(list[3]);
+            SystemClock.sleep(8);
+            expectTune(() -> sendControllerPress(KeyEvent.KEYCODE_MEDIA_NEXT), list[2]);
+            waitBeyondMediaKeyFallback();
+            assertActualStation(list[2]);
+            assertEquals(writes + 1, tuner.tunes().size());
+            assertEquals("Warm physical navigation must not reselect the stock FM source",
+                    routes, tuner.routeRequests);
+            if (BuildConfig.REGLINK_STOCK_ASSISTED) {
+                String log = SupportTestLog.exportSnapshot();
+                assertTrue("Log must identify the selected list and timed Next",
+                        log.contains("ms HCN_LIST_STEP a=1 b=" + (fav ? 3 : 2)));
+                assertTrue(log.contains("ms HCN_WHEEL_RESULT a=1 b=0"));
+                assertTrue(log.contains("ms HCN_WHEEL_RESULT a=2 b=0"));
+            }
+        }
+        assertEquals(0, tuner.seekCalls);
+    }
+
     @Test public void v7OneWheelPressUsesTheAdjacentVisibleTileDespiteNativeChurn() throws Exception {
         verifyV7Profile();
         FavoriteStation[] row = new FavoriteStation[6];
@@ -660,6 +705,23 @@ public final class MediaControlsTest {
         String trace = SteeringDiagnosticTrace.get().report();
         assertTrue(trace, trace.contains("observed-station-change"));
         assertFalse(trace, trace.contains("source=navigation"));
+    }
+
+    @Test public void v7KeepsCommunityBetaLiveNavigationWhenAnOldPollDisagreesWithTheTuner() throws Exception {
+        verifyV7Profile();
+        FavoriteStation[] row = {new FavoriteStation(0, 91400, "A"), new FavoriteStation(0, 96200, "B"),
+                new FavoriteStation(0, 99800, "C"), new FavoriteStation(0, 103100, "D")};
+        favorites.replaceOrder(Arrays.asList(row));
+        expectTune(() -> RadioPlaybackService.tuneStation(context, row[0], true), row[0]);
+        // The last Radio+ sample is A, but the tuner is already on C before
+        // Next. Freeze just the observations, not the actual binder readback.
+        long now = SystemClock.uptimeMillis();
+        HcnWheelHistory oldPoll = new HcnWheelHistory();
+        oldPoll.record(0, row[0].frequency, now - 1400, false);
+        synchronized (tuner) { tuner.frequency = row[2].frequency; }
+        instrumentation.runOnMainSync(() -> setField(service, "hcnWheelHistory", oldPoll));
+        expectTune(() -> sendReceiverPress(KeyEvent.KEYCODE_MEDIA_NEXT), row[3]);
+        assertEquals(0, tuner.seekCalls);
     }
 
     @Test public void v7UpOnlyAfterRebindDoesNotDoubleStepAnObservedNativeMove() throws Exception {

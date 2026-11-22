@@ -6,6 +6,47 @@ import org.junit.Test;
 public class HcnWheelHistoryTest {
     private final HcnWheelHistory history = new HcnWheelHistory();
 
+    @Test public void secondKeyUsesConfirmedWheelSelectionEvenIfStockMovesJustBeforeItsDown() {
+        history.confirmWheel(0, 93400, 1000);
+        history.record(0, 93400, 1700, false);
+        history.record(0, 103100, 1990, false);
+        history.pinBeforeDown(2000, 2001);
+        assertEquals(93400, history.beforePress(2000, 2100).frequency);
+        assertEquals(93400, history.beforePress(2002, 2100).frequency); // UP-only, no pin
+        assertEquals(103100, history.beforePress(2400, 2400).frequency); // now an established station
+    }
+
+    @Test public void deliberateTuneBandChangeAndAnObservationGapDoNotReuseTheWheelSelection() {
+        history.confirmWheel(0, 93400, 1000);
+        history.record(0, 95800, 1070, true); // explicit tap/other controller
+        history.record(0, 103100, 1090, false);
+        assertEquals(103100, history.beforePress(1100, 1190).frequency);
+        history.confirmWheel(0, 93400, 1200);
+        history.record(1, 103100, 1210, false);
+        assertEquals(1, history.beforePress(1220, 1250).band);
+        history.record(0, 103100, 9000, false); // first report after wake
+        assertEquals(103100, history.beforePress(9010, 9050).frequency);
+    }
+
+    @Test public void closelySpacedRealPressesCanEachAdvanceFromTheirOwnConfirmation() {
+        history.confirmWheel(0, 93400, 1000);
+        history.record(0, 103100, 1015, false);
+        history.pinBeforeDown(1020, 1020);
+        assertEquals(93400, history.beforePress(1020, 1021).frequency);
+        history.confirmWheel(0, 95800, 1050);
+        history.record(0, 103100, 1060, false);
+        assertEquals(95800, history.beforePress(1065, 1066).frequency);
+    }
+
+    @Test public void anOldPreKeySampleAloneCannotOverruleTheLiveTuner() {
+        history.record(0, 93400, 1000, false);
+        history.pinBeforeDown(2400, 2400);
+        assertNull(history.originForTuner(2400, 2410, 0, 103100));
+        assertEquals(93400, history.originForTuner(2400, 2410, 0, 93400).frequency);
+        history.record(0, 103100, 2420, false);
+        assertEquals(93400, history.originForTuner(2400, 2430, 0, 103100).frequency);
+    }
+
     @Test public void capturedDownSurvivesABurstOfDifferentStockStations() {
         history.record(0, 98100, 1000, false);
         history.pinBeforeDown(1100, 1101);

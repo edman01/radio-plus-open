@@ -7,11 +7,15 @@ package fi.radioplus.app;
  */
 final class HcnWheelHistory {
     private static final long MAX_AGE_MS = 4500L; // three normal service polls
+    // A vendor preset callback and Android's timestamp for the same press can
+    // arrive in either order. This is a look-back for a real key, not a debounce.
+    private static final long PRE_DOWN_SKEW_MS = 200L;
     private final Run[] readings = new Run[32];
     private final long[] pressedAt = new long[32];
     private final Point[] origins = new Point[32];
     private int cursor, pressCursor;
     private Point confirmed;
+    private Point lastWheelSelection;
     private long lastChange;
 
     static final class Point {
@@ -23,6 +27,10 @@ final class HcnWheelHistory {
             this.frequency = frequency;
             this.time = time;
         }
+
+        boolean matches(int band, int frequency) {
+            return this.band == band && this.frequency == frequency;
+        }
     }
 
     private static final class Run {
@@ -32,11 +40,22 @@ final class HcnWheelHistory {
     }
 
     synchronized boolean record(int band, int frequency, long time, boolean confirmedTune) {
+        return record(band, frequency, time, confirmedTune, false);
+    }
+
+    synchronized void confirmWheel(int band, int frequency, long time) {
+        record(band, frequency, time, true, true);
+    }
+
+    private boolean record(int band, int frequency, long time, boolean confirmedTune, boolean wheel) {
         if (time <= 0 || !FrequencyRules.isValid(band, frequency)) return false;
         // A UI read can acquire the lock just before the queued confirmation.
         // Keep that confirmation for the next queued key without rewinding the observations.
-        if (confirmedTune && (confirmed == null || time >= confirmed.time))
+        if (confirmedTune && (confirmed == null || time >= confirmed.time)) {
             confirmed = new Point(band, frequency, time);
+            // An explicit selection from another input supersedes the wheel.
+            lastWheelSelection = wheel ? confirmed : null;
+        }
         Run previous = readings[(cursor - 1 + readings.length) % readings.length];
         if (previous != null && time < previous.last) return false; // late sample from the other observer
         boolean changed = previous != null && (previous.first.band != band || previous.first.frequency != frequency);
@@ -69,13 +88,28 @@ final class HcnWheelHistory {
         return best;
     }
 
+    private Point originBeforeDown(long down) {
+        Point latest = readingBefore(down);
+        Point wheel = lastWheelSelection;
+        if (latest == null || wheel == null || wheel.time >= down
+                || wheel.band != latest.band || wheel.frequency == latest.frequency) return latest;
+        long cutoff = down - PRE_DOWN_SKEW_MS;
+        // A separately established station wins. Use our wheel destination
+        // only if it was just confirmed or was still observed immediately
+        // before this short race, with no gap in normal polling.
+        if (wheel.time >= cutoff) return wheel;
+        Point prior = readingBefore(cutoff);
+        return prior != null && prior.time >= wheel.time && down - prior.time <= MAX_AGE_MS
+                && prior.band == wheel.band && prior.frequency == wheel.frequency ? wheel : latest;
+    }
+
     // Pin on the first DOWN, not on UP or after a queued tuner operation.
     // Even a burst of different native frequencies cannot evict this origin.
     synchronized void pinBeforeDown(long down, long now) {
         if (down <= 0 || down > now || now - down > MAX_AGE_MS) return;
         for (long saved : pressedAt) if (saved == down) return;
         pressedAt[pressCursor] = down;
-        origins[pressCursor] = readingBefore(down);
+        origins[pressCursor] = originBeforeDown(down);
         pressCursor = (pressCursor + 1) % origins.length;
     }
 
@@ -86,6 +120,18 @@ final class HcnWheelHistory {
         if (confirmed != null && confirmed.time >= down && confirmed.time <= now) return confirmed;
         for (int i = 0; i < origins.length; i++)
             if (pressedAt[i] == down && origins[i] != null) return origins[i];
-        return readingBefore(down);
+        return originBeforeDown(down);
+    }
+
+    synchronized Point originForTuner(long down, long now, int liveBand, int liveFrequency) {
+        Point origin = beforePress(down, now);
+        if (origin == null || origin.matches(liveBand, liveFrequency) || origin.time >= down
+                || observedMoveDuring(down, now)) return origin;
+        // A pre-DOWN stock race is supported by an independent observation
+        // of the new live preset, not just by a stale sample of the old one.
+        Point rawBefore = readingBefore(down);
+        if (rawBefore != null && rawBefore.matches(liveBand, liveFrequency)) return origin;
+        // No corroborating move: follow the real tuner as in Community Beta 5.
+        return null;
     }
 }
