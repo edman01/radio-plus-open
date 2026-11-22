@@ -639,6 +639,7 @@ final class RadioServiceClient {
             if (!FrequencyRules.isValid(band, frequency)) {
                 return;
             }
+            if (isCurrentPoll(current, generation)) RadioPlaybackService.observeVisibleFrequency(current, band, frequency);
             String serviceRdsName = RadioMetadataReader.clean(spdFrequency != null ? spdFrequency.ps
                     : nwdFrequency == null ? current.getCurrentFreqRdsPs() : nwdFrequency.name);
             RadioMetadataReader.Metadata metadata = RadioApiFactory.usesHcnFramework(current)

@@ -23,9 +23,12 @@ other firmware versions may behave differently.
 
 ## Known issues
 
-Next/previous steering-wheel controls are fixed on the tested Junsun V7 / Android
-13 configuration. Dev36 is reported working on the updated V7 firmware, without
-separate confirmation of every steering command. Other head units remain unverified.
+On one Junsun V7, a steering-wheel press sometimes skipped several entries in
+Favorites or Stations, even though the on-screen arrows followed the displayed
+order. Radio+ now uses the station playing before the physical press when a
+fresh reading is available on the verified HCN V7 profiles. The stock tuner
+moving during a press is covered by emulator tests; this change still needs a
+physical retest. Other head units remain unverified for this behavior.
 Steering-wheel mute behavior needs separate testing. Successful volume control
 does not establish compatibility with every steering command. Behavior depends
 on how the firmware routes button events; test while parked.

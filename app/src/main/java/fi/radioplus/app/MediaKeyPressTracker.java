@@ -23,10 +23,12 @@ final class MediaKeyPressTracker {
     static final class Decision {
         final Action action;
         final int keyCode;
+        final long downTime;
 
-        Decision(Action action, int keyCode) {
+        Decision(Action action, int keyCode, long downTime) {
             this.action = action;
             this.keyCode = keyCode;
+            this.downTime = downTime;
         }
     }
 
@@ -111,9 +113,9 @@ final class MediaKeyPressTracker {
         }
         if (held) {
             press.state = State.DISPATCHED;
-            return new Decision(Action.DISPATCH_LONG, keyCode);
+            return new Decision(Action.DISPATCH_LONG, keyCode, press.downTime);
         }
-        return new Decision(Action.SCHEDULE_SHORT, keyCode);
+        return new Decision(Action.SCHEDULE_SHORT, keyCode, press.downTime);
     }
 
     synchronized Decision onFallback(long eventTime) {
@@ -125,7 +127,7 @@ final class MediaKeyPressTracker {
             if (press.state == State.PENDING
                     && fallbackDelay(press, eventTime, timeoutMillis) == 0L) {
                 press.state = State.DISPATCHED;
-                return new Decision(Action.DISPATCH_SHORT, press.keyCode);
+                return new Decision(Action.DISPATCH_SHORT, press.keyCode, press.downTime);
             }
         }
         return none();
@@ -156,14 +158,14 @@ final class MediaKeyPressTracker {
         if (press != null) {
             boolean dispatch = press.state == State.PENDING;
             press.state = State.FINISHED;
-            return dispatch ? new Decision(Action.DISPATCH_SHORT, keyCode) : none();
+            return dispatch ? new Decision(Action.DISPATCH_SHORT, keyCode, press.downTime) : none();
         }
         // Some MCU/CAN adapters emit only ACTION_UP. Cache a usable identity,
         // but do not treat zero/missing downTime as one everlasting press.
         if (downTime > 0L) {
             addPress(keyCode, downTime, eventTime).state = State.FINISHED;
         }
-        return new Decision(Action.DISPATCH_SHORT, keyCode);
+        return new Decision(Action.DISPATCH_SHORT, keyCode, downTime);
     }
 
     synchronized void cancel(int keyCode, long downTime) {
@@ -249,6 +251,6 @@ final class MediaKeyPressTracker {
     }
 
     private static Decision none() {
-        return new Decision(Action.NONE, UNKNOWN_KEY);
+        return new Decision(Action.NONE, UNKNOWN_KEY, UNKNOWN_DOWN_TIME);
     }
 }

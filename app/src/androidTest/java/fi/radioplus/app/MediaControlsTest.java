@@ -590,6 +590,43 @@ public final class MediaControlsTest {
         assertEquals(0, tuner.seekCalls);
     }
 
+    @Test public void hcnWheelStepsFromThePrePressStationEvenIfStockMovesTheTuner() throws Exception {
+        instrumentation.runOnMainSync(() -> setField(service, "boundDetection",
+                new RadioApiFactory.Detection(RadioBackendProfile.HCN_CURRENT_31, "", "", "")));
+        // The same physical key can reach the stock receiver before Radio+ handles UP.
+        expectTune(() -> RadioPlaybackService.tuneStation(context, ALPHA), ALPHA);
+        expectTune(() -> pressWithStockMovement(KeyEvent.KEYCODE_MEDIA_NEXT, CHARLIE), BRAVO);
+        expectTune(() -> pressWithStockMovement(KeyEvent.KEYCODE_MEDIA_PREVIOUS, DELTA), ALPHA);
+        navigation.setFavoritesSelected(false);
+        expectTune(() -> pressWithStockMovement(KeyEvent.KEYCODE_MEDIA_NEXT, BRAVO), CHARLIE);
+        expectTune(() -> pressWithStockMovement(KeyEvent.KEYCODE_MEDIA_PREVIOUS, DELTA), ALPHA);
+        // A touch arrow has no stock key race and must follow the live tuner.
+        moveStockTo(CHARLIE);
+        expectTune(() -> RadioPlaybackService.skipStation(context, true), BRAVO);
+        assertEquals(0, tuner.seekCalls);
+    }
+
+    @Test public void aDifferentRadioStillNavigatesFromTheLiveFrequency() throws Exception {
+        expectTune(() -> RadioPlaybackService.tuneStation(context, ALPHA), ALPHA);
+        expectTune(() -> pressWithStockMovement(KeyEvent.KEYCODE_MEDIA_NEXT, BRAVO), CHARLIE);
+    }
+
+    private void pressWithStockMovement(int code, FavoriteStation nativeTarget) {
+        long down = SystemClock.uptimeMillis();
+        if (code == KeyEvent.KEYCODE_MEDIA_PREVIOUS) moveStockTo(nativeTarget);
+        sendReceiverKey(key(down, down, KeyEvent.ACTION_DOWN, code, 0, 0));
+        if (code == KeyEvent.KEYCODE_MEDIA_NEXT) moveStockTo(nativeTarget);
+        sendReceiverKey(key(down, SystemClock.uptimeMillis(), KeyEvent.ACTION_UP, code, 0, 0));
+    }
+
+    private void moveStockTo(FavoriteStation nativeTarget) {
+        synchronized (tuner) {
+            tuner.band = nativeTarget.band;
+            tuner.frequency = nativeTarget.frequency;
+        }
+        RadioPlaybackService.observeVisibleFrequency(tuner.api, nativeTarget.band, nativeTarget.frequency);
+    }
+
     @Test public void oemMediaButtonLettersNavigateTheCatalogThroughTheManifestReceiver()
             throws Exception {
         navigation.setFavoritesSelected(false);
@@ -797,6 +834,8 @@ public final class MediaControlsTest {
     }
 
     @Test public void rapidDistinctPressesAndDirectionReversalAreNeverDebounced() throws Exception {
+        instrumentation.runOnMainSync(() -> setField(service, "boundDetection",
+                new RadioApiFactory.Detection(RadioBackendProfile.HCN_CURRENT_31, "", "", "")));
         navigation.setFavoritesSelected(false);
         long down = nextKeyTime();
         // Three legitimate complete press identities only 5 ms apart. A

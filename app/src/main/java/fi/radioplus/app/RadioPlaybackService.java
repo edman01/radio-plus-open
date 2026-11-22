@@ -131,7 +131,8 @@ public final class RadioPlaybackService extends MediaBrowserService {
     private volatile IRadioServiceAPI radio;
     private IBinder radioBinder;
     private boolean inspectingBackend;
-    private RadioApiFactory.Detection boundDetection;
+    private volatile RadioApiFactory.Detection boundDetection;
+    private volatile HcnWheelHistory hcnWheelHistory = new HcnWheelHistory();
     private int backendGeneration;
     private long rebindDelayMs = MIN_REBIND_DELAY_MS;
     private FavoriteStore favoriteStore;
@@ -211,6 +212,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
             rebindDelayMs = MIN_REBIND_DELAY_MS;
             radioBinder = binder;
             radio = null;
+            hcnWheelHistory = new HcnWheelHistory();
             oemRouteActive = false;
             oemFocusState.onServiceConnected();
             try {
@@ -538,9 +540,11 @@ public final class RadioPlaybackService extends MediaBrowserService {
             public void onReceive(Context context, Intent intent) {
                 String action = intent == null ? null : intent.getAction();
                 if (Intent.ACTION_SCREEN_OFF.equals(action)) {
+                    hcnWheelHistory = new HcnWheelHistory();
                     screenOffAtElapsed = SystemClock.elapsedRealtime();
                     return;
                 }
+                if (Intent.ACTION_SCREEN_ON.equals(action)) hcnWheelHistory = new HcnWheelHistory();
                 if (!Intent.ACTION_SCREEN_ON.equals(action)
                         || !AutoStartPreferences.isEnabled(context)) {
                     return;
@@ -1187,6 +1191,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
     }
 
     private void resetOemPlaybackOwnership() {
+        hcnWheelHistory = new HcnWheelHistory();
         cancelRoutingClaim();
         activatedPlaybackEpoch = -1L;
         oemRouteActive = false;
@@ -1290,6 +1295,31 @@ public final class RadioPlaybackService extends MediaBrowserService {
 
     private void selectAdjacentStation(boolean next, ReglinkRadioApi launcherRadio,
             Boolean wheelFavorites, BooleanSupplier stillVisible) {
+        selectAdjacentStation(next, launcherRadio, wheelFavorites, stillVisible, -1L);
+    }
+
+    private HcnWheelHistory wheelHistoryFor(IRadioServiceAPI current) {
+        RadioApiFactory.Detection detection = boundDetection;
+        return current != null && current == radio && detection != null
+                && detection.profile == RadioBackendProfile.HCN_CURRENT_31 ? hcnWheelHistory : null;
+    }
+
+    // The screen may observe a real manual tune between service metadata polls.
+    // Accept only the same verified Binder endpoint; do not use UI preview or
+    // speculative MediaSession metadata as evidence of the station playing.
+    static void observeVisibleFrequency(IRadioServiceAPI endpoint, int band, int frequency) {
+        RadioPlaybackService service = runningInstance;
+        if (service == null || endpoint == null) return;
+        IRadioServiceAPI boundApi = service.radio;
+        HcnWheelHistory history = service.wheelHistoryFor(boundApi);
+        if (history != null && boundApi.asBinder() == endpoint.asBinder()) {
+            history.record(band, frequency, SystemClock.uptimeMillis(), false);
+        }
+    }
+
+    private void selectAdjacentStation(boolean next, ReglinkRadioApi launcherRadio,
+            Boolean wheelFavorites, BooleanSupplier stillVisible, long keyDown) {
+        HcnWheelHistory atReceipt = keyDown > 0 ? wheelHistoryFor(radio) : null;
         // Snapshot the list when the command arrives. A later tab change must
         // not redirect a queued press, and no list must ever fall back to seek.
         boolean visibleFavorites = stationNavigationStore.favoritesSelected();
@@ -1319,6 +1349,14 @@ public final class RadioPlaybackService extends MediaBrowserService {
                     ? ((SpdRadioApi) current).frequency() : null;
             int band = spd == null ? normalizeBand(current.getCurrentBand()) : spd.grid.band;
             int frequency = spd == null ? current.getCurrentFreq() : spd.grid.frequency;
+            if (atReceipt != null && atReceipt == wheelHistoryFor(current)) {
+                HcnWheelHistory.Point origin = atReceipt.beforePress(keyDown, SystemClock.uptimeMillis());
+                SteeringDiagnosticTrace.get().event("navigation", origin == null ? "origin=live" : "origin=before-key");
+                if (origin != null) {
+                    band = origin.band;
+                    frequency = origin.frequency;
+                }
+            }
             FavoriteStation target = FavoriteNavigator.selectInStoredOrder(
                     stations,
                     band,
@@ -1447,6 +1485,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
     private boolean tuneTo(IRadioServiceAPI current, FavoriteStation target, long epoch)
             throws RemoteException {
         if (!isCurrentPlayback(epoch, current)) return false;
+        HcnWheelHistory history = wheelHistoryFor(current);
         int normalizedTarget = normalizeBand(target.band);
         if (current instanceof ReglinkRadioApi) {
             return ((ReglinkRadioApi) current).tuneToBand(normalizedTarget, target.frequency,
@@ -1513,6 +1552,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
                     observedBand,
                     observedFrequency
             )) {
+                if (history != null) history.record(observedBand, observedFrequency, SystemClock.uptimeMillis(), true);
                 return true;
             }
             if (attempt < RadioTuneConfirmation.MAX_ATTEMPTS) {
@@ -1708,6 +1748,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
             return;
         }
         executeRadioCommand("media metadata", (current, epoch) -> {
+            HcnWheelHistory history = wheelHistoryFor(current);
             SpdRadioProbe.Frequency spd = current instanceof SpdRadioApi
                     ? ((SpdRadioApi) current).frequency() : null;
             int band = spd == null ? normalizeBand(current.getCurrentBand()) : spd.grid.band;
@@ -1715,6 +1756,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
             if (!FrequencyRules.isValid(band, frequency)) {
                 return;
             }
+            if (history != null) history.record(band, frequency, SystemClock.uptimeMillis(), false);
             String rdsName = RadioMetadataReader.clean(
                     spd == null ? current.getCurrentFreqRdsPs() : spd.ps
             );
@@ -2240,28 +2282,28 @@ public final class RadioPlaybackService extends MediaBrowserService {
         if (decision.action == MediaKeyPressTracker.Action.DISPATCH_LONG) {
             // CAN adapters may flag even brief presses as repeats. Media skip
             // always means an adjacent saved station, never a frequency search.
-            dispatchShortMediaKey(decision.keyCode);
+            dispatchShortMediaKey(decision.keyCode, decision.downTime);
             return;
         }
         if (decision.action == MediaKeyPressTracker.Action.DISPATCH_SHORT) {
-            dispatchShortMediaKey(decision.keyCode);
+            dispatchShortMediaKey(decision.keyCode, decision.downTime);
         }
     }
 
-    private void dispatchShortMediaKey(int keyCode) {
+    private void dispatchShortMediaKey(int keyCode, long downTime) {
         SteeringDiagnosticTrace.get().event("command", "code=" + keyCode);
         switch (keyCode) {
             case KeyEvent.KEYCODE_MEDIA_NEXT:
             case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
             case KEYCODE_JUNSUN_TUNER_NEXT:
             case KEYCODE_JUNSUN_SKIP_NEXT:
-                selectAdjacentStation(true);
+                selectAdjacentStation(true, null, null, () -> true, downTime);
                 break;
             case KeyEvent.KEYCODE_MEDIA_PREVIOUS:
             case KeyEvent.KEYCODE_MEDIA_REWIND:
             case KEYCODE_JUNSUN_TUNER_PREVIOUS:
             case KEYCODE_JUNSUN_SKIP_PREVIOUS:
-                selectAdjacentStation(false);
+                selectAdjacentStation(false, null, null, () -> true, downTime);
                 break;
             case KeyEvent.KEYCODE_MEDIA_PLAY:
                 requestPlayback(true);
@@ -2331,6 +2373,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
         playbackRequested = requested;
         playbackOwnership.reset(SystemClock.elapsedRealtime());
         if (!requested) {
+            hcnWheelHistory = new HcnWheelHistory();
             cancelRoutingClaim();
             mainHandler.removeCallbacks(startupVolumePolicyTask);
             pendingWidgetStation = null;
