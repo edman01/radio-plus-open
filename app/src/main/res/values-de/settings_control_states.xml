@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_toggle_on">Ein</string>
+    <string name="settings_toggle_off">Aus</string>
+    <string name="settings_more_info">Weitere Informationen</string>
+    <string name="settings_sensitivity_requirement">Die Suchlaufempfindlichkeit lässt sich nur ändern, wenn ein Radio mit LOCAL/DX verbunden ist. Ist die Einstellung nicht verfügbar, ändert Radio+ nichts am Tuner.</string>
+</resources>

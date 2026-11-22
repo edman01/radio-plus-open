@@ -9,6 +9,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Rect;
 import android.os.IBinder;
 import android.os.SystemClock;
@@ -21,6 +24,7 @@ import android.widget.TextView;
 import android.widget.ListView;
 import android.widget.EditText;
 import android.widget.RadioButton;
+import android.widget.Switch;
 
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry;
@@ -681,6 +685,120 @@ public final class AboutAppUiTest {
         assertNoPlayback();
     }
 
+    @Test public void autoStartLabelAndSwitchStayInSyncForRowAndDirectTaps() {
+        boolean initial = AutoStartPreferences.isEnabled(context);
+        try {
+            AutoStartPreferences.setEnabled(context, false);
+            instrumentation.runOnMainSync(() -> activity.findViewById(R.id.more_button).performClick());
+            instrumentation.waitForIdleSync();
+            RadioSettingsDialog settings = (RadioSettingsDialog) field(MainActivity.class, "settingsDialog", activity);
+            instrumentation.runOnMainSync(() -> {
+                Switch toggle = settings.findViewById(R.id.settings_auto_start);
+                TextView state = settings.findViewById(R.id.settings_auto_start_state);
+                View info = settings.findViewById(R.id.settings_sensitivity_info);
+                assertNotNull(info);
+                assertEquals("Info and switch must share a centerline", centerX(info), centerX(toggle), 1f);
+                assertFalse(toggle.isChecked());
+                assertEquals(activity.getString(R.string.settings_toggle_off), state.getText().toString());
+                int offThumbX = assertSwitchIsDrawn(toggle, Color.rgb(99, 118, 135), Color.rgb(240, 243, 247));
+                assertTrue(((View) state.getParent()).performClick());
+                assertTrue(toggle.isChecked());
+                assertTrue(AutoStartPreferences.isEnabled(context));
+                assertEquals(activity.getString(R.string.settings_toggle_on), state.getText().toString());
+                int onThumbX = assertSwitchIsDrawn(toggle, activity.getColor(R.color.accent), Color.rgb(27, 44, 18));
+                assertTrue("The visible thumb must move", Math.abs(onThumbX - offThumbX) > toggle.getWidth() / 4);
+                toggle.performClick();
+                assertFalse(toggle.isChecked());
+                assertFalse(AutoStartPreferences.isEnabled(context));
+                assertEquals(activity.getString(R.string.settings_toggle_off), state.getText().toString());
+            });
+        } finally { AutoStartPreferences.setEnabled(context, initial); }
+        assertNoPlayback();
+    }
+
+    private static float centerX(View view) {
+        int[] location = new int[2]; view.getLocationOnScreen(location);
+        return location[0] + view.getWidth() / 2f;
+    }
+
+    private static int assertSwitchIsDrawn(Switch toggle, int trackColor, int thumbColor) {
+        toggle.jumpDrawablesToCurrentState();
+        Bitmap image = Bitmap.createBitmap(toggle.getWidth(), toggle.getHeight(), Bitmap.Config.ARGB_8888);
+        try {
+            toggle.draw(new Canvas(image));
+            int trackPixels = 0, thumbPixels = 0, thumbX = 0;
+            for (int y = 0; y < image.getHeight(); y++) for (int x = 0; x < image.getWidth(); x++) {
+                int pixel = image.getPixel(x, y);
+                if (pixel == trackColor) trackPixels++;
+                if (pixel == thumbColor) { thumbPixels++; thumbX += x; }
+            }
+            assertTrue("Track must be visible inside the control", trackPixels > 5);
+            assertTrue("Thumb must be visible inside the control", thumbPixels > 5);
+            return thumbX / thumbPixels;
+        } finally { image.recycle(); }
+    }
+
+    @Test public void sensitivityOnlyOffersAChoiceWithCurrentSupportedReadback() throws Exception {
+        assumeTrue("Window inspection requires API 29+", android.os.Build.VERSION.SDK_INT >= 29);
+        Field latest = RadioApiFactory.class.getDeclaredField("latest"); latest.setAccessible(true);
+        Object previous = latest.get(null);
+        try {
+            latest.set(null, new RadioApiFactory.Detection(RadioBackendProfile.UNKNOWN, "", "", ""));
+            instrumentation.runOnMainSync(() -> activity.findViewById(R.id.more_button).performClick());
+            instrumentation.waitForIdleSync();
+            RadioSettingsDialog settings = (RadioSettingsDialog) field(MainActivity.class, "settingsDialog", activity);
+            instrumentation.runOnMainSync(() -> {
+                View row = settings.findViewById(R.id.settings_sensitivity);
+                assertNotNull(row.findViewById(R.id.settings_sensitivity_info));
+                assertNull(findText(row, "›"));
+                assertTrue(row.getContentDescription().toString().contains(activity.getString(R.string.settings_more_info)));
+            });
+            clickSettingsAction(settings, R.id.settings_sensitivity);
+            instrumentation.runOnMainSync(() -> {
+                for (View root : WindowInspector.getGlobalWindowViews()) {
+                    if (findText(root, activity.getString(R.string.settings_sensitivity_requirement)) != null) {
+                        Button close = root.findViewById(android.R.id.button1);
+                        assertNotNull(close);
+                        assertTrue(close.performClick());
+                        return;
+                    }
+                }
+                fail("Unavailable sensitivity should explain the requirement");
+            });
+            latest.set(null, new RadioApiFactory.Detection(RadioBackendProfile.HCN_CURRENT_31, "", "", ""));
+            instrumentation.runOnMainSync(() -> {
+                activity.onConnectionChanged(false, "");
+                activity.onStateChanged(sensitivityState(true)); // late state from the disconnected session
+                activity.onConnectionChanged(true, "");
+                assertNotNull(settings.findViewById(R.id.settings_sensitivity_info));
+                activity.onStateChanged(sensitivityState(false));
+                View row = settings.findViewById(R.id.settings_sensitivity);
+                assertNull(row.findViewById(R.id.settings_sensitivity_info));
+                assertNotNull(findText(row, "›"));
+                assertNotNull(findText(row, activity.getString(R.string.settings_dx)));
+                activity.onStateChanged(sensitivityState(true));
+                assertNotNull(findText(settings.findViewById(R.id.settings_sensitivity), activity.getString(R.string.settings_local)));
+            });
+            clickSettingsAction(settings, R.id.settings_sensitivity);
+            clickChildBack();
+            instrumentation.runOnMainSync(() -> {
+                View chevron = findText(settings.findViewById(R.id.settings_sensitivity), "›");
+                assertNotNull(chevron);
+                assertEquals(centerX(settings.findViewById(R.id.settings_auto_start)), centerX(chevron), 1f);
+            });
+            instrumentation.runOnMainSync(() -> {
+                activity.onConnectionChanged(false, "");
+                assertNotNull(settings.findViewById(R.id.settings_sensitivity_info));
+            });
+        } finally { latest.set(null, previous); }
+        assertNoPlayback();
+    }
+
+    private static RadioServiceClient.RadioState sensitivityState(boolean local) {
+        return new RadioServiceClient.RadioState(0, 98100, "", "", "", false, false, local,
+                false, false, false, false);
+    }
+
     @Test public void visibleBackButtonsReturnToSettingsThenRadioWithoutStartingPlayback() throws Exception {
         assumeTrue("Window inspection requires API 29+", android.os.Build.VERSION.SDK_INT >= 29);
         openAboutThroughSettings();
@@ -705,6 +823,7 @@ public final class AboutAppUiTest {
         Object previousProfile = latest.get(null);
         try {
             latest.set(null, new RadioApiFactory.Detection(RadioBackendProfile.HCN_CURRENT_31, "", "", ""));
+            instrumentation.runOnMainSync(() -> activity.onStateChanged(sensitivityState(false)));
             clickSettingsAction(settings, R.id.settings_sensitivity);
             clickChildBack();
         } finally { latest.set(null, previousProfile); }

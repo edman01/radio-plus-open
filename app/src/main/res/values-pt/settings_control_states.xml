@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_toggle_on">Ligado</string>
+    <string name="settings_toggle_off">Desligado</string>
+    <string name="settings_more_info">Mais informações</string>
+    <string name="settings_sensitivity_requirement">A sensibilidade da busca só pode ser alterada quando o rádio conectado tem suporte a LOCAL/DX. Se a opção não estiver disponível, o Radio+ não altera o sintonizador.</string>
+</resources>

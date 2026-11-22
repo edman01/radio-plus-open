@@ -21,6 +21,10 @@ tasks.register("prepareLauncherIcon") {
     }
 }
 
+// Opt-in test builds use the firmware-specific Reglink checks and support log.
+def experimentalTestBuild6 = project.findProperty("experimentalTestBuild6") == "true"
+def reglinkTestEnabled = experimentalTestBuild6 || project.findProperty("reglinkStockAssisted") == "true"
+
 android {
     namespace "fi.radioplus.app"
     compileSdk 33
@@ -32,10 +36,10 @@ android {
         applicationId "fi.radioplus.app"
         minSdk 27
         targetSdk 33
-        versionCode (project.findProperty("reglinkStockAssisted") == "true" ? 104 : 103)
-        versionName (project.findProperty("reglinkStockAssisted") == "true" ? "0.16.1-dev42-reglink-test" : "0.16.1-dev41")
+        versionCode (experimentalTestBuild6 ? 105 : reglinkTestEnabled ? 104 : 103)
+        versionName (experimentalTestBuild6 ? "0.16.1-experimental-testbuild6" : reglinkTestEnabled ? "0.16.1-dev42-reglink-test" : "0.16.1-dev41")
         buildConfigField "boolean", "REGLINK_STOCK_ASSISTED",
-                (project.findProperty("reglinkStockAssisted") == "true").toString()
+                reglinkTestEnabled.toString()
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     buildFeatures {

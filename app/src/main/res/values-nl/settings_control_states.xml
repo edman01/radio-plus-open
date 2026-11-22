@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_toggle_on">Aan</string>
+    <string name="settings_toggle_off">Uit</string>
+    <string name="settings_more_info">Meer informatie</string>
+    <string name="settings_sensitivity_requirement">De zoekgevoeligheid is alleen instelbaar als de aangesloten radio LOCAL/DX ondersteunt. Is de instelling niet beschikbaar, dan wijzigt Radio+ niets aan de tuner.</string>
+</resources>

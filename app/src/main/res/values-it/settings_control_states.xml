@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_toggle_on">Attivo</string>
+    <string name="settings_toggle_off">Spento</string>
+    <string name="settings_more_info">Altre informazioni</string>
+    <string name="settings_sensitivity_requirement">La sensibilità di ricerca si può modificare solo se la radio collegata supporta LOCAL/DX. Se il comando non è disponibile, Radio+ non modifica il sintonizzatore.</string>
+</resources>

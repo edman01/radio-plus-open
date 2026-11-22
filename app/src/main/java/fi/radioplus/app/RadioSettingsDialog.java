@@ -8,12 +8,15 @@ import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.InsetDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.os.Build;
 import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
 import android.widget.Button;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Switch;
@@ -158,8 +161,8 @@ final class RadioSettingsDialog extends Dialog {
                     listener::onAutoStartChanged);
             int sensitivity = localMode == null ? R.string.settings_unknown
                     : localMode ? R.string.settings_local : R.string.settings_dx;
-            addAction(R.id.settings_sensitivity, R.string.settings_sensitivity, sensitivity,
-                    listener::onSensitivity);
+            addAction(R.id.settings_sensitivity, R.string.settings_sensitivity,
+                    activity.getString(sensitivity), listener::onSensitivity, localMode == null);
         } else {
             section(R.string.settings_general, R.string.settings_general_hint);
             addAction(R.id.settings_language, R.string.settings_language,
@@ -214,17 +217,34 @@ final class RadioSettingsDialog extends Dialog {
     }
 
     private void addAction(int id, int title, String subtitle, Runnable callback) {
+        addAction(id, title, subtitle, callback, false);
+    }
+
+    private void addAction(int id, int title, String subtitle, Runnable callback, boolean infoOnly) {
         LinearLayout row = card();
         row.setId(id);
         row.setFocusable(true);
         LinearLayout labels = label(title, 0);
         ((TextView) labels.getChildAt(1)).setText(subtitle);
         row.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
-        TextView chevron = text(0, 34, MUTED);
-        chevron.setText("›");
-        chevron.setGravity(Gravity.CENTER);
-        chevron.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        row.addView(chevron, new LinearLayout.LayoutParams(dp(80), dp(56)));
+        View indicator;
+        if (infoOnly) {
+            ImageView info = new ImageView(activity);
+            info.setId(R.id.settings_sensitivity_info);
+            info.setImageResource(R.drawable.ic_settings_info);
+            info.setScaleType(ImageView.ScaleType.CENTER);
+            row.setContentDescription(activity.getString(title) + ". " + subtitle + ". "
+                    + activity.getString(R.string.settings_more_info));
+            labels.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
+            indicator = info;
+        } else {
+            TextView chevron = text(0, 34, MUTED);
+            chevron.setText("›");
+            chevron.setGravity(Gravity.CENTER);
+            indicator = chevron;
+        }
+        indicator.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        addTrailingControl(row, indicator, dp(48));
         // Keep the selected settings page underneath its child dialog so
         // the child's Back button returns here instead of to the radio.
         row.setOnClickListener(v -> callback.run());
@@ -232,26 +252,57 @@ final class RadioSettingsDialog extends Dialog {
 
     private interface ToggleListener { void changed(boolean enabled); }
 
+    /** Every affordance shares the same trailing centerline; state text is outside this column. */
+    private void addTrailingControl(LinearLayout row, View control, int width) {
+        FrameLayout column = new FrameLayout(activity);
+        column.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        column.addView(control, new FrameLayout.LayoutParams(width, dp(56), Gravity.CENTER));
+        row.addView(column, new LinearLayout.LayoutParams(dp(80), dp(56)));
+    }
+
     private void addToggle(int id, int title, int subtitle, boolean checked, ToggleListener listener) {
         LinearLayout row = card();
         LinearLayout labels = label(title, subtitle);
         labels.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
         row.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView state = text(checked ? R.string.settings_toggle_on : R.string.settings_toggle_off,
+                compact ? 16 : 18, WHITE);
+        state.setId(R.id.settings_auto_start_state);
+        state.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        state.setPadding(dp(4), 0, dp(6), 0);
+        row.addView(state, new LinearLayout.LayoutParams(-2, -2));
         Switch toggle = new Switch(activity);
         toggle.setId(id);
         toggle.setContentDescription(activity.getString(title) + ". " + activity.getString(subtitle));
         toggle.setShowText(false);
-        toggle.setSwitchMinWidth(dp(68));
-        toggle.setThumbTintList(new ColorStateList(new int[][]{
-                new int[]{android.R.attr.state_checked}, new int[]{}}, new int[]{accent, WHITE}));
-        toggle.setTrackTintList(new ColorStateList(new int[][]{
-                new int[]{android.R.attr.state_checked}, new int[]{}},
-                new int[]{accent, Color.rgb(91, 105, 124)}));
-        toggle.setGravity(Gravity.CENTER);
+        toggle.setTextOn(activity.getString(R.string.settings_toggle_on));
+        toggle.setTextOff(activity.getString(R.string.settings_toggle_off));
+        toggle.setSwitchMinWidth(dp(60));
+        toggle.setPadding(0, 0, 0, 0);
+        toggle.setGravity(Gravity.CENTER_VERTICAL);
+        toggle.setSplitTrack(false);
+        int[][] states = {new int[]{android.R.attr.state_checked}, new int[]{}};
+        GradientDrawable track = shape(0, 0, 20);
+        track.setSize(dp(60), dp(26));
+        track.setColor(new ColorStateList(states, new int[]{accent, Color.rgb(99, 118, 135)}));
+        track.setStroke(dp(1), new ColorStateList(states, new int[]{accent, Color.rgb(155, 173, 188)}));
+        toggle.setTrackTintList(null);
+        toggle.setTrackDrawable(track);
+        GradientDrawable thumb = new GradientDrawable();
+        thumb.setShape(GradientDrawable.OVAL);
+        thumb.setSize(dp(20), dp(20));
+        thumb.setColor(new ColorStateList(states, new int[]{Color.rgb(27, 44, 18), WHITE}));
+        toggle.setThumbTintList(null);
+        toggle.setThumbDrawable(new InsetDrawable(thumb, dp(3)));
         toggle.setChecked(checked);
-        toggle.setOnCheckedChangeListener((button, enabled) -> listener.changed(enabled));
-        row.addView(toggle, new LinearLayout.LayoutParams(dp(80), dp(56)));
+        toggle.setOnCheckedChangeListener((button, enabled) -> {
+            state.setText(enabled ? R.string.settings_toggle_on : R.string.settings_toggle_off);
+            listener.changed(enabled);
+        });
+        addTrailingControl(row, toggle, dp(60));
         row.setOnClickListener(v -> toggle.setChecked(!toggle.isChecked()));
+        row.setFocusable(false);
+        row.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
     }
 
     private LinearLayout column() {

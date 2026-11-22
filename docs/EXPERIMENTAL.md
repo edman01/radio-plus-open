@@ -27,6 +27,12 @@ it does not include G5 or SPD support.
 **Not included in community beta 5. Disabled in normal builds.** See the opt-in build command in
 [BUILD.md](BUILD.md#reglink-device-test-build).
 
+For **Experimental Test Build 6** use `-PexperimentalTestBuild6=true`. Its
+logo-free APK reports `0.16.1-experimental-testbuild6-play` (version code 105)
+in **Settings → General → About Radio+**. It includes the FM/AM, AGAMA and
+optional steering-wheel changes below. This is a hardware test build, not a
+new community beta; the wheel still needs confirmation on the target unit.
+
 This stock-assisted experiment requires the exact inspected combination of
 `com.reglink.services`, `com.reglink.apps.radio` and `com.reglink.apps.mtkradio`.
 The runtime tuner must be an external MCU implementation (4754, 4755 or 7786).

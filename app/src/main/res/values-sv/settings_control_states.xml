@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_toggle_on">På</string>
+    <string name="settings_toggle_off">Av</string>
+    <string name="settings_more_info">Mer information</string>
+    <string name="settings_sensitivity_requirement">Sökkänsligheten kan bara ändras när Radio+ är ansluten till en radio med stöd för LOCAL/DX. Om inställningen inte är tillgänglig ändrar Radio+ inte tunern.</string>
+</resources>

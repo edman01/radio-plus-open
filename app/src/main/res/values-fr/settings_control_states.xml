@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_toggle_on">Activé</string>
+    <string name="settings_toggle_off">Désactivé</string>
+    <string name="settings_more_info">En savoir plus</string>
+    <string name="settings_sensitivity_requirement">La sensibilité de recherche ne peut être réglée que si la radio connectée prend en charge LOCAL/DX. Si le réglage est indisponible, Radio+ ne modifie pas le tuner.</string>
+</resources>

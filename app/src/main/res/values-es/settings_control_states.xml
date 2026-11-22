@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_toggle_on">Sí</string>
+    <string name="settings_toggle_off">No</string>
+    <string name="settings_more_info">Más información</string>
+    <string name="settings_sensitivity_requirement">La sensibilidad de búsqueda solo se puede cambiar al conectar una radio compatible con LOCAL/DX. Si la opción no está disponible, Radio+ no modifica el sintonizador.</string>
+</resources>

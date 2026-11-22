@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_toggle_on">Wł.</string>
+    <string name="settings_toggle_off">Wył.</string>
+    <string name="settings_more_info">Więcej informacji</string>
+    <string name="settings_sensitivity_requirement">Czułość wyszukiwania można zmienić tylko po połączeniu z radiem obsługującym funkcję LOCAL/DX. Jeśli ustawienie jest niedostępne, Radio+ nie zmienia ustawień tunera.</string>
+</resources>

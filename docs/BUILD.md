@@ -38,9 +38,11 @@ gradle :app:testPlayDebugUnitTest :app:assemblePlayDebug :app:assemblePlayDebugA
 ```
 
 For a signed release test APK, use the same property with `:app:assemblePlayRelease`
-and the signing variables below. Without the property, Reglink control remains
-disabled. This does not change the Junsun backend or enable arbitrary Reglink
-firmware. Read the [requirements and limitations](EXPERIMENTAL.md#reglink-device-test-preview--s574-and-s602)
+and the signing variables below. Use `-PexperimentalTestBuild6=true` instead
+to build Experimental Test Build 6 with the same profile checks. Without either
+opt-in, Reglink control stays disabled. This does not change the Junsun backend
+or enable arbitrary Reglink firmware.
+Read the [requirements and limitations](EXPERIMENTAL.md#reglink-device-test-preview--s574-and-s602)
 before testing. Never run manufacturer firmware or APKs in the emulator to claim
 hardware validation; instrumentation uses synthetic protocol endpoints only.
 

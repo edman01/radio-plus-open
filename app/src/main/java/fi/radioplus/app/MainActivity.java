@@ -138,6 +138,7 @@ public final class MainActivity extends Activity implements
     private FavoriteAdapter favoriteAdapter;
     private RadioServiceClient radioClient;
     private RadioServiceClient.RadioState currentState;
+    private Boolean settingsReportedLocalMode;
 
     private boolean autoScanRequested;
     private boolean autoScanObserved;
@@ -309,6 +310,8 @@ public final class MainActivity extends Activity implements
         cancelPendingFavoriteOptions();
         if (!debugPreview) {
             radioConnected = false;
+            settingsReportedLocalMode = null;
+            refreshSettingsSensitivity();
             setRadioControlsEnabled(false);
             radioClient.unbind();
         }
@@ -692,7 +695,7 @@ public final class MainActivity extends Activity implements
             return;
         }
         settingsDialog = new RadioSettingsDialog(this,
-                currentState == null ? null : currentState.localMode,
+                settingsSensitivity(),
                 new RadioSettingsDialog.Listener() {
                     @Override public void onLanguage() { showLanguageDialog(); }
                     @Override public void onSensitivity() { showReceptionModeDialog(); }
@@ -807,12 +810,23 @@ public final class MainActivity extends Activity implements
         dialog.show();
     }
 
+    private Boolean settingsSensitivity() {
+        return radioConnected && RadioApiFactory.selectedSupportsLocalMode() ? settingsReportedLocalMode : null;
+    }
+
+    private void refreshSettingsSensitivity() {
+        if (settingsDialog != null && settingsDialog.isShowing()) settingsDialog.updateLocalMode(settingsSensitivity());
+    }
+
     private void showReceptionModeDialog() {
-        if (!RadioApiFactory.selectedSupportsLocalMode()) {
-            showUnverifiedBackendFeature();
+        Boolean mode = settingsSensitivity();
+        if (mode == null) {
+            showCarDialog(new AlertDialog.Builder(this).setTitle(R.string.settings_sensitivity)
+                    .setMessage(R.string.settings_sensitivity_requirement)
+                    .setPositiveButton(R.string.settings_close, null));
             return;
         }
-        int selected = currentState != null && currentState.localMode ? 0 : 1;
+        int selected = mode ? 0 : 1;
         String[] modes = {
                 tr("LOCAL vain vahvat asemat", "LOCAL strong stations only"),
                 tr("DX myös heikot asemat", "DX weak stations too")
@@ -820,7 +834,7 @@ public final class MainActivity extends Activity implements
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle(tr("Hakuherkkyys", "Scan sensitivity"))
                 .setSingleChoiceItems(modes, selected, (choiceDialog, which) -> {
-                    setReceptionMode(which == 0);
+                    if (settingsSensitivity() != null) setReceptionMode(which == 0);
                     choiceDialog.dismiss();
                 })
                 .setNegativeButton(R.string.settings_back, null)
@@ -2459,6 +2473,8 @@ public final class MainActivity extends Activity implements
             return;
         }
         radioConnected = connected;
+        if (!connected) settingsReportedLocalMode = null;
+        refreshSettingsSensitivity();
         // Connection state is intentionally not part of the visible car UI.
         connectionText.setText("");
         connectionDot.setVisibility(View.GONE);
@@ -2508,9 +2524,8 @@ public final class MainActivity extends Activity implements
             return;
         }
         currentState = state;
-        if (settingsDialog != null && settingsDialog.isShowing()) {
-            settingsDialog.updateLocalMode(state.localMode);
-        }
+        if (radioConnected) settingsReportedLocalMode = state.localMode;
+        refreshSettingsSensitivity();
         captureManualStationIfReady(state);
         updateManualTuningDialog(state);
         RadioPlaybackService.publishMediaState(

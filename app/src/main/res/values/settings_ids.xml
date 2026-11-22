@@ -3,6 +3,8 @@
     <item name="settings_steering" type="id" />
     <item name="settings_close" type="id" />
     <item name="settings_auto_start" type="id" />
+    <item name="settings_auto_start_state" type="id" />
     <item name="settings_language" type="id" />
     <item name="settings_sensitivity" type="id" />
+    <item name="settings_sensitivity_info" type="id" />
 </resources>

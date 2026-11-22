@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_toggle_on">Päällä</string>
+    <string name="settings_toggle_off">Pois</string>
+    <string name="settings_more_info">Lisätietoja</string>
+    <string name="settings_sensitivity_requirement">Haun herkkyyttä voi vaihtaa, kun Radio+ on yhteydessä LOCAL/DX-säätöä tukevaan radioon. Jos säätö ei ole käytettävissä, Radio+ ei muuta virittimen asetusta.</string>
+</resources>

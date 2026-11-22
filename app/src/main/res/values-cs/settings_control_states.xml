@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_toggle_on">Zapnuto</string>
+    <string name="settings_toggle_off">Vypnuto</string>
+    <string name="settings_more_info">Další informace</string>
+    <string name="settings_sensitivity_requirement">Citlivost vyhledávání lze změnit jen po připojení k rádiu, které podporuje LOCAL/DX. Pokud tato volba není dostupná, Radio+ nastavení tuneru nezmění.</string>
+</resources>

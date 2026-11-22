@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_toggle_on">On</string>
+    <string name="settings_toggle_off">Off</string>
+    <string name="settings_more_info">More information</string>
+    <string name="settings_sensitivity_requirement">Scan sensitivity can be changed only while connected to a radio that supports LOCAL/DX. If that setting is not available, Radio+ leaves the tuner unchanged.</string>
+</resources>

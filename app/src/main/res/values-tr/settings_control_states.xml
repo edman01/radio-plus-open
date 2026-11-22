@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_toggle_on">Açık</string>
+    <string name="settings_toggle_off">Kapalı</string>
+    <string name="settings_more_info">Daha fazla bilgi</string>
+    <string name="settings_sensitivity_requirement">Arama hassasiyeti yalnızca LOCAL/DX destekleyen bir radyoya bağlıyken değiştirilebilir. Bu ayar kullanılamıyorsa Radio+ alıcının ayarını değiştirmez.</string>
+</resources>

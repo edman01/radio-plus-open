@@ -20,5 +20,5 @@
     <string name="settings_sensitivity">Hakuherkkyys</string>
     <string name="settings_local">Vain vahvat asemat</string>
     <string name="settings_dx">Myös heikot asemat</string>
-    <string name="settings_unknown">Ei tietoa</string>
+    <string name="settings_unknown">Ei käytettävissä</string>
 </resources>
