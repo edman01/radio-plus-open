@@ -38,6 +38,8 @@ public final class RadioMediaButtonReceiver extends BroadcastReceiver {
 
     static boolean dispatch(Context context, KeyEvent event) {
         if (RadioPlaybackService.shouldIgnoreRawMediaKeys()) return false;
+        RadioPlaybackService.pinHcnWheelDown(event,
+                MediaButtonKeyMapping.commandKeyCode(event.getKeyCode(), event.getMetaState()));
         Intent service = new Intent(context, RadioPlaybackService.class);
         service.setAction(Intent.ACTION_MEDIA_BUTTON);
         service.putExtra(Intent.EXTRA_KEY_EVENT, event);

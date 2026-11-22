@@ -6,9 +6,15 @@ import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
 
 /** Only launcher-originated preset requests; never consume system/CAN media keys. */
-final class ReglinkLauncherControls {
+final class AgamaLauncherControls {
     static final String AGAMA = "altergames.carlauncher";
-    private ReglinkLauncherControls() { }
+    private AgamaLauncherControls() { }
+
+    static boolean isUntimedArrow(KeyEvent key) {
+        return key != null && key.getDownTime() == 0 && key.getEventTime() == 0
+                && (key.getKeyCode() == KeyEvent.KEYCODE_MEDIA_NEXT
+                || key.getKeyCode() == KeyEvent.KEYCODE_MEDIA_PREVIOUS);
+    }
 
     static String caller(MediaSession session) {
         try {

@@ -71,18 +71,27 @@ station; tuner seeking remains in **Tuning**. Duplicate deliveries of the same
 identified press are ignored. Radio+ confirms the frequency reported by the
 stock service rather than displaying the requested station as if tuning succeeded.
 
+On a verified current HCN/Junsun V7, Radio+ remembers the station from before
+a wheel press. If the stock radio also changes presets, Radio+ uses that starting
+station to find the neighbour in the selected list. If the tuner is already on
+that neighbour, it does not tune again. A frequency change alone is not a button
+press. In AGAMA 6.1.3's **Any active player** mode, its own virtual arrows step
+through the selected list immediately; they do not wait for a physical key release.
+
 Firmware must still deliver the key events to Radio+. The optional steering-key
 accessibility service can route supported physical keys while Radio+ is visible;
 it cannot handle commands that the firmware never exposes to Android.
-The tested Junsun V7 does not need this accessibility service: its next/previous
-buttons work through Android media controls without it. Enable the optional
-service only if the buttons do not work on your head unit.
+On V7 units that deliver next/previous through Android media controls, no
+accessibility service is needed. Enable the optional service only if the
+buttons do not work on your head unit.
 
 Starting playback registers Radio+ for Android media controls. Changing stations
 during playback reuses the active radio source to avoid an unnecessary audio
 interruption. Opening the app is not treated as a Play command; playback or an
 intentional pause should continue. Tuner hardware may still briefly mute while
-changing frequency. See [testing and known issues](TESTING.md).
+changing frequency. On verified current HCN, resuming after Radio+'s own pause
+restores tuner audio without replaying the delayed audio-routing pulse used
+on cold starts. See [testing and known issues](TESTING.md).
 
 ## Station information
 

@@ -312,14 +312,14 @@ public final class ReglinkRadioInteropTest {
 
     @Test public void agamaPresetKeysRequireKnownCallerAndAreNotPhysicalOrRepeatedKeys() {
         android.view.KeyEvent key = new android.view.KeyEvent(0, 87);
-        assertTrue(ReglinkLauncherControls.accepts(ReglinkLauncherControls.AGAMA, key));
-        assertTrue(ReglinkLauncherControls.accepts(ReglinkLauncherControls.AGAMA, new android.view.KeyEvent(1, 88)));
-        assertFalse(ReglinkLauncherControls.accepts(null, key));
-        assertFalse(ReglinkLauncherControls.accepts("android", key));
-        assertFalse(ReglinkLauncherControls.accepts(ReglinkLauncherControls.AGAMA, new android.view.KeyEvent(0, 86)));
-        assertFalse(ReglinkLauncherControls.accepts(ReglinkLauncherControls.AGAMA,
+        assertTrue(AgamaLauncherControls.accepts(AgamaLauncherControls.AGAMA, key));
+        assertTrue(AgamaLauncherControls.accepts(AgamaLauncherControls.AGAMA, new android.view.KeyEvent(1, 88)));
+        assertFalse(AgamaLauncherControls.accepts(null, key));
+        assertFalse(AgamaLauncherControls.accepts("android", key));
+        assertFalse(AgamaLauncherControls.accepts(AgamaLauncherControls.AGAMA, new android.view.KeyEvent(0, 86)));
+        assertFalse(AgamaLauncherControls.accepts(AgamaLauncherControls.AGAMA,
                 new android.view.KeyEvent(123, 123, 0, 87, 0, 0, 3, 87)));
-        assertFalse(ReglinkLauncherControls.accepts(ReglinkLauncherControls.AGAMA,
+        assertFalse(AgamaLauncherControls.accepts(AgamaLauncherControls.AGAMA,
                 new android.view.KeyEvent(0, 0, 0, 88, 2, 0, -1, 0)));
     }
 
@@ -331,7 +331,7 @@ public final class ReglinkRadioInteropTest {
         try {
             session.setCallback(new android.media.session.MediaSession.Callback() {
                 @Override public boolean onMediaButtonEvent(android.content.Intent intent) {
-                    callers.offer(String.valueOf(ReglinkLauncherControls.caller(session)));
+                    callers.offer(String.valueOf(AgamaLauncherControls.caller(session)));
                     return true;
                 }
             }, new android.os.Handler(android.os.Looper.getMainLooper()));

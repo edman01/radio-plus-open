@@ -7,9 +7,12 @@ package fi.radioplus.app;
  */
 final class HcnWheelHistory {
     private static final long MAX_AGE_MS = 4500L; // three normal service polls
-    private final Point[] readings = new Point[32];
-    private int cursor;
+    private final Run[] readings = new Run[32];
+    private final long[] pressedAt = new long[32];
+    private final Point[] origins = new Point[32];
+    private int cursor, pressCursor;
     private Point confirmed;
+    private long lastChange;
 
     static final class Point {
         final int band, frequency;
@@ -22,25 +25,67 @@ final class HcnWheelHistory {
         }
     }
 
-    synchronized void record(int band, int frequency, long time, boolean confirmedTune) {
-        if (time <= 0 || !FrequencyRules.isValid(band, frequency)) return;
-        Point point = new Point(band, frequency, time);
-        readings[cursor] = point;
-        cursor = (cursor + 1) % readings.length;
-        if (confirmedTune) confirmed = point;
+    private static final class Run {
+        final Point first;
+        long last;
+        Run(Point first) { this.first = first; last = first.time; }
+    }
+
+    synchronized boolean record(int band, int frequency, long time, boolean confirmedTune) {
+        if (time <= 0 || !FrequencyRules.isValid(band, frequency)) return false;
+        // A UI read can acquire the lock just before the queued confirmation.
+        // Keep that confirmation for the next queued key without rewinding the observations.
+        if (confirmedTune && (confirmed == null || time >= confirmed.time))
+            confirmed = new Point(band, frequency, time);
+        Run previous = readings[(cursor - 1 + readings.length) % readings.length];
+        if (previous != null && time < previous.last) return false; // late sample from the other observer
+        boolean changed = previous != null && (previous.first.band != band || previous.first.frequency != frequency);
+        if (previous != null && !changed && time - previous.last <= MAX_AGE_MS) {
+            // RDS and UI callbacks can repeat the same native preset dozens of
+            // times during a press. They are one observation run, not 32 moves.
+            previous.last = time;
+        } else {
+            readings[cursor] = new Run(new Point(band, frequency, time));
+            cursor = (cursor + 1) % readings.length;
+        }
+        if (changed) lastChange = time;
+        return changed;
+    }
+
+    synchronized boolean observedMoveDuring(long down, long now) {
+        return down > 0 && down <= now && now - down <= MAX_AGE_MS
+                && lastChange >= down && lastChange <= now;
+    }
+
+    private Point readingBefore(long down) {
+        Point best = null;
+        for (int i = 1; i <= readings.length; i++) {
+            Run run = readings[(cursor - i + readings.length) % readings.length];
+            if (run == null || run.first.time >= down) continue;
+            long time = Math.min(run.last, down - 1);
+            if (down - time <= MAX_AGE_MS && (best == null || best.time < time))
+                best = new Point(run.first.band, run.first.frequency, time);
+        }
+        return best;
+    }
+
+    // Pin on the first DOWN, not on UP or after a queued tuner operation.
+    // Even a burst of different native frequencies cannot evict this origin.
+    synchronized void pinBeforeDown(long down, long now) {
+        if (down <= 0 || down > now || now - down > MAX_AGE_MS) return;
+        for (long saved : pressedAt) if (saved == down) return;
+        pressedAt[pressCursor] = down;
+        origins[pressCursor] = readingBefore(down);
+        pressCursor = (pressCursor + 1) % origins.length;
     }
 
     synchronized Point beforePress(long down, long now) {
         if (down <= 0 || down > now || now - down > MAX_AGE_MS) return null;
-        // A distinct, queued second press follows the first confirmed Radio+
-        // selection even if both DOWN events preceded that confirmation.
+        // A genuine second press queued before the first tune completed must
+        // advance from its confirmed result, not either key's native preset.
         if (confirmed != null && confirmed.time >= down && confirmed.time <= now) return confirmed;
-        Point best = null;
-        for (int i = 1; i <= readings.length; i++) {
-            Point p = readings[(cursor - i + readings.length) % readings.length];
-            if (p != null && p.time < down && down - p.time <= MAX_AGE_MS
-                    && (best == null || best.time < p.time)) best = p;
-        }
-        return best;
+        for (int i = 0; i < origins.length; i++)
+            if (pressedAt[i] == down && origins[i] != null) return origins[i];
+        return readingBefore(down);
     }
 }

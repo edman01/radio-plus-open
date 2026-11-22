@@ -606,6 +606,201 @@ public final class MediaControlsTest {
         assertEquals(0, tuner.seekCalls);
     }
 
+    private void verifyV7Profile() {
+        instrumentation.runOnMainSync(() -> setField(service, "boundDetection",
+                new RadioApiFactory.Detection(RadioBackendProfile.HCN_CURRENT_31, "", "", "")));
+    }
+
+    @Test public void v7OneWheelPressUsesTheAdjacentVisibleTileDespiteNativeChurn() throws Exception {
+        verifyV7Profile();
+        FavoriteStation[] row = new FavoriteStation[6];
+        for (int i = 0; i < row.length; i++) row[i] = new FavoriteStation(0, 95000 + i * 800, "QA " + i);
+        favorites.replaceOrder(Arrays.asList(row));
+        catalog.replaceOrder(Arrays.asList(row[5], row[2], row[1], row[0], row[4], row[3]));
+        for (boolean fav : new boolean[]{true, false}) {
+            navigation.setFavoritesSelected(fav);
+            expectTune(() -> RadioPlaybackService.tuneStation(context, row[1], fav), row[1]);
+            FavoriteStation neighbour = fav ? row[2] : row[0];
+            SteeringDiagnosticTrace.get().begin();
+            // Real MediaController plus receiver, one physical identity. The
+            // fake stock tuner jumps from tile 2 to tile 5 before delivery of UP.
+            SystemClock.sleep(5);
+            long down = SystemClock.uptimeMillis();
+            int before = tuner.tunes().size();
+            dispatchControllerKey(key(down, down, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_NEXT, 0, 0));
+            await(() -> SteeringDiagnosticTrace.get().report().contains("source=handler"), "Missing DOWN");
+            instrumentation.waitForIdleSync();
+            for (int i = 0; i < 60; i++) moveStockTo(new FavoriteStation(0, 98500 + 100 * i, ""));
+            moveStockTo(row[4]);
+            sendReceiverKey(key(down, SystemClock.uptimeMillis(), KeyEvent.ACTION_UP, 274, 0, 0));
+            dispatchControllerKey(key(down, SystemClock.uptimeMillis(), KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_NEXT, 0, 0));
+            waitBeyondMediaKeyFallback();
+            assertActualStation(neighbour);
+            assertEquals("No second step or delayed fallback", before + 1, tuner.tunes().size());
+            // Reverse: stock already reached the correct neighbour. No extra RF write or route.
+            before = tuner.tunes().size();
+            pressWithStockMovement(KeyEvent.KEYCODE_MEDIA_PREVIOUS, row[1]);
+            waitBeyondMediaKeyFallback();
+            assertActualStation(row[1]);
+            assertEquals(before, tuner.tunes().size());
+            assertTrue(SteeringDiagnosticTrace.get().report().contains("already-on-neighbour"));
+        }
+        assertEquals(0, tuner.seekCalls);
+    }
+
+    @Test public void v7TunerChangeAloneIsObservableButNeverAnInferredWheelCommand() throws Exception {
+        verifyV7Profile();
+        expectTune(() -> RadioPlaybackService.tuneStation(context, ALPHA), ALPHA);
+        SteeringDiagnosticTrace.get().begin();
+        int writes = tuner.tunes().size();
+        moveStockTo(DELTA);
+        waitBeyondMediaKeyFallback();
+        assertActualStation(DELTA);
+        assertEquals(writes, tuner.tunes().size());
+        String trace = SteeringDiagnosticTrace.get().report();
+        assertTrue(trace, trace.contains("observed-station-change"));
+        assertFalse(trace, trace.contains("source=navigation"));
+    }
+
+    @Test public void v7UpOnlyAfterRebindDoesNotDoubleStepAnObservedNativeMove() throws Exception {
+        verifyV7Profile();
+        expectTune(() -> RadioPlaybackService.tuneStation(context, ALPHA), ALPHA);
+        int writes = tuner.tunes().size();
+        long down = SystemClock.uptimeMillis() - 200;
+        HcnWheelHistory cold = new HcnWheelHistory();
+        cold.record(ALPHA.band, ALPHA.frequency, down + 10, false);
+        instrumentation.runOnMainSync(() -> setField(service, "hcnWheelHistory", cold));
+        SteeringDiagnosticTrace.get().begin();
+        moveStockTo(DELTA);
+        dispatchControllerKey(key(down, SystemClock.uptimeMillis(), KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_NEXT, 0, 0));
+        await(() -> SteeringDiagnosticTrace.get().report().contains("native-move-without-origin"),
+                "An UP-only key must not advance again from the firmware's new station");
+        waitBeyondMediaKeyFallback();
+        assertActualStation(DELTA);
+        assertEquals(writes, tuner.tunes().size());
+    }
+
+    @Test public void v7AgamaDownOnlyTapsAdvanceImmediatelyAndIndependentlyInBothLists() throws Exception {
+        verifyV7Profile();
+        KeyEvent next = new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_NEXT);
+        KeyEvent up = new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_NEXT);
+        instrumentation.runOnMainSync(() -> {
+            assertFalse(service.handleHcnLauncherArrow("android", next));
+            long now = SystemClock.uptimeMillis();
+            assertFalse(service.handleHcnLauncherArrow(AgamaLauncherControls.AGAMA,
+                    key(now, now, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_NEXT, 0, 0)));
+        });
+        for (boolean fav : new boolean[]{true, false}) {
+            navigation.setFavoritesSelected(fav);
+            expectTune(() -> RadioPlaybackService.tuneStation(context, ALPHA, fav), ALPHA);
+            SteeringDiagnosticTrace.get().begin();
+            Runnable tap = () -> instrumentation.runOnMainSync(() ->
+                    assertTrue(service.handleHcnLauncherArrow(AgamaLauncherControls.AGAMA, next)));
+            expectTune(tap, fav ? BRAVO : CHARLIE);
+            expectTune(tap, fav ? CHARLIE : BRAVO);
+            int writes = tuner.tunes().size();
+            instrumentation.runOnMainSync(() -> assertTrue(service.handleHcnLauncherArrow(AgamaLauncherControls.AGAMA, up)));
+            waitBeyondMediaKeyFallback();
+            assertEquals(writes, tuner.tunes().size());
+            String trace = SteeringDiagnosticTrace.get().report();
+            assertTrue(trace, trace.contains("source=launcher"));
+            assertFalse(trace, trace.contains("source=tracker"));
+        }
+    }
+
+    @Test public void v7OwnPauseResumesOnceWithoutLatePcmFromLauncherOrSameTile() throws Exception {
+        verifyV7Profile();
+        long firstClaim = routingClaimId();
+        expectTune(() -> RadioPlaybackService.tuneStation(context, ALPHA, true), ALPHA);
+        awaitRoutingClaimCompleted(firstClaim, 3); // cold-start wheel routing is unchanged
+        for (boolean launcher : new boolean[]{true, false}) {
+            RadioPlaybackService.pause(context);
+            await(() -> controller.getPlaybackState().getState() == PlaybackState.STATE_PAUSED, "Pause not published");
+            if (launcher) SystemClock.sleep(1550); // also test an immediate tile resume on the second pass
+            int routes = tuner.routeRequests, writes = tuner.tunes().size(), focus = tuner.focusRequests;
+            long claim = routingClaimId();
+            SteeringDiagnosticTrace.get().begin();
+            if (launcher) controls().play();
+            else RadioPlaybackService.tuneStation(context, ALPHA, true);
+            await(() -> tuner.focusRequests > focus, "Resume did not restore OEM focus");
+            SystemClock.sleep(1550);
+            drainServiceCommands();
+            assertEquals(PlaybackState.STATE_PLAYING, controller.getPlaybackState().getState());
+            assertEquals("Only the initial analog source request", routes + 1, tuner.routeRequests);
+            assertEquals("Do not retune the current frequency", writes, tuner.tunes().size());
+            assertEquals(claim, routingClaimId());
+            assertEquals("reused-after-pause", field(RadioPlaybackService.class, "routingPulseStatus", service));
+            assertFalse(SteeringDiagnosticTrace.get().report().contains("source=routing-pulse"));
+        }
+        expectTune(() -> sendReceiverPress(KeyEvent.KEYCODE_MEDIA_NEXT), BRAVO);
+        assertEquals(0, tuner.seekCalls);
+    }
+
+    /** Exercise Android's untargeted media-key route, not just this session's callback. */
+    @Test public void v7SystemWheelAfterQuietResumeFollowsEachListOnce() throws Exception {
+        org.junit.Assume.assumeTrue("Requires an isolated emulator with no competing media player",
+                "true".equals(InstrumentationRegistry.getArguments().getString("v7SystemWheel")));
+        verifyV7Profile();
+        long initialClaim = routingClaimId();
+        expectTune(() -> RadioPlaybackService.tuneStation(context, ALPHA, true), ALPHA);
+        awaitRoutingClaimCompleted(initialClaim, 3);
+        RadioPlaybackService.pause(context);
+        await(() -> controller.getPlaybackState().getState() == PlaybackState.STATE_PAUSED, "Pause not published");
+        controls().play();
+        await(() -> controller.getPlaybackState().getState() == PlaybackState.STATE_PLAYING, "Resume not published");
+        SystemClock.sleep(1500L);
+        assertEquals("reused-after-pause", field(RadioPlaybackService.class, "routingPulseStatus", service));
+        android.media.AudioManager audio = context.getSystemService(android.media.AudioManager.class);
+        assertNotNull(audio);
+        for (boolean fav : new boolean[]{true, false}) {
+            navigation.setFavoritesSelected(fav);
+            int index = 0;
+            for (int key : new int[]{KeyEvent.KEYCODE_MEDIA_NEXT, KeyEvent.KEYCODE_MEDIA_PREVIOUS}) {
+                int initialWrites = tuner.tunes().size();
+                long down = SystemClock.uptimeMillis();
+                audio.dispatchMediaKeyEvent(key(down, down, KeyEvent.ACTION_DOWN, key, 0, 0));
+                audio.dispatchMediaKeyEvent(key(down, down + 1, KeyEvent.ACTION_UP, key, 0, 0));
+                FavoriteStation expected = index++ == 0 ? (fav ? BRAVO : CHARLIE) : ALPHA;
+                await(() -> metadataMatches(expected), "Untargeted wheel event did not reach the correct list neighbour");
+                waitBeyondMediaKeyFallback();
+                assertActualStation(expected);
+                assertEquals("One system key press, one tuner step", initialWrites + 1, tuner.tunes().size());
+            }
+        }
+        assertEquals(0, tuner.seekCalls);
+    }
+
+    /** Optional device-lab test. Use the unmodified launcher on an isolated emulator only. */
+    @Test public void realAgamaV7ArrowsFollowEachListAcrossRepeatedTaps() throws Exception {
+        org.junit.Assume.assumeTrue("Real AGAMA UI fixture not requested",
+                "true".equals(InstrumentationRegistry.getArguments().getString("v7AgamaUi")));
+        verifyV7Profile();
+        FavoriteStation a = new FavoriteStation(0,98100,"QA One");
+        FavoriteStation b = new FavoriteStation(0,99900,"QA Two");
+        FavoriteStation c = new FavoriteStation(0,103100,"QA Three");
+        favorites.replaceOrder(Arrays.asList(a,b,c));
+        catalog.replaceOrder(Arrays.asList(a,c,b));
+        for (boolean fav : new boolean[]{true,false}) {
+            navigation.setFavoritesSelected(fav);
+            expectTune(() -> RadioPlaybackService.tuneStation(context, a, fav), a);
+            int base = tuner.tunes().size();
+            FavoriteStation[] expected = fav ? new FavoriteStation[]{b,c,b} : new FavoriteStation[]{c,b,c};
+            for (int i = 0; i < expected.length; i++) {
+                android.util.Log.i("RadioPlusAgamaQA", (fav ? "FAVORITES" : "CATALOG") + "_" + i
+                        + (i == 2 ? "_PREVIOUS" : "_NEXT"));
+                long until = SystemClock.elapsedRealtime()+120000;
+                while (tuner.tunes().size() == base+i && SystemClock.elapsedRealtime() < until)
+                    SystemClock.sleep(25);
+                drainServiceCommands();
+                assertEquals(base+i+1,tuner.tunes().size());
+                assertActualStation(expected[i]);
+                FavoriteStation selected = expected[i];
+                await(() -> metadataMatches(selected), "Launcher metadata must follow the confirmed station");
+            }
+        }
+        assertEquals(0,tuner.seekCalls);
+    }
+
     @Test public void aDifferentRadioStillNavigatesFromTheLiveFrequency() throws Exception {
         expectTune(() -> RadioPlaybackService.tuneStation(context, ALPHA), ALPHA);
         expectTune(() -> pressWithStockMovement(KeyEvent.KEYCODE_MEDIA_NEXT, BRAVO), CHARLIE);
