@@ -119,4 +119,15 @@
     <string name="message_116" formatted="false">"FAVORITES"</string>
     <string name="message_117" formatted="false">"No stations found yet"</string>
     <string name="message_118" formatted="false">"No favorites yet"</string>
+    <string name="station_logo_library">Built-in logos (%1$d)</string>
+    <string name="station_logo_image_hint">PNG, JPG or WebP · e.g. 400 × 240 px</string>
+    <string name="support_log_saved">Support log saved. You can send the file to the developer.</string>
+    <string name="support_log_save_failed">Could not save the support log</string>
+    <string name="support_log_export">Export support log</string>
+    <string name="support_log_title">Support log</string>
+    <string name="support_log_description">The file contains the version, radio profile, tuning commands, technical states and app crash locations. No names, location or full Android log. You choose where to save and send it.</string>
+    <string name="support_log_picker_unavailable">Document picker is unavailable</string>
+    <string name="reglink_pause_stock">Use the stock radio controls to pause.</string>
+    <string name="reglink_pause_unavailable">Pause is unavailable in this Reglink test. Use the stock radio controls.</string>
+    <string name="reglink_start_stock">Start the stock radio first and leave it running in the background.</string>
 </resources>

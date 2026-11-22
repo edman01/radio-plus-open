@@ -174,4 +174,15 @@
     <string name="settings_unknown">"Indisponível"</string>
     <string name="content_previous_station">Estação anterior</string>
     <string name="content_next_station">Estação seguinte</string>
+    <string name="station_logo_library">Logótipos incluídos (%1$d)</string>
+    <string name="station_logo_image_hint">PNG, JPG ou WebP · por ex., 400 × 240 px</string>
+    <string name="support_log_saved">Registo de diagnóstico guardado. Pode enviar o ficheiro ao programador.</string>
+    <string name="support_log_save_failed">Não foi possível guardar o registo de diagnóstico.</string>
+    <string name="support_log_export">Exportar registo de diagnóstico</string>
+    <string name="support_log_title">Registo de diagnóstico</string>
+    <string name="support_log_description">O ficheiro contém a versão, o perfil do rádio, os comandos de sintonia, os estados técnicos e os pontos do código em que a aplicação falhou. Não inclui nomes, localização nem o registo completo do Android. Pode escolher onde o guardar e a quem o enviar.</string>
+    <string name="support_log_picker_unavailable">O seletor de ficheiros não está disponível.</string>
+    <string name="reglink_pause_stock">Use os controlos do rádio de origem para fazer uma pausa.</string>
+    <string name="reglink_pause_unavailable">A pausa não está disponível neste teste Reglink. Use os controlos do rádio de origem.</string>
+    <string name="reglink_start_stock">Abra primeiro a aplicação de rádio de origem e deixe-a em segundo plano.</string>
 </resources>

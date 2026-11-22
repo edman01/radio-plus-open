@@ -174,4 +174,15 @@
     <string name="message_118" formatted="false">"Zatím žádné oblíbené"</string>
     <string name="content_previous_station">Předchozí stanice</string>
     <string name="content_next_station">Další stanice</string>
+    <string name="station_logo_library">Vestavěná loga (%1$d)</string>
+    <string name="station_logo_image_hint">PNG, JPG nebo WebP · např. 400 × 240 px</string>
+    <string name="support_log_saved">Diagnostický protokol byl uložen. Soubor můžete poslat vývojáři.</string>
+    <string name="support_log_save_failed">Diagnostický protokol se nepodařilo uložit.</string>
+    <string name="support_log_export">Exportovat diagnostický protokol</string>
+    <string name="support_log_title">Diagnostický protokol</string>
+    <string name="support_log_description">Soubor obsahuje verzi aplikace, profil rádia, příkazy k ladění, technické údaje o stavu a místa v kódu, kde aplikace spadla. Neobsahuje jména, údaje o poloze ani úplný protokol Androidu. Sami si zvolíte, kam ho uložíte a komu ho pošlete.</string>
+    <string name="support_log_picker_unavailable">Výběr souborů není k dispozici.</string>
+    <string name="reglink_pause_stock">Pro pozastavení použijte ovládání původního rádia.</string>
+    <string name="reglink_pause_unavailable">V této testovací verzi pro Reglink nelze přehrávání pozastavit. Použijte ovládání původního rádia.</string>
+    <string name="reglink_start_stock">Nejprve spusťte původní aplikaci rádia a nechte ji běžet na pozadí.</string>
 </resources>

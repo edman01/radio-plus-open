@@ -174,4 +174,15 @@
     <string name="message_118" formatted="false">"Inga favoriter ännu"</string>
     <string name="content_previous_station">Föregående station</string>
     <string name="content_next_station">Nästa station</string>
+    <string name="station_logo_library">Inbyggda logotyper (%1$d)</string>
+    <string name="station_logo_image_hint">PNG, JPG eller WebP · t.ex. 400 × 240 px</string>
+    <string name="support_log_saved">Felsökningsloggen har sparats. Du kan skicka filen till utvecklaren.</string>
+    <string name="support_log_save_failed">Det gick inte att spara felsökningsloggen.</string>
+    <string name="support_log_export">Exportera felsökningslogg</string>
+    <string name="support_log_title">Felsökningslogg</string>
+    <string name="support_log_description">Filen innehåller versionen, radioprofilen, inställningskommandon för frekvens, tekniska statusuppgifter och var i koden appen kraschade. Den innehåller inga namn, platsuppgifter eller någon fullständig Android-logg. Du väljer var du sparar filen och till vem du skickar den.</string>
+    <string name="support_log_picker_unavailable">Filväljaren är inte tillgänglig.</string>
+    <string name="reglink_pause_stock">Använd originalradions reglage för att pausa.</string>
+    <string name="reglink_pause_unavailable">Det går inte att pausa i det här Reglink-testet. Använd originalradions reglage.</string>
+    <string name="reglink_start_stock">Starta först den förinstallerade radioappen och låt den köras i bakgrunden.</string>
 </resources>

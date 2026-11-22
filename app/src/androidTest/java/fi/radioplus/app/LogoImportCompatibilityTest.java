@@ -49,6 +49,46 @@ public final class LogoImportCompatibilityTest {
         checkSize(1182, 1182, 512, 512);
     }
 
+    @Test public void advertisedFormatsImportAndReplacingTheSameLogoRefreshesItsPixels() throws Throwable {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        FavoriteStation station = new FavoriteStation(90, 1234567, "Format test");
+        FavoriteAdapter adapter = new FavoriteAdapter(context, null);
+        Bitmap image = Bitmap.createBitmap(1600, 900, Bitmap.Config.ARGB_8888);
+        Bitmap.CompressFormat[] formats = {Bitmap.CompressFormat.PNG, Bitmap.CompressFormat.JPEG,
+                Bitmap.CompressFormat.WEBP};
+        int[] colors = {Color.RED, Color.BLUE, Color.GREEN};
+        String lastToken = null;
+        try {
+            for (int i = 0; i < formats.length; i++) {
+                image.eraseColor(colors[i]);
+                File source = File.createTempFile("radio-plus-format-", ".img", context.getCacheDir());
+                try {
+                    try (FileOutputStream out = new FileOutputStream(source)) {
+                        assertTrue(image.compress(formats[i], 95, out));
+                    }
+                    String token = FavoriteLogoStore.importLogo(context, station, Uri.fromFile(source));
+                    if (lastToken != null) assertEquals(lastToken, token);
+                    lastToken = token;
+                    adapter.invalidateCustomLogo(token);
+                    Bitmap decoded = adapter.customLogoBitmap(token);
+                    assertNotNull(decoded);
+                    assertEquals(512, decoded.getWidth());
+                    assertEquals(288, decoded.getHeight());
+                    int pixel = decoded.getPixel(128, 72);
+                    assertTrue(Math.abs(Color.red(pixel) - Color.red(colors[i])) < 8);
+                    assertTrue(Math.abs(Color.green(pixel) - Color.green(colors[i])) < 8);
+                    assertTrue(Math.abs(Color.blue(pixel) - Color.blue(colors[i])) < 8);
+                    assertTrue("The imported source remains on the device", source.isFile());
+                } finally {
+                    source.delete();
+                }
+            }
+        } finally {
+            FavoriteLogoStore.delete(context, lastToken);
+            image.recycle();
+        }
+    }
+
     private void checkSize(int width, int height, int expectedWidth, int expectedHeight)
             throws Throwable {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();

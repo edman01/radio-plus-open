@@ -174,4 +174,15 @@
     <string name="message_118" formatted="false">"Nie ma jeszcze ulubionych"</string>
     <string name="content_previous_station">Poprzednia stacja</string>
     <string name="content_next_station">Następna stacja</string>
+    <string name="station_logo_library">Wbudowane logo (%1$d)</string>
+    <string name="station_logo_image_hint">PNG, JPG lub WebP · np. 400 × 240 px</string>
+    <string name="support_log_saved">Zapisano dziennik diagnostyczny. Możesz wysłać plik do programisty.</string>
+    <string name="support_log_save_failed">Nie udało się zapisać dziennika diagnostycznego.</string>
+    <string name="support_log_export">Eksportuj dziennik diagnostyczny</string>
+    <string name="support_log_title">Dziennik diagnostyczny</string>
+    <string name="support_log_description">Plik zawiera wersję aplikacji, profil radia, polecenia strojenia, informacje o stanie urządzenia oraz miejsca w kodzie, w których wystąpiła awaria aplikacji. Nie zawiera nazw, danych o lokalizacji ani pełnego dziennika Androida. Ty wybierasz, gdzie go zapisać i komu wysłać.</string>
+    <string name="support_log_picker_unavailable">Wybór pliku jest niedostępny.</string>
+    <string name="reglink_pause_stock">Aby wstrzymać odtwarzanie, użyj przycisków fabrycznego radia.</string>
+    <string name="reglink_pause_unavailable">W tej wersji testowej dla Reglink nie można wstrzymać odtwarzania. Użyj przycisków fabrycznego radia.</string>
+    <string name="reglink_start_stock">Najpierw uruchom fabryczną aplikację radia i pozostaw ją w tle.</string>
 </resources>

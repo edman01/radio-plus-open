@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:minHeight="50dp" android:gravity="center_vertical" android:baselineAligned="false"
+    android:paddingStart="20dp" android:paddingEnd="20dp" android:paddingTop="6dp" android:paddingBottom="6dp">
+    <ImageView android:id="@+id/choice_icon"
+        android:layout_width="38dp" android:layout_height="28dp" android:scaleType="fitCenter"
+        android:importantForAccessibility="no" />
+    <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
+        android:layout_marginStart="12dp" android:layout_marginEnd="8dp" android:orientation="vertical">
+        <TextView android:id="@+id/choice_text" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:textSize="19sp" android:textColor="@color/text_primary" />
+        <TextView android:id="@+id/choice_hint" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:text="@string/station_logo_image_hint"
+            android:textSize="14sp" android:textColor="@color/text_secondary" android:visibility="gone" />
+    </LinearLayout>
+    <ImageView android:id="@+id/choice_check" android:layout_width="22dp" android:layout_height="22dp"
+        android:src="@drawable/ic_station_check" android:importantForAccessibility="no" android:visibility="invisible" />
+</LinearLayout>

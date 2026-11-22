@@ -174,4 +174,15 @@
     <string name="settings_unknown">"Non disponibile"</string>
     <string name="content_previous_station">Stazione precedente</string>
     <string name="content_next_station">Stazione successiva</string>
+    <string name="station_logo_library">Loghi inclusi (%1$d)</string>
+    <string name="station_logo_image_hint">PNG, JPG o WebP · ad es. 400 × 240 px</string>
+    <string name="support_log_saved">Registro di diagnostica salvato. Puoi inviare il file allo sviluppatore.</string>
+    <string name="support_log_save_failed">Impossibile salvare il registro di diagnostica.</string>
+    <string name="support_log_export">Esporta registro di diagnostica</string>
+    <string name="support_log_title">Registro di diagnostica</string>
+    <string name="support_log_description">Il file contiene la versione, il profilo della radio, i comandi di sintonizzazione, gli stati tecnici e i punti del codice in cui l’app si è arrestata. Non contiene nomi, dati sulla posizione o il registro completo di Android. Scegli tu dove salvarlo e a chi inviarlo.</string>
+    <string name="support_log_picker_unavailable">Il selettore di file non è disponibile.</string>
+    <string name="reglink_pause_stock">Usa i comandi della radio di serie per mettere in pausa.</string>
+    <string name="reglink_pause_unavailable">La pausa non è disponibile in questo test Reglink. Usa i comandi della radio di serie.</string>
+    <string name="reglink_start_stock">Avvia prima l’app radio di serie e lasciala in esecuzione in background.</string>
 </resources>

@@ -174,4 +174,15 @@
     <string name="message_118" formatted="false">"Nog geen favorieten"</string>
     <string name="content_previous_station">Vorige zender</string>
     <string name="content_next_station">Volgende zender</string>
+    <string name="station_logo_library">Ingebouwde logo’s (%1$d)</string>
+    <string name="station_logo_image_hint">PNG, JPG of WebP · bijv. 400 × 240 px</string>
+    <string name="support_log_saved">Het diagnoselogboek is opgeslagen. Je kunt het bestand naar de ontwikkelaar sturen.</string>
+    <string name="support_log_save_failed">Het diagnoselogboek kon niet worden opgeslagen.</string>
+    <string name="support_log_export">Diagnoselogboek exporteren</string>
+    <string name="support_log_title">Diagnoselogboek</string>
+    <string name="support_log_description">Het bestand bevat de versie, het radioprofiel, afstemopdrachten, technische statusinformatie en de plekken in de code waar de app is vastgelopen. Het bevat geen namen, locatiegegevens of volledig Android-logboek. Je kiest zelf waar je het opslaat en naar wie je het stuurt.</string>
+    <string name="support_log_picker_unavailable">De bestandskiezer is niet beschikbaar.</string>
+    <string name="reglink_pause_stock">Gebruik de bediening van de originele radio om te pauzeren.</string>
+    <string name="reglink_pause_unavailable">Pauzeren is in deze Reglink-test niet beschikbaar. Gebruik de bediening van de originele radio.</string>
+    <string name="reglink_start_stock">Start eerst de originele radio-app en laat die op de achtergrond draaien.</string>
 </resources>

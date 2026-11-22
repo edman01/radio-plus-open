@@ -69,7 +69,7 @@
     <string name="message_066" formatted="false">"Aseman logo"</string>
     <string name="message_067" formatted="false">"Lisää oma logo laitteelta…"</string>
     <string name="message_068" formatted="false">"Poista logo"</string>
-    <string name="message_069" formatted="false">"Automaattinen logo aseman nimestä"</string>
+    <string name="message_069" formatted="false">"Automaattinen logo nimestä"</string>
     <string name="message_070" formatted="false">"Logo poistettu"</string>
     <string name="message_071" formatted="false">"Automaattinen logo käytössä"</string>
     <string name="message_072" formatted="false">"Logo vaihdettu"</string>
@@ -119,4 +119,15 @@
     <string name="message_116" formatted="false">"SUOSIKIT"</string>
     <string name="message_117" formatted="false">"Ei vielä löydettyjä asemia"</string>
     <string name="message_118" formatted="false">"Ei vielä suosikkeja"</string>
+    <string name="station_logo_library">Valmiit logot (%1$d)</string>
+    <string name="station_logo_image_hint">PNG, JPG tai WebP · esim. 400 × 240 px</string>
+    <string name="support_log_saved">Vianmääritysloki tallennettu. Voit lähettää tiedoston kehittäjälle.</string>
+    <string name="support_log_save_failed">Lokin tallennus epäonnistui</string>
+    <string name="support_log_export">Vie vianmääritysloki</string>
+    <string name="support_log_title">Vianmääritysloki</string>
+    <string name="support_log_description">Tiedosto sisältää version, radioprofiilin, virityskomennot, tekniset tilat ja mahdollisen kaatumisen koodipaikat. Ei nimiä, sijaintia tai koko Android-lokia. Tallennat ja lähetät tiedoston itse.</string>
+    <string name="support_log_picker_unavailable">Tiedoston tallennusvalikko ei ole käytettävissä</string>
+    <string name="reglink_pause_stock">Käytä tauotukseen vakioradion ohjausta.</string>
+    <string name="reglink_pause_unavailable">Tauotus ei ole käytössä Reglink-testissä. Käytä vakioradion ohjausta.</string>
+    <string name="reglink_start_stock">Käynnistä vakioradio ensin ja jätä se taustalle.</string>
 </resources>

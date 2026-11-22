@@ -160,21 +160,7 @@ final class FavoriteAdapter extends BaseAdapter {
                         + compactFrequency(station)
                 : AppLanguage.stationName(context, station.name);
         holder.name.setText(displayName);
-        File customLogo = FavoriteLogoStore.fileForToken(
-                holder.itemView.getContext(),
-                station.logo
-        );
-        Bitmap customBitmap = null;
-        if (customLogo != null && customLogo.isFile()) {
-            String path = customLogo.getAbsolutePath();
-            customBitmap = customLogoCache.get(path);
-            if (customBitmap == null) {
-                customBitmap = decodeCustomLogo(path);
-                if (customBitmap != null) {
-                    customLogoCache.put(path, customBitmap);
-                }
-            }
-        }
+        Bitmap customBitmap = customLogoBitmap(station.logo);
         boolean hasCustomLogo = customBitmap != null;
         int logoResource = StationLogoResolver.resolveForStation(
                 station.logo,
@@ -265,6 +251,23 @@ final class FavoriteAdapter extends BaseAdapter {
         return station.frequencyLabel()
                 .replace(" MHz", "")
                 .replace(" kHz", "");
+    }
+
+    void invalidateCustomLogo(String token) {
+        File file = FavoriteLogoStore.fileForToken(context, token);
+        if (file != null) customLogoCache.remove(file.getAbsolutePath());
+    }
+
+    Bitmap customLogoBitmap(String token) {
+        File file = FavoriteLogoStore.fileForToken(context, token);
+        if (file == null || !file.isFile()) return null;
+        String path = file.getAbsolutePath();
+        Bitmap bitmap = customLogoCache.get(path);
+        if (bitmap == null) {
+            bitmap = decodeCustomLogo(path);
+            if (bitmap != null) customLogoCache.put(path, bitmap);
+        }
+        return bitmap;
     }
 
     private static Bitmap decodeCustomLogo(String path) {

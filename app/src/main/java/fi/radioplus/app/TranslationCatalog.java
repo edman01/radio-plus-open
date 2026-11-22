@@ -133,6 +133,15 @@ final class TranslationCatalog {
         ids.put("Stock radio detection: awaiting connection", R.string.backend_awaiting);
         ids.put("Radio control: ", R.string.backend_control_prefix);
         ids.put("Could not select the radio band", R.string.backend_band_failed);
+        ids.put("Support log saved. You can send the file to the developer.", R.string.support_log_saved);
+        ids.put("Could not save the support log", R.string.support_log_save_failed);
+        ids.put("Export support log", R.string.support_log_export);
+        ids.put("Support log", R.string.support_log_title);
+        ids.put("The file contains the version, radio profile, tuning commands, technical states and app crash locations. No names, location or full Android log. You choose where to save and send it.", R.string.support_log_description);
+        ids.put("Document picker is unavailable", R.string.support_log_picker_unavailable);
+        ids.put("Use the stock radio controls to pause.", R.string.reglink_pause_stock);
+        ids.put("Pause is unavailable in this Reglink test. Use the stock radio controls.", R.string.reglink_pause_unavailable);
+        ids.put("Start the stock radio first and leave it running in the background.", R.string.reglink_start_stock);
         IDS = Collections.unmodifiableMap(ids);
     }
     private TranslationCatalog() {}

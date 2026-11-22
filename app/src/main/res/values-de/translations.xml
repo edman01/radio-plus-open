@@ -174,4 +174,15 @@
     <string name="settings_unknown">"Nicht verfügbar"</string>
     <string name="content_previous_station">Vorheriger Sender</string>
     <string name="content_next_station">Nächster Sender</string>
+    <string name="station_logo_library">Mitgelieferte Logos (%1$d)</string>
+    <string name="station_logo_image_hint">PNG, JPG oder WebP · z. B. 400 × 240 px</string>
+    <string name="support_log_saved">Diagnoseprotokoll gespeichert. Du kannst die Datei an den Entwickler senden.</string>
+    <string name="support_log_save_failed">Das Diagnoseprotokoll konnte nicht gespeichert werden.</string>
+    <string name="support_log_export">Diagnoseprotokoll exportieren</string>
+    <string name="support_log_title">Diagnoseprotokoll</string>
+    <string name="support_log_description">Die Datei enthält die Version, das Radioprofil, Abstimmungsbefehle, technische Zustände und die Stellen im Code, an denen die App abgestürzt ist. Namen, Standort und das vollständige Android-Protokoll sind nicht enthalten. Du entscheidest, wo du sie speicherst und an wen du sie sendest.</string>
+    <string name="support_log_picker_unavailable">Die Dateiauswahl ist nicht verfügbar.</string>
+    <string name="reglink_pause_stock">Verwende zum Pausieren die Bedienelemente der vorinstallierten Radio-App.</string>
+    <string name="reglink_pause_unavailable">In diesem Reglink-Test ist keine Pause möglich. Verwende die Bedienelemente der vorinstallierten Radio-App.</string>
+    <string name="reglink_start_stock">Starte zuerst die vorinstallierte Radio-App und lass sie im Hintergrund laufen.</string>
 </resources>

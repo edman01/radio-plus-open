@@ -174,4 +174,15 @@
     <string name="message_118" formatted="false">"Henüz favori yok"</string>
     <string name="content_previous_station">Önceki istasyon</string>
     <string name="content_next_station">Sonraki istasyon</string>
+    <string name="station_logo_library">Hazır logolar (%1$d)</string>
+    <string name="station_logo_image_hint">PNG, JPG veya WebP · ör. 400 × 240 px</string>
+    <string name="support_log_saved">Tanılama günlüğü kaydedildi. Dosyayı geliştiriciye gönderebilirsiniz.</string>
+    <string name="support_log_save_failed">Tanılama günlüğü kaydedilemedi.</string>
+    <string name="support_log_export">Tanılama günlüğünü dışa aktar</string>
+    <string name="support_log_title">Tanılama günlüğü</string>
+    <string name="support_log_description">Dosya; sürümü, radyo profilini, frekans ayarlama komutlarını, teknik durum bilgilerini ve uygulamanın kodun hangi noktasında çöktüğünü içerir. Ad, konum bilgisi veya Android günlüğünün tamamı yer almaz. Dosyayı nereye kaydedeceğinizi ve kime göndereceğinizi siz seçersiniz.</string>
+    <string name="support_log_picker_unavailable">Dosya seçici kullanılamıyor.</string>
+    <string name="reglink_pause_stock">Duraklatmak için orijinal radyonun kontrollerini kullanın.</string>
+    <string name="reglink_pause_unavailable">Bu Reglink testinde duraklatma kullanılamıyor. Orijinal radyonun kontrollerini kullanın.</string>
+    <string name="reglink_start_stock">Önce orijinal radyo uygulamasını açın ve arka planda çalışır durumda bırakın.</string>
 </resources>

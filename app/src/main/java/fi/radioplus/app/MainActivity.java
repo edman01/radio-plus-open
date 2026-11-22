@@ -392,6 +392,7 @@ public final class MainActivity extends Activity implements
                         FavoriteLogoStore.delete(this, token);
                         return;
                     }
+                    favoriteAdapter.invalidateCustomLogo(token);
                     saveStationMetadata(latest.withLogo(token));
                     refreshFavorites();
                     toast(tr("Oma logo tallennettu", "Custom logo saved"));
@@ -2321,53 +2322,8 @@ public final class MainActivity extends Activity implements
     }
 
     private void showLogoDialog(FavoriteStation station) {
-        if (!BuildConfig.BUNDLED_STATION_LOGOS) {
-            showCarDialog(new AlertDialog.Builder(this)
-                    .setTitle(tr("Aseman logo", "Station logo"))
-                    .setItems(new String[]{
-                            tr("Lisää oma logo laitteelta…", "Add custom logo from device…"),
-                            tr("Poista logo", "Remove logo")
-                    }, (ignored, which) -> {
-                        if (which == 0) {
-                            openLogoPicker(station);
-                        } else {
-                            setFavoriteLogo(station, StationLogoResolver.NO_LOGO);
-                        }
-                    })
-                    .setNegativeButton(tr("Peruuta", "Cancel"), null));
-            return;
-        }
-        String[] actions = new String[StationLogoResolver.BUILTIN_NAMES.length + 3];
-        actions[0] = tr(
-                "Automaattinen logo aseman nimestä",
-                "Automatic logo from station name"
-        );
-        actions[1] = tr("Lisää oma logo laitteelta…", "Add custom logo from device…");
-        actions[2] = tr("Poista logo", "Remove logo");
-        System.arraycopy(
-                StationLogoResolver.BUILTIN_NAMES,
-                0,
-                actions,
-                3,
-                StationLogoResolver.BUILTIN_NAMES.length
-        );
-        showCarDialog(new AlertDialog.Builder(this)
-                .setTitle(tr("Aseman logo", "Station logo"))
-                .setItems(actions, (ignored, which) -> {
-                    if (which == 0) {
-                        setFavoriteLogo(station, "");
-                    } else if (which == 1) {
-                        openLogoPicker(station);
-                    } else if (which == 2) {
-                        setFavoriteLogo(station, StationLogoResolver.NO_LOGO);
-                    } else {
-                        setFavoriteLogo(
-                                station,
-                                StationLogoResolver.BUILTIN_TOKENS[which - 3]
-                        );
-                    }
-                })
-                .setNegativeButton(tr("Peruuta", "Cancel"), null));
+        StationLogoDialog.show(this, station, favoriteAdapter.customLogoBitmap(station.logo) != null,
+                () -> openLogoPicker(station), token -> setFavoriteLogo(station, token));
     }
 
     private void setFavoriteLogo(FavoriteStation station, String logoToken) {
