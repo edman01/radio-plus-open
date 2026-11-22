@@ -138,6 +138,8 @@ public final class RadioPlaybackService extends MediaBrowserService {
     private StationNavigationStore stationNavigationStore;
     private volatile FavoriteStation pendingWidgetStation;
     private boolean pendingStationReusesPlayback;
+    private static final String EXTRA_UI_FROM_FAVORITES = "fi.radioplus.app.extra.UI_FROM_FAVORITES";
+    private Boolean pendingStationFromFavorites;
     private boolean pendingStationPreviousPlaybackRequested;
     private long pendingStationPlaybackRevision;
     private RadioCommand pendingRadioCommand;
@@ -281,17 +283,22 @@ public final class RadioPlaybackService extends MediaBrowserService {
     }
 
     static void tuneStation(Context context, FavoriteStation station) {
+        tuneStation(context, station, null);
+    }
+
+    static void tuneStation(Context context, FavoriteStation station, Boolean fromFavorites) {
         if (station == null
                 || !FrequencyRules.isValid(station.band, station.frequency)) {
             return;
         }
         RadioPlaybackService current = runningInstance;
         if (current != null && !current.stopping) {
-            current.mainHandler.post(() -> current.queueStation(station, !current.uiTakeoverRequired));
+            current.mainHandler.post(() -> current.queueStation(station, !current.uiTakeoverRequired, fromFavorites));
             return;
         }
         Intent service = new Intent(context, RadioPlaybackService.class);
         service.setAction(ACTION_TUNE_UI_STATION);
+        if (fromFavorites != null) service.putExtra(EXTRA_UI_FROM_FAVORITES, fromFavorites.booleanValue());
         service.putExtra(EXTRA_STATION_BAND, station.band);
         service.putExtra(EXTRA_STATION_FREQUENCY, station.frequency);
         service.putExtra(EXTRA_STATION_NAME, station.name);
@@ -1259,11 +1266,9 @@ public final class RadioPlaybackService extends MediaBrowserService {
     private void selectAdjacentStation(boolean next, ReglinkRadioApi launcherRadio) {
         // Snapshot the list when the command arrives. A later tab change must
         // not redirect a queued press, and no list must ever fall back to seek.
-        List<FavoriteStation> stations = launcherRadio != null ? favoriteStore.load() : stationNavigationStore.load();
-        SteeringDiagnosticTrace.get().event("navigation", (next ? "next" : "previous")
-                + " list=" + (launcherRadio != null || stationNavigationStore.favoritesSelected() ? "favorites" : "stations")
-                + " count=" + stations.size());
-        if (stations.isEmpty()) {
+        boolean visibleFavorites = stationNavigationStore.favoritesSelected();
+        List<FavoriteStation> visibleStations = launcherRadio == null ? stationNavigationStore.load(visibleFavorites) : null;
+        if (visibleStations != null && visibleStations.isEmpty()) {
             Log.i(TAG, "Media skip ignored: selected station list is empty");
             return;
         }
@@ -1276,6 +1281,12 @@ public final class RadioPlaybackService extends MediaBrowserService {
         executeRadioCommand(next ? "next preset" : "previous preset", (current, epoch) -> {
             if (launcherRadio != null && (current != launcherRadio || !isCurrentPlayback(epoch, current)
                     || !launcherRadio.requestStockPlayback())) return;
+            // Resolve launcher origin after earlier station selections on this executor.
+            boolean fromFavorites = launcherRadio == null ? visibleFavorites : stationNavigationStore.playbackFromFavorites();
+            List<FavoriteStation> stations = launcherRadio == null ? visibleStations : stationNavigationStore.load(fromFavorites);
+            SteeringDiagnosticTrace.get().event("navigation", (next ? "next" : "previous")
+                    + " list=" + (fromFavorites ? "favorites" : "stations") + " count=" + stations.size());
+            if (stations.isEmpty()) return;
             SpdRadioProbe.Frequency spd = current instanceof SpdRadioApi
                     ? ((SpdRadioApi) current).frequency() : null;
             int band = spd == null ? normalizeBand(current.getCurrentBand()) : spd.grid.band;
@@ -1296,6 +1307,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
                 SteeringDiagnosticTrace.get().event("tuner", "frequency-confirmed=" + tuned);
                 if (tuned && isCurrentPlayback(epoch, current)) {
                     oemRouteActive = finishConfirmedTuneRoute(current);
+                    if (launcherRadio == null) rememberConfirmedList(current, fromFavorites);
                     SteeringDiagnosticTrace.get().event("tuner", "route-reported=" + oemRouteActive);
                     mainHandler.post(this::refreshMediaMetadataFromRadio);
                     Log.i(TAG, "Media preset confirmed: " + target.key());
@@ -1322,14 +1334,15 @@ public final class RadioPlaybackService extends MediaBrowserService {
                 band,
                 frequency,
                 intent.getStringExtra(EXTRA_STATION_NAME)
-        ), reusePlayback);
+        ), reusePlayback, ACTION_TUNE_UI_STATION.equals(intent.getAction()) && intent.hasExtra(EXTRA_UI_FROM_FAVORITES)
+                ? intent.getBooleanExtra(EXTRA_UI_FROM_FAVORITES, true) : null);
     }
 
     private void queueStation(FavoriteStation station) {
-        queueStation(station, false);
+        queueStation(station, false, null);
     }
 
-    private void queueStation(FavoriteStation station, boolean reusePlayback) {
+    private void queueStation(FavoriteStation station, boolean reusePlayback, Boolean fromFavorites) {
         if (station == null
                 || !FrequencyRules.isValid(station.band, station.frequency)) {
             return;
@@ -1337,6 +1350,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
         FavoriteStation stored = findStoredStation(station.band, station.frequency);
         pendingWidgetStation = stored == null ? station : stored;
         pendingStationReusesPlayback = reusePlayback;
+        pendingStationFromFavorites = fromFavorites;
         pendingStationPreviousPlaybackRequested = playbackRequested;
         setPlaybackRequested(true);
         pendingStationPlaybackRevision = playbackRequestRevision;
@@ -1349,6 +1363,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
     private void tunePendingWidgetStation() {
         FavoriteStation target = pendingWidgetStation;
         boolean reusePlayback = pendingStationReusesPlayback;
+        Boolean fromFavorites = pendingStationFromFavorites;
         boolean previouslyRequested = pendingStationPreviousPlaybackRequested;
         long requestRevision = pendingStationPlaybackRevision;
         if (target == null) {
@@ -1361,6 +1376,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
             boolean tuned = tuneTo(current, target, epoch);
             if (tuned && isCurrentPlayback(epoch, current)) {
                 oemRouteActive = finishConfirmedTuneRoute(current);
+                rememberConfirmedList(current, fromFavorites);
             }
             mainHandler.post(this::refreshMediaMetadataFromRadio);
             mainHandler.post(() -> {
@@ -1375,6 +1391,13 @@ public final class RadioPlaybackService extends MediaBrowserService {
                     ? "Station tune confirmed: " + target.key()
                     : "Station tune was not confirmed: " + target.key());
         });
+    }
+
+    private void rememberConfirmedList(IRadioServiceAPI current, Boolean fromFavorites) {
+        if (fromFavorites != null && current instanceof ReglinkRadioApi
+                && ((ReglinkRadioApi) current).isS602External4754()) {
+            stationNavigationStore.rememberPlaybackList(fromFavorites);
+        }
     }
 
     private boolean finishConfirmedTuneRoute(IRadioServiceAPI current) throws RemoteException {

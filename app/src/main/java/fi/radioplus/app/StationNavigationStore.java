@@ -28,7 +28,22 @@ final class StationNavigationStore {
         RadioPlaybackService.notifyMediaLibraryChanged();
     }
 
+    // The tab on screen is not necessarily the list the playing station came from.
+    // On upgrade keep dev40's favorites behavior until a list selection is confirmed.
+    boolean playbackFromFavorites() {
+        return preferences.getBoolean("playback_from_favorites", true);
+    }
+
+    void rememberPlaybackList(boolean fromFavorites) {
+        if (playbackFromFavorites() != fromFavorites)
+            preferences.edit().putBoolean("playback_from_favorites", fromFavorites).apply();
+    }
+
+    List<FavoriteStation> load(boolean fromFavorites) {
+        return fromFavorites ? favorites.load() : stations.load();
+    }
+
     List<FavoriteStation> load() {
-        return favoritesSelected() ? favorites.load() : stations.load();
+        return load(favoritesSelected());
     }
 }

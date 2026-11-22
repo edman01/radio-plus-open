@@ -41,8 +41,12 @@ but presets stopped responding after a round trip through AM.
 
 Dev40 changes band switching on **S6.02 with external tuner 4754 only**. It
 recalls the last station on the new band and waits for the tuner before setting
-a different preset. AGAMA Car Launcher 6.1.3's on-screen arrows step through
-Radio+ favorites in saved order. Select **Any active player** in AGAMA's music
+a different preset. In dev41, AGAMA Car Launcher 6.1.3's on-screen arrows
+follow the list used to play a station: **Stations** follows the saved station
+list and **Favorites** follows favorites in saved order. Browsing the other tab
+does not switch lists. Until the first confirmed list selection, AGAMA uses
+favorites as in dev40. An empty list does not trigger a tuner seek.
+Select **Any active player** in AGAMA's music
 integration. On Android 8.1 AGAMA checks its own notification access and storage
 permission before sending the arrows; Radio+ does not request either. Both
 changes need confirmation on the head unit. CAN buttons retain their stock seek

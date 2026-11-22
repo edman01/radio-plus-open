@@ -545,17 +545,21 @@ public final class ReglinkRadioInteropTest {
     }
 
     @Test public void assistedServiceUiEntryAdoptsAudioAndYieldsWithoutAnyAudioWrite() throws Exception {
-        exerciseService(false);
+        exerciseService(false, false);
     }
 
     /** Optional end-to-end check: operate the actual launcher's Next then Previous controls. */
-    @Test public void realAgamaNextPreviousSelectOneFavoriteEachOnSyntheticS602() throws Exception {
+    @Test public void realAgamaFollowsConfirmedStationAndFavoriteLists() throws Exception {
         org.junit.Assume.assumeTrue("Manual emulator launcher fixture not requested", "true".equals(
                 androidx.test.platform.app.InstrumentationRegistry.getArguments().getString("reglinkAgamaManual")));
-        exerciseService(true);
+        exerciseService(true, true);
     }
 
-    private void exerciseService(boolean agama) throws Exception {
+    @Test public void launcherListTracksPlaybackNotBrowsingOnS602() throws Exception {
+        exerciseService(true, false);
+    }
+
+    private void exerciseService(boolean agama, boolean manual) throws Exception {
         org.junit.Assume.assumeTrue("Service injection is emulator-only", "ranchu".equals(android.os.Build.HARDWARE)
                 || "goldfish".equals(android.os.Build.HARDWARE));
         android.app.Instrumentation instrumentation = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation();
@@ -591,32 +595,75 @@ public final class ReglinkRadioInteropTest {
                 assertEquals(Boolean.TRUE, reflected(RadioPlaybackService.class, "oemRouteActive", service));
                 assertTrue(RadioPlaybackService.shouldIgnoreRawMediaKeys());
                 if (agama) {
-                    FavoriteStore inMemory = new FavoriteStore(new android.content.ContextWrapper(context) {
+                    String prefix = "reglink-agama-" + java.util.UUID.randomUUID() + "-";
+                    java.util.Set<String> prefs = new java.util.HashSet<>();
+                    android.content.Context isolated = new android.content.ContextWrapper(context) {
                         @Override public android.content.Context getApplicationContext() { return this; }
                         @Override public android.content.SharedPreferences getSharedPreferences(String name, int mode) {
-                            return context.getSharedPreferences("reglink-agama-qa", mode);
+                            prefs.add(prefix + name);
+                            return context.getSharedPreferences(prefix + name, mode);
                         }
-                    });
+                    };
+                    FavoriteStore favorites = new FavoriteStore(isolated);
+                    StationStore catalog = new StationStore(isolated);
+                    StationNavigationStore nav = new StationNavigationStore(isolated);
                     try {
-                        inMemory.save(new FavoriteStation(0, 98100, "QA Alpha"));
-                        inMemory.save(new FavoriteStation(0, 104800, "QA Bravo"));
-                        instrumentation.runOnMainSync(() -> {
-                            try {
-                                java.lang.reflect.Field f = RadioPlaybackService.class.getDeclaredField("favoriteStore");
-                                f.setAccessible(true); f.set(service, inMemory);
-                            } catch (ReflectiveOperationException e) { throw new AssertionError(e); }
-                        });
-                        android.util.Log.i("ReglinkAgamaQA", "READY: press NEXT then PREVIOUS in AGAMA");
-                        long end = android.os.SystemClock.elapsedRealtime() + 120_000;
-                        while (android.os.SystemClock.elapsedRealtime() < end) {
+                        FavoriteStation alpha = new FavoriteStation(0, 98100, "QA Alpha");
+                        catalog.save(alpha);
+                        catalog.save(new FavoriteStation(0, 100900, "QA Catalog"));
+                        setServiceField(instrumentation, service, "stationStore", catalog);
+                        setServiceField(instrumentation, service, "favoriteStore", favorites);
+                        setServiceField(instrumentation, service, "stationNavigationStore", nav);
+                        assertTrue(nav.playbackFromFavorites()); // dev40 upgrade, no confirmed selection yet.
+                        for (boolean fromFavorites : new boolean[]{false, true}) {
+                            if (fromFavorites) {
+                                favorites.save(alpha); // Same station in both lists, different successor.
+                                favorites.save(new FavoriteStation(0, 104800, "QA Favorite"));
+                            }
+                            nav.setFavoritesSelected(fromFavorites);
+                            RadioPlaybackService.tuneStation(context, alpha, fromFavorites);
+                            nav.setFavoritesSelected(!fromFavorites); // Browse without playing.
                             drainService(instrumentation, service);
-                            if (tuner.tunes.size() >= 2) break;
-                            android.os.SystemClock.sleep(200);
+                            assertEquals(fromFavorites, new StationNavigationStore(isolated).playbackFromFavorites());
+                            int initialWrites = tuner.tunes.size();
+                            // A wheel-like hardware event from a non-launcher controller must
+                            // not add a Radio+ tune or turn the OEM seek into a second skip.
+                            android.media.session.MediaController wheel = new android.media.session.MediaController(
+                                    context, browser.getSessionToken());
+                            long down = android.os.SystemClock.uptimeMillis();
+                            for (int action : new int[]{android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.ACTION_UP})
+                                wheel.dispatchMediaButtonEvent(new android.view.KeyEvent(down, down, action,
+                                        android.view.KeyEvent.KEYCODE_MEDIA_NEXT, 0, 0, 3, 87));
+                            wheel.getTransportControls().skipToNext();
+                            drainService(instrumentation, service);
+                            assertEquals(initialWrites, tuner.tunes.size());
+                            if (manual) {
+                                android.util.Log.i("ReglinkAgamaQA", fromFavorites ? "READY_FAVORITES" : "READY_CATALOG");
+                                long end = android.os.SystemClock.elapsedRealtime() + 120_000;
+                                while (android.os.SystemClock.elapsedRealtime() < end) {
+                                    drainService(instrumentation, service);
+                                    if (tuner.tunes.size() >= initialWrites + 2) break;
+                                    android.os.SystemClock.sleep(200);
+                                }
+                            } else {
+                                java.lang.reflect.Method skip = RadioPlaybackService.class.getDeclaredMethod(
+                                        "selectAdjacentStation", boolean.class, ReglinkRadioApi.class);
+                                skip.setAccessible(true);
+                                instrumentation.runOnMainSync(() -> {
+                                    try { skip.invoke(service, true, api); skip.invoke(service, false, api); }
+                                    catch (ReflectiveOperationException e) { throw new AssertionError(e); }
+                                });
+                            }
+                            drainService(instrumentation, service);
+                            assertEquals(Arrays.asList(fromFavorites ? "fm:10480" : "fm:10090", "fm:9810"),
+                                    tuner.tunes.subList(initialWrites, tuner.tunes.size()));
                         }
+                        // A rejected selection from the other list must not replace the origin.
+                        RadioPlaybackService.tuneStation(context, new FavoriteStation(3, 522, "Invalid for this tuner"), false);
                         drainService(instrumentation, service);
-                        assertEquals(Arrays.asList("fm:10480", "fm:9810"), tuner.tunes);
+                        assertTrue(nav.playbackFromFavorites());
                         return;
-                    } finally { context.deleteSharedPreferences("reglink-agama-qa"); }
+                    } finally { for (String name : prefs) context.deleteSharedPreferences(name); }
                 }
                 android.media.session.MediaController controller = new android.media.session.MediaController(context, browser.getSessionToken());
                 controller.getTransportControls().skipToNext();
@@ -647,6 +694,16 @@ public final class ReglinkRadioInteropTest {
     private static Object reflected(Class<?> type, String name, Object target) {
         try { java.lang.reflect.Field field = type.getDeclaredField(name); field.setAccessible(true); return field.get(target); }
         catch (ReflectiveOperationException error) { throw new AssertionError(error); }
+    }
+
+    private static void setServiceField(android.app.Instrumentation ins, RadioPlaybackService service,
+            String name, Object value) {
+        ins.runOnMainSync(() -> {
+            try {
+                java.lang.reflect.Field field = RadioPlaybackService.class.getDeclaredField(name);
+                field.setAccessible(true); field.set(service, value);
+            } catch (ReflectiveOperationException e) { throw new AssertionError(e); }
+        });
     }
 
     private static void awaitRequested(boolean expected) {

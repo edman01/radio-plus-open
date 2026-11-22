@@ -372,6 +372,10 @@ final class RadioApiFactory {
         ReglinkRadioApi api = resolvedReglink;
         return api != null && api.asBinder().isBinderAlive() && api.isStockAssisted();
     }
+    static boolean usesS602LauncherLists() {
+        ReglinkRadioApi api = resolvedReglink;
+        return api != null && !api.isClosed() && api.isS602External4754();
+    }
     static boolean selectedSupportsTuning() {
         Detection detection = latest;
         return detection != null && detection.profile != RadioBackendProfile.UNKNOWN

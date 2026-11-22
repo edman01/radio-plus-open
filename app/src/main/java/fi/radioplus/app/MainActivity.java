@@ -2067,12 +2067,16 @@ public final class MainActivity extends Activity implements
         }
         showCarDialog(new AlertDialog.Builder(this)
                 .setTitle(tr("Asemalista", "Station list"))
-                .setItems(labels, (ignored, which) -> onTune(stations.get(which)))
+                .setItems(labels, (ignored, which) -> onTuneFromList(stations.get(which), false))
                 .setNegativeButton(tr("Sulje", "Close"), null));
     }
 
     @Override
     public void onTune(FavoriteStation station) {
+        onTuneFromList(station, showingFavorites);
+    }
+
+    private void onTuneFromList(FavoriteStation station, boolean fromFavorites) {
         if (!FrequencyRules.isValid(station.band, station.frequency)) {
             toast(tr(
                     "Tallennetun aseman taajuus ei ole kelvollinen",
@@ -2089,7 +2093,8 @@ public final class MainActivity extends Activity implements
                 station.key(),
                 activeFavoriteKey,
                 playbackActive
-        )) {
+        ) && !(RadioApiFactory.usesS602LauncherLists()
+                && stationNavigationStore.playbackFromFavorites() != fromFavorites)) {
             if (RadioApiFactory.selectedUsesReglink()) {
                 toast(tr("Käytä tauotukseen vakioradion ohjausta.", "Use the stock radio controls to pause."));
                 return;
@@ -2136,7 +2141,7 @@ public final class MainActivity extends Activity implements
         showActiveFavorite(station.key(), true);
         pendingTuneKey = station.key();
         pendingTuneAt = SystemClock.elapsedRealtime();
-        RadioPlaybackService.tuneStation(this, station);
+        RadioPlaybackService.tuneStation(this, station, fromFavorites);
         scheduleUnnamedStationPrompt(station);
     }
 
