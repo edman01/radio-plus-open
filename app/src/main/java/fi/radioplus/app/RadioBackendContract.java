@@ -26,7 +26,7 @@ final class RadioBackendContract {
     }
 
     static Intent serviceIntent(RadioBackendProfile profile) {
-        if (profile == RadioBackendProfile.REGLINK_S574_ASSISTED) {
+        if (profile.isAssistedReglink()) {
             return new Intent("com.reglink.action.DroidCarService").setComponent(
                     new ComponentName("com.reglink.services", "com.reglink.services.DroidCarService"));
         }

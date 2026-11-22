@@ -75,7 +75,11 @@ final class RadioApiFactory {
             Detection detection = inspectInstalled(application);
             SupportTestLog.event(SupportTestLog.Event.DETECTED, detection.profile.ordinal(), 0);
             if (latest == null || latest.profile != detection.profile
-                    || !latest.sha256.equals(detection.sha256)) resolvedNwd = null;
+                    || !latest.sha256.equals(detection.sha256)) {
+                resolvedNwd = null;
+                resolvedReglink = null;
+                reglinkConnections.clear();
+            }
             latest = detection;
             MAIN.post(() -> callback.onDetected(detection));
         });
@@ -102,9 +106,9 @@ final class RadioApiFactory {
                             || nwdAudio.usesDecoderLifecycle() != decoder)) {
                         nwdAudio = new NwdAudioRouting(application, decoder);
                     }
-                    if (detection.profile == RadioBackendProfile.REGLINK_S574_ASSISTED
+                    if (detection.profile.isAssistedReglink()
                             && detection.profile.isEnabledForDeviceControl()) {
-                        api = reglinkConnections.resolve(binder);
+                        api = reglinkConnections.resolve(binder, detection.profile);
                     } else if (detection.profile.isSpd()) {
                         if (spdSource == null) spdSource = new SpdAudioSourceReader(application);
                         api = spdConnections.resolve(binder, spdSource);
@@ -120,6 +124,7 @@ final class RadioApiFactory {
                             detection.sha256, endpointProblem(error));
                 }
             }
+            if (!(api instanceof ReglinkRadioApi)) reglinkConnections.clear();
             latest = detection;
             resolvedNwd = api instanceof NwdRadioApi ? (NwdRadioApi) api : null;
             resolvedReglink = api instanceof ReglinkRadioApi ? (ReglinkRadioApi) api : null;
@@ -196,7 +201,7 @@ final class RadioApiFactory {
                         "The SPD audio-source framework has not been verified");
             }
             if (candidate.profile != RadioBackendProfile.UNKNOWN && !candidate.profile.isEnabledForDeviceControl()) {
-                if (candidate.profile == RadioBackendProfile.REGLINK_S574_ASSISTED) {
+                if (candidate.profile.isAssistedReglink()) {
                     SupportTestLog.problem(SupportTestLog.Problem.TEST_BUILD_REQUIRED);
                 }
                 candidate = new Detection(RadioBackendProfile.UNKNOWN, stockPackage,
@@ -339,7 +344,7 @@ final class RadioApiFactory {
         NwdRadioApi api = resolvedNwd;
         return detection != null && (detection.profile == RadioBackendProfile.HCN_CURRENT_31
                 || detection.profile == RadioBackendProfile.HCN_LEGACY_25
-                || (detection.profile == RadioBackendProfile.REGLINK_S574_ASSISTED && liveReglink())
+                || (detection.profile.isAssistedReglink() && liveReglink())
                 || (detection.profile.isNwd() && api != null && api.asBinder().isBinderAlive() && api.supportsScanning()));
     }
     static boolean selectedSupportsLocalMode() {

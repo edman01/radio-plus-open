@@ -29,7 +29,7 @@ Preview station names and radio text are fixtures, not live reception. Release
 builds do not enable preview mode. The public build has no bundled station logos.
 See [testing](TESTING.md) for instrumentation commands and hardware limitations.
 
-## Reglink S5.74 device-test build
+## Reglink device-test build
 
 The stock-assisted Reglink preview is explicitly opt-in:
 
@@ -40,7 +40,7 @@ gradle :app:testPlayDebugUnitTest :app:assemblePlayDebug :app:assemblePlayDebugA
 For a signed release test APK, use the same property with `:app:assemblePlayRelease`
 and the signing variables below. Without the property, Reglink control remains
 disabled. This does not change the Junsun backend or enable arbitrary Reglink
-firmware. Read the [requirements and limitations](EXPERIMENTAL.md#development-only-preview-dev37--reglink-s574)
+firmware. Read the [requirements and limitations](EXPERIMENTAL.md#reglink-device-test-preview--s574-and-s602)
 before testing. Never run manufacturer firmware or APKs in the emulator to claim
 hardware validation; instrumentation uses synthetic protocol endpoints only.
 

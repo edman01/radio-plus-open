@@ -14,7 +14,7 @@ import java.util.Set;
 import java.util.function.BooleanSupplier;
 
 /**
- * Independently authored tuner protocol. The opt-in S5.74 test path keeps the
+ * Independently authored tuner protocol. The opt-in assisted profiles keep the
  * real stock application as audio owner; it never claims its MediaHub identity.
  * The single-argument constructor is the protocol test foundation only.
  */
@@ -23,6 +23,7 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
     static final String RADIO_DESCRIPTOR = "com.reglink.services.IRadioService";
     static final String CALLBACK_DESCRIPTOR = "com.reglink.services.IRadioCallback";
     private static final long TUNE_WAIT_MS = 1600;
+    private static final long BAND_RECALL_WAIT_MS = 3200;
     private static final long SCAN_STOP_WAIT_MS = 1600;
     private static final long SCAN_START_WAIT_MS = 2500;
     private static final int MAX_SCAN_RESULTS = 512;
@@ -63,9 +64,11 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
     private final IBinder radio;
     private final ReglinkCapabilityReader.Snapshot capabilities;
     private final ReglinkStockSession stockSession;
+    private final boolean s602External4754;
     private final Object operationLock = new Object();
     private final Object stateLock = new Object();
     private volatile boolean closed;
+    private volatile long bandSettlingUntil;
     private volatile boolean capabilitiesInvalidated;
     private RadioObserver observer;
     private RadioObserver pendingObserverCleanup;
@@ -76,6 +79,11 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
     private int callbackState;
     private String pendingBand = "";
     private int pendingFrequency;
+    // Only a completed (not cancelled/failed) wait may be superseded, by a
+    // different selection after the last coherent readback is verified again.
+    private Snapshot timedOutAt;
+    private String timedOutTargetBand;
+    private int timedOutTargetRaw;
     private long tuneGeneration;
     private boolean tuneDispatching;
     // Request bookkeeping, not exclusive OEM ownership. The assisted path
@@ -91,13 +99,15 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
     private long scanRequestedAt;
     private final Set<Integer> scanResults = new LinkedHashSet<>();
 
-    ReglinkRadioApi(IBinder common) throws RemoteException { this(common, false); }
+    ReglinkRadioApi(IBinder common) throws RemoteException { this(common, null); }
 
-    static ReglinkRadioApi stockAssisted(IBinder common) throws RemoteException {
-        return new ReglinkRadioApi(common, true);
+    static ReglinkRadioApi stockAssisted(IBinder common, RadioBackendProfile profile) throws RemoteException {
+        if (profile == null || !profile.isAssistedReglink()) throw new RemoteException("Unknown assisted profile");
+        return new ReglinkRadioApi(common, profile);
     }
 
-    private ReglinkRadioApi(IBinder common, boolean assisted) throws RemoteException {
+    private ReglinkRadioApi(IBinder common, RadioBackendProfile profile) throws RemoteException {
+        boolean assisted = profile != null;
         if (common == null || !COMMON_DESCRIPTOR.equals(common.getInterfaceDescriptor())) {
             throw new RemoteException("Unexpected Reglink service Binder");
         }
@@ -115,7 +125,8 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
             SupportTestLog.problem(SupportTestLog.Problem.TUNER_NOT_SUPPORTED);
             throw new RemoteException("Reglink test build requires the external MCU tuner");
         }
-        stockSession = assisted ? new ReglinkStockSession(common) : null;
+        s602External4754 = profile == RadioBackendProfile.REGLINK_S602_ASSISTED && "4754".equals(capabilities.module);
+        stockSession = assisted ? new ReglinkStockSession(common, profile, capabilities.module) : null;
         if (assisted) SupportTestLog.event(SupportTestLog.Event.CAPABILITIES, capabilities.kind.ordinal(),
                 Integer.parseInt(capabilities.module));
         radio = transact(common, COMMON_DESCRIPTOR, 2,
@@ -131,6 +142,7 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
     }
 
     boolean isStockAssisted() { return stockSession != null; }
+    boolean isS602External4754() { return s602External4754; }
     boolean isClosed() { return closed; }
 
     private void requireStockRoute() throws RemoteException {
@@ -149,13 +161,39 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
         }
     }
 
+    private ReglinkStockSession.State observeStockRoute() throws RemoteException {
+        try {
+            ReglinkStockSession.State route = stockSession.read();
+            if (!route.stockOwnsRoute) {
+                invalidateObservedScan(SupportTestLog.Problem.SOURCE_CHANGED_DURING_SCAN);
+            }
+            return route;
+        } catch (RemoteException | RuntimeException error) {
+            invalidateObservedScan(SupportTestLog.Problem.SOURCE_READ_FAILED);
+            throw error;
+        }
+    }
+
+    private void invalidateObservedScan(SupportTestLog.Problem reason) {
+        synchronized (stateLock) {
+            if (scanOwned || scanComplete) {
+                SupportTestLog.problem(reason);
+                invalidateScanLocked();
+            }
+        }
+    }
+
+    Snapshot snapshotForPoll() throws RemoteException {
+        boolean watch;
+        synchronized (stateLock) { watch = stockSession != null && scanOwned; }
+        if (watch) observeStockRoute();
+        return snapshot();
+    }
+
     RadioPlaybackHealthReader.Snapshot readHealth() {
         try {
             if (stockSession == null) return new RadioPlaybackHealthReader.Snapshot(false, "", false, false);
-            ReglinkStockSession.State route = stockSession.read();
-            if (!route.stockOwnsRoute) {
-                synchronized (stateLock) { if (scanOwned || scanComplete) invalidateScanLocked(); }
-            }
+            ReglinkStockSession.State route = observeStockRoute();
             Snapshot state = snapshot();
             return new RadioPlaybackHealthReader.Snapshot(true,
                     route.stockOwnsRoute ? "com.reglink.apps.radio" : "other",
@@ -243,6 +281,15 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
         requireStockRoute();
     }
 
+    static final class BandTransitionReadback extends RemoteException {
+        BandTransitionReadback(String message) { super(message); }
+    }
+
+    private RemoteException unstableRead(String message) {
+        return SystemClock.elapsedRealtime() < bandSettlingUntil
+                ? new BandTransitionReadback(message) : new RemoteException(message);
+    }
+
     /** Read-only; never substitutes callback scan progress for the tuned frequency. */
     Snapshot snapshot() throws RemoteException {
         for (int attempt = 0; attempt < 3; attempt++) {
@@ -260,7 +307,7 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
             String after = call(5, null, Parcel::readString);
             if (before == null || !before.equals(after) || frequency != afterFrequency) continue;
             if (ReglinkTuningRules.observedKhz(before, frequency) < 0) {
-                throw new RemoteException("Reglink frequency is not in the inspected range");
+                throw unstableRead("Reglink frequency is not in the inspected range");
             }
             synchronized (stateLock) {
                 // A queued one-way callback may overtake the getter sequence.
@@ -268,7 +315,8 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
                 if (observedObservationGeneration != observationGeneration) continue;
                 // A poll begun before dispatch cannot acknowledge that command.
                 if (!tuneDispatching && observedTuneGeneration == tuneGeneration
-                        && pendingBand.equals(before) && pendingFrequency == frequency) pendingBand = "";
+                        && pendingBand.equals(before) && (pendingFrequency == frequency
+                        || (s602External4754 && pendingFrequency == 0))) pendingBand = "";
                 if (scanOwned || scanComplete) {
                     if (!scanBand.equals(before) || (scanComplete && scanning)) {
                         invalidateScanLocked();
@@ -282,7 +330,7 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
                 return new Snapshot(before, frequency, powered, scanning, known, callbackState);
             }
         }
-        throw new RemoteException("Reglink frequency changed during inspection");
+        throw unstableRead("Reglink frequency changed during inspection");
     }
 
     void validateTuningTarget(int band, int khz) throws RemoteException {
@@ -292,16 +340,26 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
     }
 
     private Snapshot requireReadyForMutation() throws RemoteException {
+        return requireReadyForMutation(null, -1);
+    }
+
+    private Snapshot requireReadyForMutation(String newBand, int newRaw) throws RemoteException {
         Snapshot current = snapshot();
         synchronized (stateLock) {
-            if (!pendingBand.isEmpty()) {
-                throw new CommandRejectedException("Previous Reglink tune has not been confirmed");
-            }
             if (scanInvalidated) {
                 throw new CommandRejectedException("Reglink scan ownership changed; reconnect before control");
             }
             if (scanOwned || current.scanning || current.seeking) {
                 throw new CommandRejectedException("Stop the existing Reglink scan first");
+            }
+            if (!pendingBand.isEmpty()) {
+                if (newBand == null || !s602External4754 || timedOutAt == null || !current.powered
+                        || (newBand.equals(timedOutTargetBand) && newRaw == timedOutTargetRaw)
+                        || !sameStation(current, timedOutAt)) {
+                    throw new CommandRejectedException("Previous Reglink tune has not been confirmed");
+                }
+                pendingBand = "";
+                timedOutAt = null;
             }
         }
         return current;
@@ -318,42 +376,87 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
             revalidateCapabilities();
             validateTuningTarget(band, khz);
             if (!canContinue(stillCurrent)) return false;
-            Snapshot current = requireReadyForMutation();
-            if (stockSession != null && !current.powered) throw new CommandRejectedException("Resume the stock radio before tuning");
             String name = ReglinkTuningRules.nativeBand(band);
             int raw = ReglinkTuningRules.rawFrequency(band, khz);
+            Snapshot current = requireReadyForMutation(name, raw);
+            if (stockSession != null && !current.powered) throw new CommandRejectedException("Resume the stock radio before tuning");
             if (!canContinue(stillCurrent)) return false;
             // Retuning the same station is not an audio-neutral operation in
             // this firmware. It can unmute or restart a route unnecessarily.
             if (name.equals(current.rawBand) && current.rawFrequency == raw) return true;
-            revalidateCapabilities();
-            if (!canContinue(stillCurrent)) return false;
-            synchronized (stateLock) {
-                pendingBand = name;
-                pendingFrequency = raw;
-                tuneGeneration++;
-                tuneDispatching = true;
-                callbackBand = "";
-                clearScanLocked();
-            }
-            // A failed reply can still follow a delivered mutation. Keep the
-            // pending readback guard on failure/cancellation rather than replay.
-            try { call(6, data -> { data.writeString(name); data.writeInt(raw); }, null); }
-            finally { synchronized (stateLock) { tuneDispatching = false; } }
-            long deadline = SystemClock.elapsedRealtime() + TUNE_WAIT_MS;
-            do {
-                if (!canContinue(stillCurrent)) return false;
-                requireStockRoute();
-                Snapshot observed = snapshot();
-                if (name.equals(observed.rawBand) && observed.rawFrequency == raw) {
-                    if (stockSession != null) SupportTestLog.event(SupportTestLog.Event.TUNE_CONFIRMED, band, khz);
+            if (s602External4754 && !name.equals(current.rawBand)) {
+                // The stock band buttons recall the tuner's last station on that band.
+                // Wait for the hardware band and unmuted stock route before any fine tune.
+                SupportTestLog.event(SupportTestLog.Event.BAND_RECALL, band, khz);
+                Snapshot recalled = sendAndObserve(name, 0, raw, current, stillCurrent);
+                if (recalled == null) return false;
+                current = requireReadyForMutation();
+                if (!sameStation(current, recalled) || !current.powered || !canContinue(stillCurrent)) return false;
+                if (current.rawFrequency == raw) {
+                    SupportTestLog.event(SupportTestLog.Event.TUNE_CONFIRMED, band, khz);
                     return true;
                 }
-                SystemClock.sleep(50);
-            } while (SystemClock.elapsedRealtime() < deadline);
-            if (stockSession != null) SupportTestLog.problem(SupportTestLog.Problem.TUNE_UNCONFIRMED);
-            return false;
+            }
+            if (sendAndObserve(name, raw, raw, current, stillCurrent) == null) return false;
+            if (stockSession != null) SupportTestLog.event(SupportTestLog.Event.TUNE_CONFIRMED, band, khz);
+            return true;
         }
+    }
+
+    private static boolean sameStation(Snapshot a, Snapshot b) {
+        return a.rawBand.equals(b.rawBand) && a.rawFrequency == b.rawFrequency;
+    }
+
+    private Snapshot sendAndObserve(String name, int wireRaw, int requestedRaw, Snapshot expected,
+            BooleanSupplier stillCurrent) throws RemoteException {
+        revalidateCapabilities();
+        if (s602External4754) {
+            Snapshot fresh = requireReadyForMutation();
+            if (!fresh.powered || !sameStation(expected, fresh)) return null;
+        }
+        if (!canContinue(stillCurrent)) return null;
+        synchronized (stateLock) {
+            pendingBand = name; pendingFrequency = wireRaw; timedOutAt = null;
+            tuneGeneration++; tuneDispatching = true; callbackBand = "";
+            clearScanLocked();
+        }
+        if (wireRaw == 0) bandSettlingUntil = SystemClock.elapsedRealtime() + BAND_RECALL_WAIT_MS;
+        try { call(6, data -> { data.writeString(name); data.writeInt(wireRaw); }, null); }
+        finally { synchronized (stateLock) { tuneDispatching = false; } }
+        // OEM band recall can temporarily mute its own tuner for ~1.5 seconds.
+        long deadline = wireRaw == 0 ? bandSettlingUntil : SystemClock.elapsedRealtime() + TUNE_WAIT_MS;
+        Snapshot last = null;
+        do {
+            if (!canContinue(stillCurrent)) return null;
+            boolean muted = false;
+            if (wireRaw == 0) {
+                ReglinkStockSession.State route = observeStockRoute();
+                if (!route.stockOwnsRoute) throw new CommandRejectedException("Stock radio lost the band-change route");
+                muted = route.globallyMuted;
+            } else requireStockRoute();
+            try { last = snapshot(); }
+            catch (BandTransitionReadback changing) {
+                if (wireRaw != 0) throw changing;
+                last = null;
+            }
+            if (last != null) {
+                if (s602External4754 && (!last.powered || last.scanning || last.seeking)) return null;
+                if (!muted && name.equals(last.rawBand)
+                        && (wireRaw == 0 || last.rawFrequency == wireRaw)) {
+                    bandSettlingUntil = 0;
+                    return last;
+                }
+            }
+            SystemClock.sleep(50);
+        } while (SystemClock.elapsedRealtime() < deadline);
+        if (s602External4754 && last != null && canContinue(stillCurrent)) {
+            synchronized (stateLock) {
+                timedOutAt = last; timedOutTargetBand = name; timedOutTargetRaw = requestedRaw;
+            }
+            SupportTestLog.event(SupportTestLog.Event.TUNE_READBACK, last.band, last.khz);
+        }
+        if (stockSession != null) SupportTestLog.problem(SupportTestLog.Problem.TUNE_UNCONFIRMED);
+        return null;
     }
 
     /** Explicit subscription, separate from construction and read-only polling. */
@@ -481,6 +584,8 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
         if (stockSession != null) SupportTestLog.event(SupportTestLog.Event.SCAN_REQUEST);
         synchronized (operationLock) {
             if (!canContinue(stillCurrent)) return false;
+            // An unsuccessful new request must not expose last scan's results.
+            synchronized (stateLock) { if (scanComplete) clearScanLocked(); }
             revalidateCapabilities();
             Snapshot current = requireReadyForMutation();
             if (stockSession != null && !current.powered) throw new CommandRejectedException("Resume the stock radio before scanning");

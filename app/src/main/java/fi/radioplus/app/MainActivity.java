@@ -735,7 +735,7 @@ public final class MainActivity extends Activity implements
                     try {
                         startActivityForResult(new Intent(Intent.ACTION_CREATE_DOCUMENT)
                                 .addCategory(Intent.CATEGORY_OPENABLE).setType("text/plain")
-                                .putExtra(Intent.EXTRA_TITLE, "RadioPlus-dev37-support.txt"), REQUEST_SUPPORT_LOG);
+                                .putExtra(Intent.EXTRA_TITLE, "RadioPlus-" + BuildConfig.VERSION_NAME + "-support.txt"), REQUEST_SUPPORT_LOG);
                     } catch (ActivityNotFoundException | SecurityException failure) {
                         toast(tr("Tiedoston tallennusvalikko ei ole käytettävissä", "Document picker is unavailable"));
                     }
@@ -1588,7 +1588,7 @@ public final class MainActivity extends Activity implements
             );
             return;
         }
-        if (!runRadio(remote -> remote.onASEvent())) {
+        if (!radioClient.requestScan(true)) {
             cancelAutoScan(tr(
                     "Automaattihakua ei voitu käynnistää",
                     "Automatic scan could not be started"
@@ -1666,7 +1666,7 @@ public final class MainActivity extends Activity implements
             return;
         }
         if (radioClient.isConnected()) {
-            radioClient.perform(remote -> remote.onASEvent());
+            radioClient.requestScan(false);
         }
         mainHandler.removeCallbacks(autoScanStopTimeoutTask);
         mainHandler.postDelayed(

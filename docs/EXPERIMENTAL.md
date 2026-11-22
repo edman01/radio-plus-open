@@ -22,16 +22,31 @@ experimental profiles. See the [release notes](RELEASE.md) for the V7 changes.
 The older Experimental 3 download is retained [below](#download) for reference;
 it does not include G5 or SPD support.
 
-## Development-only preview dev37 — Reglink S5.74
+## Reglink device-test preview — S5.74 and S6.02
 
-**Not included in the published community beta 5 APK. Not tested on a physical
-head unit. Disabled in normal source builds.** See the opt-in build command in
-[BUILD.md](BUILD.md#reglink-s574-device-test-build).
+**Not included in community beta 5. Disabled in normal builds.** See the opt-in build command in
+[BUILD.md](BUILD.md#reglink-device-test-build).
 
 This stock-assisted experiment requires the exact inspected combination of
 `com.reglink.services`, `com.reglink.apps.radio` and `com.reglink.apps.mtkradio`.
 The runtime tuner must be an external MCU implementation (4754, 4755 or 7786).
 The native MTK FM implementation and other firmware combinations remain blocked.
+
+Dev38 adds a separate profile for the inspected S6.02 files. On the external
+4754 tuner it also recognizes the stock radio's explicit, unmixed radio route
+after audio focus returns. Radio+ only observes the route: it does not switch
+back from a call or navigation app. The extra route is not accepted on S5.74,
+4755 or 7786. A tester [reported working reception and favorites on S6.02](https://github.com/edman01/radio-plus-open/issues/4),
+but presets stopped responding after a round trip through AM.
+
+Dev40 changes band switching on **S6.02 with external tuner 4754 only**. It
+recalls the last station on the new band and waits for the tuner before setting
+a different preset. AGAMA Car Launcher 6.1.3's on-screen arrows step through
+Radio+ favorites in saved order. Select **Any active player** in AGAMA's music
+integration. On Android 8.1 AGAMA checks its own notification access and storage
+permission before sending the arrows; Radio+ does not request either. Both
+changes need confirmation on the head unit. CAN buttons retain their stock seek
+behavior. S5.74, other tuner modules and the Junsun V7 do not use these changes.
 
 - Start the stock radio, press Home, then open Radio+. Leave the stock radio
   running in the background: it retains audio-source and focus ownership.

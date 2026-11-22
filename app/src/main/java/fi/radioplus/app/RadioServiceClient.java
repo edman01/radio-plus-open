@@ -343,6 +343,26 @@ final class RadioServiceClient {
         perform(service, generation, action);
     }
 
+    boolean requestScan(boolean start) {
+        long generation = pollingGeneration;
+        IRadioServiceAPI current = service;
+        if (!isCurrentPoll(current, generation)) return false;
+        perform(current, generation, remote -> dispatchScan(remote, start, () -> isCurrentPoll(remote, generation)));
+        return true;
+    }
+
+    static void dispatchScan(IRadioServiceAPI remote, boolean start, java.util.function.BooleanSupplier current)
+            throws RemoteException {
+        if (!current.getAsBoolean()) return;
+        if (remote instanceof ReglinkRadioApi) {
+            // A late Stop must never toggle a completed scan back on.
+            ReglinkRadioApi api = (ReglinkRadioApi) remote;
+            if (start) api.startScan(current); else api.stopScan(current);
+        } else {
+            remote.onASEvent();
+        }
+    }
+
     private void perform(IRadioServiceAPI current, long generation, RemoteAction action) {
         perform(current, generation, false, action);
     }
@@ -367,7 +387,7 @@ final class RadioServiceClient {
                     action.run(current);
                     if (isCurrentPoll(current, generation)) pollNow(generation, forceStateDispatch);
                 } catch (NwdRadioApi.CommandRejectedException | SpdRadioApi.CommandRejectedException
-                        | ReglinkRadioApi.CommandRejectedException rejected) {
+                        | ReglinkRadioApi.CommandRejectedException | ReglinkRadioApi.BandTransitionReadback rejected) {
                     if (!isCurrentPoll(current, generation)) return;
                     Log.w(TAG, "Radio command unavailable; connection and source left unchanged", rejected);
                     notifyError(current, generation,
@@ -607,7 +627,7 @@ final class RadioServiceClient {
     private void pollCurrent(IRadioServiceAPI current, long generation, boolean forceStateDispatch) {
         try {
             ReglinkRadioApi.Snapshot reglink = current instanceof ReglinkRadioApi
-                    ? ((ReglinkRadioApi) current).snapshot() : null;
+                    ? ((ReglinkRadioApi) current).snapshotForPoll() : null;
             NwdRadioApi.Frequency nwdFrequency = current instanceof NwdRadioApi
                     ? ((NwdRadioApi) current).frequency() : null;
             SpdRadioProbe.Frequency spdFrequency = current instanceof SpdRadioApi
@@ -693,6 +713,7 @@ final class RadioServiceClient {
                 if (isCurrentPoll(current, generation)) listener.onStateChanged(state);
             });
         } catch (RemoteException | RuntimeException | LinkageError error) {
+            if (error instanceof ReglinkRadioApi.BandTransitionReadback) return; // Next poll; no reconnect or replay.
             SupportTestLog.failure(SupportTestLog.Event.ENDPOINT_ERROR, error);
             SupportTestLog.event(SupportTestLog.Event.ENDPOINT_ERROR, 2, 0);
             if (!isCurrentPoll(current, generation)) return;

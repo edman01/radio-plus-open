@@ -14,11 +14,12 @@ import java.util.concurrent.TimeUnit;
 /** Opt-in test-build log: bounded private files, fixed labels/numbers, manual export only. */
 final class SupportTestLog {
     enum Event { START, DETECTED, CONNECTED, CAPABILITIES, BIND_ERROR, SOURCE, TUNE_REQUEST, TUNE_CONFIRMED,
-        SCAN_REQUEST, SCAN_RESULTS, COMMAND_REJECTED, ENDPOINT_ERROR }
+        SCAN_REQUEST, SCAN_RESULTS, COMMAND_REJECTED, ENDPOINT_ERROR, OWNER_STABLE, ROUTE, MIX_FLAGS, ROUTE_ACTION,
+        BAND_RECALL, TUNE_READBACK, LAUNCHER_PRESET, SESSION_ARROW }
     enum Problem {
         STOCK_APK_UNKNOWN("The installed stock APK is not recognized. Send the stock radio/services APKs from this same firmware; do not replace them."),
         STOCK_COMBINATION("The three Reglink APKs do not match an inspected set. Send all three installed APKs from the same unit."),
-        TEST_BUILD_REQUIRED("Reglink control is opt-in. Use the dev37 Reglink test APK, not the normal community build."),
+        TEST_BUILD_REQUIRED("Reglink control is opt-in. Use the test APK for your exact firmware, not the normal community build."),
         TUNER_NOT_SUPPORTED("The selected tuner is not the supported external MCU implementation. Send the radio-module information without changing factory settings."),
         HARDWARE_NOT_READY("Runtime hardware fields are missing or unstable. Start the stock radio, wait, reopen Radio+ and retry once."),
         STOCK_NOT_OWNER("The stock radio does not own an unmixed radio route. Start stock FM, press Home, leave it running, then open Radio+."),
@@ -125,7 +126,12 @@ final class SupportTestLog {
         return "Radio+ device-test support log\nVersion: " + BuildConfig.VERSION_NAME
                 + " code=" + BuildConfig.VERSION_CODE + "\n"
                 + "No device identifiers, names, location, user text, logos, URIs or Android logcat.\n"
-                + "TUNE_REQUEST/CONFIRMED: a=band, b=kHz. SOURCE: a=stock owner, b=global mute.\n"
+                + "TUNE_REQUEST/CONFIRMED: a=band, b=kHz. SOURCE: a=accepted stock route, b=global mute.\n"
+                + "BAND_RECALL: target band/kHz. TUNE_READBACK: last observed band/kHz after timeout. "
+                + "LAUNCHER_PRESET: Android key code (87 next, 88 previous).\n"
+                + "SESSION_ARROW: key and mask (1 AGAMA, 2 virtual keyboard, 4/8 zero down/event time, 16 active).\n"
+                + "OWNER_STABLE: a=stock owner on both reads, b=matching routes. ROUTE: platform/model. "
+                + "MIX_FLAGS: mix/flags. ROUTE_ACTION: a=action. Missing route=-1.\n"
                 + "DETECTED/CONNECTED: a=profile enum ordinal. START: a=version code, b=SDK.\n"
                 + "CAPABILITIES: a=kind (0 unknown,1 native FM,2 external FM/AM), b=module.\n"
                 + "Profiles: " + profiles + "\n\n";

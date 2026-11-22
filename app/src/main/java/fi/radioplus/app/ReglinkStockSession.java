@@ -10,7 +10,8 @@ final class ReglinkStockSession {
     static final String MEDIA_DESCRIPTOR = "com.reglink.services.IMediaService";
     private final IBinder hub;
     private final IBinder media;
-    private volatile int lastLoggedState = -1;
+    private final boolean supportsRestored4754;
+    private int[] lastDiagnostic;
 
     private interface Writer { void write(Parcel data); }
     private interface Reader<T> { T read(Parcel reply); }
@@ -21,7 +22,8 @@ final class ReglinkStockSession {
         State(boolean owns, boolean muted) { stockOwnsRoute = owns; globallyMuted = muted; }
     }
 
-    ReglinkStockSession(IBinder common) throws RemoteException {
+    ReglinkStockSession(IBinder common, RadioBackendProfile profile, String module) throws RemoteException {
+        supportsRestored4754 = profile == RadioBackendProfile.REGLINK_S602_ASSISTED && "4754".equals(module);
         hub = service(common, "MediaHub", HUB_DESCRIPTOR);
         media = service(common, "Media", MEDIA_DESCRIPTOR);
     }
@@ -48,15 +50,29 @@ final class ReglinkStockSession {
         int[] afterSource = source();
         String after = read(hub, HUB_DESCRIPTOR, 7, null, Parcel::readString);
         boolean same = java.util.Arrays.equals(source, afterSource);
-        State state = new State("radio".equals(before) && "radio".equals(after) && same
-                && source != null && source[0] == 2 && source[1] == 1
+        boolean stockOwner = "radio".equals(before) && "radio".equals(after);
+        // S6.02's stock 4754 client can explicitly switch to 2/2 on focus
+        // regain. Observe only that exact unmixed switch; never request it.
+        State state = new State(stockOwner && same
+                && source != null && source[0] == 2 && (source[1] == 1
+                || (supportsRestored4754 && source[1] == 2 && source[4] == 1))
                 && source[2] == 0 && source[3] == 0, muted);
-        int flags = (state.stockOwnsRoute ? 1 : 0) | (muted ? 2 : 0);
-        if (lastLoggedState != flags) {
-            lastLoggedState = flags;
-            SupportTestLog.event(SupportTestLog.Event.SOURCE, state.stockOwnsRoute ? 1 : 0, muted ? 1 : 0);
-        }
+        logRoute(state, stockOwner, same, afterSource);
         return state;
+    }
+
+    // No client names or free text: retain only changes to numeric route facts.
+    private synchronized void logRoute(State state, boolean owner, boolean stable, int[] route) {
+        int[] facts = {owner ? 1 : 0, stable ? 1 : 0, state.globallyMuted ? 1 : 0,
+                route == null ? -1 : route[0], route == null ? -1 : route[1],
+                route == null ? -1 : route[2], route == null ? -1 : route[3], route == null ? -1 : route[4]};
+        if (java.util.Arrays.equals(facts, lastDiagnostic)) return;
+        lastDiagnostic = facts;
+        SupportTestLog.event(SupportTestLog.Event.SOURCE, state.stockOwnsRoute ? 1 : 0, facts[2]);
+        SupportTestLog.event(SupportTestLog.Event.OWNER_STABLE, facts[0], facts[1]);
+        SupportTestLog.event(SupportTestLog.Event.ROUTE, facts[3], facts[4]);
+        SupportTestLog.event(SupportTestLog.Event.MIX_FLAGS, facts[5], facts[6]);
+        SupportTestLog.event(SupportTestLog.Event.ROUTE_ACTION, facts[7], 0);
     }
 
     void requireRoute(boolean allowScanMute) throws RemoteException {

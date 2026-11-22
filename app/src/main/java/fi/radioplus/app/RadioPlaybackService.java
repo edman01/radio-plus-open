@@ -1253,11 +1253,15 @@ public final class RadioPlaybackService extends MediaBrowserService {
     }
 
     private void selectAdjacentStation(boolean next) {
+        selectAdjacentStation(next, null);
+    }
+
+    private void selectAdjacentStation(boolean next, ReglinkRadioApi launcherRadio) {
         // Snapshot the list when the command arrives. A later tab change must
         // not redirect a queued press, and no list must ever fall back to seek.
-        List<FavoriteStation> stations = stationNavigationStore.load();
+        List<FavoriteStation> stations = launcherRadio != null ? favoriteStore.load() : stationNavigationStore.load();
         SteeringDiagnosticTrace.get().event("navigation", (next ? "next" : "previous")
-                + " list=" + (stationNavigationStore.favoritesSelected() ? "favorites" : "stations")
+                + " list=" + (launcherRadio != null || stationNavigationStore.favoritesSelected() ? "favorites" : "stations")
                 + " count=" + stations.size());
         if (stations.isEmpty()) {
             Log.i(TAG, "Media skip ignored: selected station list is empty");
@@ -1267,9 +1271,11 @@ public final class RadioPlaybackService extends MediaBrowserService {
                 ? "Media command: next preset"
                 : "Media command: previous preset");
         boolean previouslyRequested = playbackRequested;
-        setPlaybackRequested(true);
+        if (launcherRadio == null) setPlaybackRequested(true);
         long requestRevision = playbackRequestRevision;
         executeRadioCommand(next ? "next preset" : "previous preset", (current, epoch) -> {
+            if (launcherRadio != null && (current != launcherRadio || !isCurrentPlayback(epoch, current)
+                    || !launcherRadio.requestStockPlayback())) return;
             SpdRadioProbe.Frequency spd = current instanceof SpdRadioApi
                     ? ((SpdRadioApi) current).frequency() : null;
             int band = spd == null ? normalizeBand(current.getCurrentBand()) : spd.grid.band;
@@ -1285,7 +1291,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
                 return;
             } else {
                 if (!validateStationTarget(current, target, epoch, requestRevision, previouslyRequested)) return;
-                activateForStationNavigation(current, epoch);
+                if (launcherRadio == null) activateForStationNavigation(current, epoch);
                 boolean tuned = tuneTo(current, target, epoch);
                 SteeringDiagnosticTrace.get().event("tuner", "frequency-confirmed=" + tuned);
                 if (tuned && isCurrentPlayback(epoch, current)) {
@@ -1532,6 +1538,9 @@ public final class RadioPlaybackService extends MediaBrowserService {
                 if (stopping || playbackEpoch != epoch || radio != current) return;
                 try {
                     action.run(current, epoch);
+                } catch (ReglinkRadioApi.BandTransitionReadback transientState) {
+                    // A background metadata read can overlap the UI's explicit band recall.
+                    // Wait for the next read instead of discarding a healthy binding.
                 } catch (ReglinkRadioApi.CommandRejectedException error) {
                     // Drop the request; a stock source change is not permission
                     // to rebind and replay a tune or steal audio back.
@@ -1938,6 +1947,22 @@ public final class RadioPlaybackService extends MediaBrowserService {
                         event.getScanCode(), event.getFlags(), event.getSource(), event.getDownTime(), event.getEventTime());
                 if (event != null && shouldIgnoreRawMediaKeys()) {
                     resetRawMediaKeyDecisions();
+                    boolean launcherProfile = radio instanceof ReglinkRadioApi && ((ReglinkRadioApi) radio).isS602External4754();
+                    String caller = launcherProfile ? ReglinkLauncherControls.caller(mediaSession) : null;
+                    if (launcherProfile && (event.getKeyCode() == KeyEvent.KEYCODE_MEDIA_NEXT
+                            || event.getKeyCode() == KeyEvent.KEYCODE_MEDIA_PREVIOUS)) {
+                        int flags = (ReglinkLauncherControls.AGAMA.equals(caller) ? 1 : 0)
+                                | (event.getDeviceId() == -1 ? 2 : 0) | (event.getDownTime() == 0 ? 4 : 0)
+                                | (event.getEventTime() == 0 ? 8 : 0) | (playbackRequested && !stopping ? 16 : 0);
+                        SupportTestLog.event(SupportTestLog.Event.SESSION_ARROW, event.getKeyCode(), flags);
+                    }
+                    if (launcherProfile && playbackRequested && !stopping && ReglinkLauncherControls.accepts(caller, event)) {
+                        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                            SupportTestLog.event(SupportTestLog.Event.LAUNCHER_PRESET, event.getKeyCode(), 0);
+                            selectAdjacentStation(event.getKeyCode() == KeyEvent.KEYCODE_MEDIA_NEXT, (ReglinkRadioApi) radio);
+                        }
+                        return true; // UP belongs to the same tap; never retune twice.
+                    }
                     // Do not call super: it translates raw STOP/NEXT into transport
                     // callbacks. NWD emits STOP itself while selecting source 4.
                     return false;

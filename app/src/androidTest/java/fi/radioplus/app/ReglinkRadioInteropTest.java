@@ -14,9 +14,8 @@ import java.util.List;
 import static org.junit.Assert.*;
 
 /**
- * Synthetic protocol endpoints only; the dormant adapter never binds an OEM APK
- * here. Request bookkeeping tests are not proof of exclusive physical ownership;
- * OEM callbacks contain no operation IDs and live control remains disabled.
+ * Synthetic protocol endpoints only; no OEM APK is bound here. Request
+ * bookkeeping and persisted results are not evidence of physical reception.
  */
 public final class ReglinkRadioInteropTest {
     private interface Hook { void run() throws RemoteException; }
@@ -28,6 +27,8 @@ public final class ReglinkRadioInteropTest {
         boolean scanning;
         boolean powered = true;
         boolean deferTune;
+        int rememberedFm = 9810, rememberedAm = 531;
+        final List<String> tunes = new ArrayList<>();
         boolean changingFrequency;
         boolean stopEmitsCallback = true;
         int rejectCode = -1;
@@ -60,7 +61,12 @@ public final class ReglinkRadioInteropTest {
                     String targetBand = data.readString();
                     int target = data.readInt();
                     assertTrue("fm".equals(targetBand) || "am".equals(targetBand));
-                    if (!deferTune) { band = targetBand; frequency = target; }
+                    tunes.add(targetBand + ":" + target);
+                    if (!deferTune) {
+                        if ("am".equals(band)) rememberedAm = frequency; else rememberedFm = frequency;
+                        band = targetBand;
+                        frequency = target != 0 ? target : "am".equals(band) ? rememberedAm : rememberedFm;
+                    }
                     if (afterTune != null) afterTune.run();
                     break;
                 case 10: case 11: break;
@@ -188,7 +194,8 @@ public final class ReglinkRadioInteropTest {
     }
 
     private static final class Media extends Binder {
-        int platform = 2, model = 1, mix, sourceFlags;
+        int platform = 2, model = 1, mix, sourceFlags, action = 1;
+        Runnable afterSourceRead;
         boolean muted, malformed;
         Media() { attachInterface(null, ReglinkStockSession.MEDIA_DESCRIPTOR); }
         @Override protected boolean onTransact(int code, Parcel data, Parcel reply, int flags) {
@@ -200,7 +207,8 @@ public final class ReglinkRadioInteropTest {
             else {
                 reply.writeInt(1); reply.writeInt(platform); reply.writeInt(model);
                 reply.writeInt(mix); reply.writeInt(sourceFlags);
-                if (!malformed) reply.writeInt(1);
+                if (!malformed) reply.writeInt(action);
+                if (afterSourceRead != null) afterSourceRead.run();
             }
             return true;
         }
@@ -208,7 +216,7 @@ public final class ReglinkRadioInteropTest {
 
     @Test public void assistedAdoptionAndCloseNeverTouchPowerFocusSourceOrMute() throws Exception {
         Tuner tuner = new Tuner(); Common common = new Common(tuner);
-        try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(common)) {
+        try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(common, RadioBackendProfile.REGLINK_S574_ASSISTED)) {
             assertTrue(api.isStockAssisted()); assertTrue(api.requestStockPlayback());
             assertTrue(api.readHealth().radioOwnsSource());
             assertFalse(api.readHealth().muted);
@@ -221,9 +229,231 @@ public final class ReglinkRadioInteropTest {
         assertEquals(0, tuner.count(3)); assertEquals(0, tuner.count(4));
     }
 
+    @Test public void s602CallBlocksCommandsAndOnlyStockCanRestoreAudio() throws Exception {
+        Tuner tuner = new Tuner(); Common common = new Common(tuner);
+        try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(common, RadioBackendProfile.REGLINK_S602_ASSISTED)) {
+            assertTrue(api.requestStockPlayback());
+            common.media.platform = 1; // Call route, even if hub still lists the stock radio.
+            assertFalse(api.readHealth().radioOwnsSource());
+            assertThrows(ReglinkRadioApi.CommandRejectedException.class, () -> api.tuneToBand(0, 101700));
+            assertThrows(ReglinkRadioApi.CommandRejectedException.class, api::startScan);
+            assertEquals(0, tuner.count(6)); assertEquals(0, tuner.count(12));
+            common.media.platform = 2; common.media.model = 2; // OEM reports its restored route.
+            assertTrue(api.requestStockPlayback());
+            assertTrue(api.tuneToBand(0, 101700)); assertTrue(api.tuneToBand(0, 101700));
+            assertTrue(api.tuneToBand(3, 999)); assertEquals(Arrays.asList("fm:10170", "am:0", "am:999"), tuner.tunes);
+            tuner.afterScan = () -> { tuner.emit("am", 999, 13); tuner.emit("am", 999, 13); };
+            api.startScan();
+            assertArrayEquals(new int[]{999}, api.readScanPresets(3, () -> true));
+            assertEquals(0, tuner.count(3)); assertEquals(0, tuner.count(4));
+        }
+    }
+
+    @Test public void s602BandRecallDoesNotLockPresetsOrRetuneAnAlreadyRestoredStation() throws Exception {
+        Tuner t = new Tuner(); t.frequency = 10480;
+        try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(new Common(t), RadioBackendProfile.REGLINK_S602_ASSISTED)) {
+            assertTrue(api.tuneToBand(3, 531)); assertTrue(api.tuneToBand(0, 100900));
+            assertTrue(api.tuneToBand(0, 104800)); assertTrue(api.tuneToBand(3, 531));
+            assertTrue(api.tuneToBand(0, 104800));
+            assertEquals(Arrays.asList("am:0", "fm:0", "fm:10090", "fm:10480", "am:0", "fm:0"), t.tunes);
+        }
+    }
+
+    @Test public void s602CompletedTimeoutCanBeSupersededButNeverReplayedOrUsedToStartScan() throws Exception {
+        Tuner t = new Tuner(); t.deferTune = true;
+        try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(new Common(t), RadioBackendProfile.REGLINK_S602_ASSISTED)) {
+            assertFalse(api.tuneToBand(3, 531));
+            assertThrows(ReglinkRadioApi.CommandRejectedException.class, api::startScan);
+            assertThrows(ReglinkRadioApi.CommandRejectedException.class, () -> api.tuneToBand(3, 531));
+            t.deferTune = false; assertTrue(api.tuneToBand(0, 104800));
+            assertEquals(Arrays.asList("am:0", "fm:10480"), t.tunes);
+        }
+    }
+
+    @Test public void s602RecallWaitsForCoherentUnmutedTunerBeforeFineTune() throws Exception {
+        Tuner t = new Tuner(); Common c = new Common(t);
+        try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(c, RadioBackendProfile.REGLINK_S602_ASSISTED)) {
+            t.afterTune = () -> {
+                if (t.tunes.size() == 1) {
+                    c.media.muted = true; t.frequency = 9810; // FM value alongside the new AM band.
+                    assertThrows(ReglinkRadioApi.BandTransitionReadback.class, api::snapshotForPoll);
+                    final int[] bandReads = {0};
+                    t.beforeBandRead = () -> {
+                        if (++bandReads[0] == 4) t.frequency = 531;
+                        if (bandReads[0] == 8) c.media.muted = false;
+                    };
+                } else assertFalse(c.media.muted);
+            };
+            assertTrue(api.tuneToBand(3, 999)); assertEquals(Arrays.asList("am:0", "am:999"), t.tunes);
+        }
+    }
+
+    @Test public void s602RecallLosingStockRouteOrCancelledCannotSendSecondCommand() throws Exception {
+        for (boolean cancel : new boolean[]{true, false}) {
+            Tuner t = new Tuner(); Common c = new Common(t);
+            try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(c, RadioBackendProfile.REGLINK_S602_ASSISTED)) {
+                if (cancel) assertFalse(api.tuneToBand(3, 999, () -> t.tunes.isEmpty()));
+                else {
+                    t.afterTune = () -> c.hub.owner = "bluetooth";
+                    assertThrows(ReglinkRadioApi.CommandRejectedException.class, () -> api.tuneToBand(3, 999));
+                }
+                assertEquals(Arrays.asList("am:0"), t.tunes);
+            }
+        }
+    }
+
+    @Test public void agamaPresetKeysRequireKnownCallerAndAreNotPhysicalOrRepeatedKeys() {
+        android.view.KeyEvent key = new android.view.KeyEvent(0, 87);
+        assertTrue(ReglinkLauncherControls.accepts(ReglinkLauncherControls.AGAMA, key));
+        assertTrue(ReglinkLauncherControls.accepts(ReglinkLauncherControls.AGAMA, new android.view.KeyEvent(1, 88)));
+        assertFalse(ReglinkLauncherControls.accepts(null, key));
+        assertFalse(ReglinkLauncherControls.accepts("android", key));
+        assertFalse(ReglinkLauncherControls.accepts(ReglinkLauncherControls.AGAMA, new android.view.KeyEvent(0, 86)));
+        assertFalse(ReglinkLauncherControls.accepts(ReglinkLauncherControls.AGAMA,
+                new android.view.KeyEvent(123, 123, 0, 87, 0, 0, 3, 87)));
+        assertFalse(ReglinkLauncherControls.accepts(ReglinkLauncherControls.AGAMA,
+                new android.view.KeyEvent(0, 0, 0, 88, 2, 0, -1, 0)));
+    }
+
+    @Test public void directedMediaKeyExposesItsActualControllerInsideCallback() throws Exception {
+        android.app.Instrumentation ins = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation();
+        android.content.Context ctx = ins.getTargetContext();
+        android.media.session.MediaSession session = new android.media.session.MediaSession(ctx, "reglink-controller-test");
+        java.util.concurrent.ArrayBlockingQueue<String> callers = new java.util.concurrent.ArrayBlockingQueue<>(2);
+        try {
+            session.setCallback(new android.media.session.MediaSession.Callback() {
+                @Override public boolean onMediaButtonEvent(android.content.Intent intent) {
+                    callers.offer(String.valueOf(ReglinkLauncherControls.caller(session)));
+                    return true;
+                }
+            }, new android.os.Handler(android.os.Looper.getMainLooper()));
+            session.setActive(true);
+            session.getController().dispatchMediaButtonEvent(new android.view.KeyEvent(0, 87));
+            String actual = callers.poll(3, java.util.concurrent.TimeUnit.SECONDS);
+            assertTrue("Framework caller: " + actual, ctx.getPackageName().equals(actual)
+                    || ins.getContext().getPackageName().equals(actual));
+        } finally { session.release(); }
+    }
+
+    @Test public void s602ConfirmedScanCanBeReloadedAndTunedFromSavedFavorite() throws Exception {
+        android.content.Context base = androidx.test.platform.app.InstrumentationRegistry
+                .getInstrumentation().getTargetContext();
+        String prefix = "reglink-test-" + java.util.UUID.randomUUID() + "-";
+        java.util.Set<String> created = new java.util.HashSet<>();
+        android.content.Context isolated = new android.content.ContextWrapper(base) {
+            @Override public android.content.Context getApplicationContext() { return this; }
+            @Override public android.content.SharedPreferences getSharedPreferences(String name, int mode) {
+                created.add(prefix + name);
+                return base.getSharedPreferences(prefix + name, mode);
+            }
+        };
+        Tuner tuner = new Tuner(); Common c = new Common(tuner);
+        try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(c, RadioBackendProfile.REGLINK_S602_ASSISTED)) {
+            RadioServiceClient.dispatchScan(api, true, () -> true);
+            tuner.emit("fm", 9010, 13); tuner.emit("fm", 10450, 13); tuner.emit("fm", 9010, 13);
+            tuner.emit("fm", 9020, 5); // Progress only: never save as a station.
+            int[] found = api.readScanPresets(0, () -> true);
+            assertEquals(2, new StationStore(isolated).mergeDiscovered(0, found, java.util.Collections.emptyMap()));
+            StationStore reopened = new StationStore(isolated);
+            assertNull(reopened.find(0, 90200));
+            FavoriteStation saved = reopened.find(0, 104500);
+            assertNotNull(saved);
+            new FavoriteStore(isolated).save(saved.withName("Test FM"));
+            FavoriteStation favorite = new FavoriteStore(isolated).find(0, 104500);
+            assertEquals("Test FM", favorite.name);
+            assertTrue(api.tuneToBand(favorite.band, favorite.frequency));
+            assertEquals(10450, tuner.frequency); assertEquals(1, tuner.count(6));
+        } finally {
+            for (String name : created) base.deleteSharedPreferences(name);
+        }
+    }
+
+    @Test public void restoredRouteIsNotABlanketFirmwareOrModuleException() throws Exception {
+        for (RadioBackendProfile profile : new RadioBackendProfile[]{
+                RadioBackendProfile.REGLINK_S574_ASSISTED, RadioBackendProfile.REGLINK_S602_ASSISTED}) {
+            for (String module : new String[]{"4754", "4755", "7786"}) {
+                Tuner tuner = new Tuner(); Common common = new Common(tuner); common.shared.module = module;
+                try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(common, profile)) {
+                    assertTrue(api.requestStockPlayback());
+                    common.media.model = 2;
+                    if (profile == RadioBackendProfile.REGLINK_S602_ASSISTED && module.equals("4754")) {
+                        assertTrue(api.requestStockPlayback());
+                        common.media.action = 2;
+                    }
+                    assertThrows(ReglinkRadioApi.CommandRejectedException.class, () -> api.tuneToBand(0, 101700));
+                    assertEquals(0, tuner.count(6));
+                }
+            }
+        }
+    }
+
+    @Test public void s602RejectsMixedMutedForeignAndUnstableRestoredRoutes() throws Exception {
+        Common c = new Common(new Tuner()); c.media.model = 2;
+        try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(c, RadioBackendProfile.REGLINK_S602_ASSISTED)) {
+            c.hub.owner = "phone";
+            assertThrows(ReglinkRadioApi.CommandRejectedException.class, api::startScan);
+            c.hub.owner = "radio"; c.media.sourceFlags = 2;
+            assertThrows(ReglinkRadioApi.CommandRejectedException.class, api::startScan);
+            c.media.sourceFlags = 0; c.media.mix = 512;
+            assertThrows(ReglinkRadioApi.CommandRejectedException.class, api::startScan);
+            c.media.mix = 0; c.media.muted = true;
+            assertThrows(ReglinkRadioApi.CommandRejectedException.class, api::startScan);
+            c.media.muted = false; c.media.afterSourceRead = () -> c.media.model = 3 - c.media.model;
+            assertThrows(ReglinkRadioApi.CommandRejectedException.class, api::startScan);
+            assertEquals(0, ((Tuner)c.tuner).count(12));
+        }
+    }
+
+    @Test public void s602InterruptedScanNeverPublishesStaleStationsOrStealsRoute() throws Exception {
+        for (boolean unavailable : new boolean[]{false, true}) {
+            Tuner tuner = new Tuner(); Common c = new Common(tuner);
+            try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(c, RadioBackendProfile.REGLINK_S602_ASSISTED)) {
+                api.startScan(); tuner.emit("fm", 9010, 13);
+                if (unavailable) c.media.malformed = true; else c.media.platform = 1;
+                if (unavailable) api.readHealth(); else api.snapshotForPoll();
+                c.media.malformed = false; c.media.platform = 2; c.media.model = 2;
+                assertThrows(ReglinkRadioApi.CommandRejectedException.class, () -> api.readScanPresets(0, () -> true));
+                assertEquals(0, tuner.count(13)); assertEquals(0, tuner.count(6));
+            }
+        }
+    }
+
+    @Test public void cachedBinderCannotCarryS602RoutePermissionBackToS574() throws Exception {
+        Common c = new Common(new Tuner()); c.media.model = 2;
+        ReglinkRadioConnectionCache cache = new ReglinkRadioConnectionCache();
+        try {
+            ReglinkRadioApi newer = cache.resolve(c, RadioBackendProfile.REGLINK_S602_ASSISTED);
+            assertTrue(newer.requestStockPlayback());
+            ReglinkRadioApi older = cache.resolve(c, RadioBackendProfile.REGLINK_S574_ASSISTED);
+            assertTrue(newer.isClosed());
+            assertThrows(ReglinkRadioApi.CommandRejectedException.class, older::requestStockPlayback);
+            assertThrows(RemoteException.class, () -> cache.resolve(c, RadioBackendProfile.UNKNOWN));
+            assertTrue(older.isClosed());
+        } finally { cache.clear(); }
+    }
+
+    @Test public void uiLateStopNeverRestartsFinishedScanAndFailedStartCannotReuseIt() throws Exception {
+        Tuner tuner = new Tuner(); Common c = new Common(tuner);
+        try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(c, RadioBackendProfile.REGLINK_S602_ASSISTED)) {
+            RadioServiceClient.dispatchScan(api, false, () -> true); // Idle stop.
+            RadioServiceClient.dispatchScan(api, true, () -> false); // Cancelled start.
+            RadioServiceClient.dispatchScan(api, true, () -> true);
+            tuner.emit("fm", 9010, 13); tuner.scanning = false; tuner.emit("fm", 9010, 1);
+            api.snapshot();
+            RadioServiceClient.dispatchScan(api, false, () -> true);
+            assertArrayEquals(new int[]{90100}, api.readScanPresets(0, () -> true));
+            c.media.muted = true;
+            assertThrows(ReglinkRadioApi.CommandRejectedException.class,
+                    () -> RadioServiceClient.dispatchScan(api, true, () -> true));
+            c.media.muted = false;
+            assertThrows(ReglinkRadioApi.CommandRejectedException.class, () -> api.readScanPresets(0, () -> true));
+            assertEquals(1, tuner.count(12)); assertEquals(0, tuner.count(13));
+        }
+    }
+
     @Test public void assistedTuneConfirmsFmAndAmWithoutDuplicateTune() throws Exception {
         Tuner tuner = new Tuner(); Common common = new Common(tuner);
-        try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(common)) {
+        try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(common, RadioBackendProfile.REGLINK_S574_ASSISTED)) {
             assertTrue(api.tuneToBand(0, 101700)); assertEquals(10170, tuner.frequency);
             assertTrue(api.tuneToBand(0, 101700)); assertEquals(1, tuner.count(6));
             assertTrue(api.tuneToBand(3, 999)); assertEquals("am", tuner.band);
@@ -233,7 +463,7 @@ public final class ReglinkRadioInteropTest {
 
     @Test public void assistedScanSavesOnlyConfirmedSignalsAndAllowsItsOwnScanMute() throws Exception {
         Tuner tuner = new Tuner(); Common common = new Common(tuner);
-        try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(common)) {
+        try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(common, RadioBackendProfile.REGLINK_S574_ASSISTED)) {
             tuner.afterScan = () -> {
                 common.media.muted = true; // OEM scans use shared mute internally.
                 tuner.emit("fm", 9010, 13); tuner.emit("fm", 10450, 13);
@@ -248,7 +478,7 @@ public final class ReglinkRadioInteropTest {
 
     @Test public void assistedRejectsMissingStockOwnerAndPausedOrMixedSource() throws Exception {
         Tuner tuner = new Tuner(); Common common = new Common(tuner);
-        try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(common)) {
+        try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(common, RadioBackendProfile.REGLINK_S574_ASSISTED)) {
             common.hub.owner = "bluetooth";
             assertThrows(ReglinkRadioApi.CommandRejectedException.class, () -> api.tuneToBand(0, 101700));
             common.hub.owner = "radio"; common.media.platform = 1;
@@ -267,7 +497,7 @@ public final class ReglinkRadioInteropTest {
 
     @Test public void assistedSourceLossDuringTuneNeverReplaysOrRestoresAudio() throws Exception {
         Tuner tuner = new Tuner(); Common common = new Common(tuner);
-        try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(common)) {
+        try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(common, RadioBackendProfile.REGLINK_S574_ASSISTED)) {
             tuner.afterTune = () -> common.hub.owner = "bluetooth";
             assertThrows(ReglinkRadioApi.CommandRejectedException.class, () -> api.tuneToBand(0, 101700));
             assertThrows(ReglinkRadioApi.CommandRejectedException.class, () -> api.tuneToBand(0, 102100));
@@ -277,7 +507,7 @@ public final class ReglinkRadioInteropTest {
 
     @Test public void assistedSourceLossDuringScanDiscardsResultsWithoutStoppingAnotherOwner() throws Exception {
         Tuner tuner = new Tuner(); Common common = new Common(tuner);
-        try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(common)) {
+        try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(common, RadioBackendProfile.REGLINK_S574_ASSISTED)) {
             api.startScan(); tuner.emit("fm", 9010, 13); common.hub.owner = "bluetooth";
             assertThrows(ReglinkRadioApi.CommandRejectedException.class, () -> api.stopScan(() -> true));
             common.hub.owner = "radio";
@@ -289,13 +519,13 @@ public final class ReglinkRadioInteropTest {
     @Test public void assistedRejectsNativeTunerBeforeFetchingOrMutatingRadio() throws Exception {
         Tuner tuner = new Tuner(); Common common = new Common(tuner);
         common.shared.module = "mtk_radio"; common.shared.onboardRadio = true;
-        assertThrows(RemoteException.class, () -> ReglinkRadioApi.stockAssisted(common));
+        assertThrows(RemoteException.class, () -> ReglinkRadioApi.stockAssisted(common, RadioBackendProfile.REGLINK_S574_ASSISTED));
         assertEquals(0, tuner.calls.size());
     }
 
     @Test public void assistedMalformedSourceReplyCannotReachMutation() throws Exception {
         Tuner tuner = new Tuner(); Common common = new Common(tuner);
-        try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(common)) {
+        try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(common, RadioBackendProfile.REGLINK_S574_ASSISTED)) {
             common.media.malformed = true;
             assertThrows(RemoteException.class, () -> api.tuneToBand(0, 101700));
             assertEquals(0, tuner.count(6));
@@ -305,23 +535,35 @@ public final class ReglinkRadioInteropTest {
     @Test public void assistedBindingsShareOneObserverAndOperationState() throws Exception {
         Tuner tuner = new Tuner(); Common common = new Common(tuner);
         ReglinkRadioConnectionCache cache = new ReglinkRadioConnectionCache();
-        ReglinkRadioApi first = cache.resolve(common);
-        assertSame(first, cache.resolve(common)); assertEquals(1, tuner.count(1));
+        ReglinkRadioApi first = cache.resolve(common, RadioBackendProfile.REGLINK_S574_ASSISTED);
+        assertSame(first, cache.resolve(common, RadioBackendProfile.REGLINK_S574_ASSISTED)); assertEquals(1, tuner.count(1));
         assertTrue(first.tuneToBand(0, 101700));
-        assertEquals(101700, cache.resolve(common).getCurrentFreq());
+        assertEquals(101700, cache.resolve(common, RadioBackendProfile.REGLINK_S574_ASSISTED).getCurrentFreq());
         first.close();
-        ReglinkRadioApi renewed = cache.resolve(common);
+        ReglinkRadioApi renewed = cache.resolve(common, RadioBackendProfile.REGLINK_S574_ASSISTED);
         assertNotSame(first, renewed); assertEquals(2, tuner.count(1)); renewed.close();
     }
 
     @Test public void assistedServiceUiEntryAdoptsAudioAndYieldsWithoutAnyAudioWrite() throws Exception {
+        exerciseService(false);
+    }
+
+    /** Optional end-to-end check: operate the actual launcher's Next then Previous controls. */
+    @Test public void realAgamaNextPreviousSelectOneFavoriteEachOnSyntheticS602() throws Exception {
+        org.junit.Assume.assumeTrue("Manual emulator launcher fixture not requested", "true".equals(
+                androidx.test.platform.app.InstrumentationRegistry.getArguments().getString("reglinkAgamaManual")));
+        exerciseService(true);
+    }
+
+    private void exerciseService(boolean agama) throws Exception {
         org.junit.Assume.assumeTrue("Service injection is emulator-only", "ranchu".equals(android.os.Build.HARDWARE)
                 || "goldfish".equals(android.os.Build.HARDWARE));
         android.app.Instrumentation instrumentation = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation();
         android.content.Context context = instrumentation.getTargetContext();
         assertNull(reflected(RadioPlaybackService.class, "runningInstance", null));
         Tuner tuner = new Tuner(); Common common = new Common(tuner);
-        try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(common)) {
+        try (ReglinkRadioApi api = ReglinkRadioApi.stockAssisted(common, agama
+                ? RadioBackendProfile.REGLINK_S602_ASSISTED : RadioBackendProfile.REGLINK_S574_ASSISTED)) {
             java.util.concurrent.CountDownLatch connected = new java.util.concurrent.CountDownLatch(1);
             java.util.concurrent.atomic.AtomicReference<android.media.browse.MediaBrowser> reference = new java.util.concurrent.atomic.AtomicReference<>();
             instrumentation.runOnMainSync(() -> reference.set(new android.media.browse.MediaBrowser(context,
@@ -348,6 +590,34 @@ public final class ReglinkRadioInteropTest {
                 assertTrue(RadioPlaybackService.isPlaybackRequested());
                 assertEquals(Boolean.TRUE, reflected(RadioPlaybackService.class, "oemRouteActive", service));
                 assertTrue(RadioPlaybackService.shouldIgnoreRawMediaKeys());
+                if (agama) {
+                    FavoriteStore inMemory = new FavoriteStore(new android.content.ContextWrapper(context) {
+                        @Override public android.content.Context getApplicationContext() { return this; }
+                        @Override public android.content.SharedPreferences getSharedPreferences(String name, int mode) {
+                            return context.getSharedPreferences("reglink-agama-qa", mode);
+                        }
+                    });
+                    try {
+                        inMemory.save(new FavoriteStation(0, 98100, "QA Alpha"));
+                        inMemory.save(new FavoriteStation(0, 104800, "QA Bravo"));
+                        instrumentation.runOnMainSync(() -> {
+                            try {
+                                java.lang.reflect.Field f = RadioPlaybackService.class.getDeclaredField("favoriteStore");
+                                f.setAccessible(true); f.set(service, inMemory);
+                            } catch (ReflectiveOperationException e) { throw new AssertionError(e); }
+                        });
+                        android.util.Log.i("ReglinkAgamaQA", "READY: press NEXT then PREVIOUS in AGAMA");
+                        long end = android.os.SystemClock.elapsedRealtime() + 120_000;
+                        while (android.os.SystemClock.elapsedRealtime() < end) {
+                            drainService(instrumentation, service);
+                            if (tuner.tunes.size() >= 2) break;
+                            android.os.SystemClock.sleep(200);
+                        }
+                        drainService(instrumentation, service);
+                        assertEquals(Arrays.asList("fm:10480", "fm:9810"), tuner.tunes);
+                        return;
+                    } finally { context.deleteSharedPreferences("reglink-agama-qa"); }
+                }
                 android.media.session.MediaController controller = new android.media.session.MediaController(context, browser.getSessionToken());
                 controller.getTransportControls().skipToNext();
                 controller.getTransportControls().skipToPrevious();
