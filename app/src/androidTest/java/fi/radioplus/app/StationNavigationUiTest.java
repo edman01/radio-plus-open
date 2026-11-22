@@ -6,7 +6,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.SystemClock;
+import android.view.MotionEvent;
 import android.view.View;
+import android.widget.GridView;
 
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry;
@@ -14,6 +16,7 @@ import androidx.test.runner.lifecycle.Stage;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -164,6 +167,99 @@ public final class StationNavigationUiTest {
         assertEquals(false, field(MainActivity.class, "playbackPausedByStationTap", activity));
         assertNull(field(MainActivity.class, "pendingUnnamedStationPrompt", activity));
         assertFalse(handler.hasCallbacks(oldPrompt));
+    }
+
+    @Test public void favoritesDragCanContinueAfterAnEdgeReleaseWithoutReopeningTheMenu() {
+        ArrayList<FavoriteStation> stations = startReorder(true, 1);
+        long down = SystemClock.uptimeMillis();
+        gesture(down, MotionEvent.ACTION_DOWN, 1);
+        gesture(down, MotionEvent.ACTION_MOVE, RIGHT_EDGE);
+        assertPage(1);
+        // A finger resting on the edge must not race ahead another page.
+        SystemClock.sleep(600);
+        gesture(down, MotionEvent.ACTION_MOVE, RIGHT_EDGE);
+        assertPage(1);
+        gesture(down, MotionEvent.ACTION_UP, RIGHT_EDGE);
+        assertEquals(true, field(MainActivity.class, "favoriteReordering", activity));
+        // A tuner metadata refresh during the drag must not reload the old order.
+        instrumentation.runOnMainSync(() -> invoke(activity, "refreshFavorites", new Class<?>[]{}));
+        long secondDown = SystemClock.uptimeMillis();
+        gesture(secondDown, MotionEvent.ACTION_DOWN, 0);
+        gesture(secondDown, MotionEvent.ACTION_MOVE, 3);
+        gesture(secondDown, MotionEvent.ACTION_UP, 3);
+        assertEquals(false, field(MainActivity.class, "favoriteReordering", activity));
+        FavoriteStation moved = stations.remove(1);
+        stations.add(9, moved);
+        assertEquals(stations, new FavoriteStore(context).load());
+        assertFalse(stations.equals(new StationStore(context).load()));
+    }
+
+    @Test public void catalogDragSurvivesTouchCancellationOnThePreviousPage() {
+        ArrayList<FavoriteStation> stations = startReorder(false, 8);
+        long down = SystemClock.uptimeMillis();
+        gesture(down, MotionEvent.ACTION_DOWN, 2);
+        gesture(down, MotionEvent.ACTION_MOVE, LEFT_EDGE);
+        assertPage(0);
+        gesture(down, MotionEvent.ACTION_CANCEL, LEFT_EDGE);
+        assertEquals(true, field(MainActivity.class, "favoriteReordering", activity));
+        // A fresh touch can drop directly on the wanted slot, without a MOVE.
+        long secondDown = SystemClock.uptimeMillis();
+        gesture(secondDown, MotionEvent.ACTION_DOWN, 2);
+        gesture(secondDown, MotionEvent.ACTION_UP, 2);
+        FavoriteStation moved = stations.remove(8);
+        stations.add(2, moved);
+        assertEquals(stations, new StationStore(context).load());
+        assertFalse(stations.equals(new FavoriteStore(context).load()));
+    }
+
+    @Test public void oneContinuousDragCanDropOnAPartiallyFilledLastPage() {
+        ArrayList<FavoriteStation> stations = startReorder(true, 7);
+        long down = SystemClock.uptimeMillis();
+        gesture(down, MotionEvent.ACTION_DOWN, 1);
+        gesture(down, MotionEvent.ACTION_MOVE, RIGHT_EDGE);
+        assertPage(2);
+        gesture(down, MotionEvent.ACTION_MOVE, 1);
+        gesture(down, MotionEvent.ACTION_UP, 1);
+        FavoriteStation moved = stations.remove(7);
+        stations.add(13, moved);
+        assertEquals(stations, new FavoriteStore(context).load());
+        assertEquals(false, field(MainActivity.class, "favoriteReordering", activity));
+        assertNull(field(RadioPlaybackService.class, "runningInstance", null));
+    }
+
+    private static final int LEFT_EDGE = -1, RIGHT_EDGE = -2;
+
+    private ArrayList<FavoriteStation> startReorder(boolean favorites, int sourceIndex) {
+        ArrayList<FavoriteStation> stations = new ArrayList<>();
+        for (int i = 0; i < 14; i++) stations.add(new FavoriteStation(0, 90000 + i * 100, "Preset " + i));
+        instrumentation.runOnMainSync(() -> {
+            new FavoriteStore(context).replaceOrder(stations);
+            new StationStore(context).replaceOrder(stations);
+            invoke(activity, "showStationCatalog", new Class<?>[]{boolean.class}, favorites);
+            setField("favoritePage", sourceIndex / 6);
+            invoke(activity, "renderFavoritePage", new Class<?>[]{});
+            invoke(activity, "beginFavoriteReorder", new Class<?>[]{String.class}, stations.get(sourceIndex).key());
+        });
+        instrumentation.waitForIdleSync();
+        return stations;
+    }
+
+    private void assertPage(int expected) {
+        assertEquals(expected, field(MainActivity.class, "favoritePage", activity));
+    }
+
+    private void gesture(long down, int action, int slot) {
+        instrumentation.waitForIdleSync();
+        instrumentation.runOnMainSync(() -> {
+            GridView grid = activity.findViewById(R.id.favorites_list);
+            View tile = grid.getChildAt(Math.max(slot, 0));
+            assertNotNull("A real rendered station card is required", tile);
+            float x = slot == LEFT_EDGE ? 2 : slot == RIGHT_EDGE ? grid.getWidth()-2 :
+                    (tile.getLeft()+tile.getRight()) / 2f;
+            float y = (tile.getTop()+tile.getBottom()) / 2f;
+            MotionEvent e = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, x, y, 0);
+            try { assertTrue(grid.dispatchTouchEvent(e)); } finally { e.recycle(); }
+        });
     }
 
     private void setField(String name, Object value) {

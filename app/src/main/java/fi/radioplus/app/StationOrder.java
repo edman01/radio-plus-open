@@ -48,4 +48,17 @@ final class StationOrder {
         }
         return new ArrayList<>(unique.values());
     }
+
+    /** Reorder by station identity without undoing a rename, removal or new scan result. */
+    static List<FavoriteStation> withLatestStations(List<FavoriteStation> draft, List<FavoriteStation> latest) {
+        LinkedHashMap<String, FavoriteStation> remaining = new LinkedHashMap<>();
+        for (FavoriteStation station : latest) remaining.put(station.key(), station);
+        ArrayList<FavoriteStation> result = new ArrayList<>(remaining.size());
+        for (FavoriteStation station : draft) {
+            FavoriteStation current = remaining.remove(station.key());
+            if (current != null) result.add(current);
+        }
+        result.addAll(remaining.values());
+        return result;
+    }
 }

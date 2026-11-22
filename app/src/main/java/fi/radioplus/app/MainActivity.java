@@ -184,6 +184,10 @@ public final class MainActivity extends Activity implements
     private int favoriteTouchDownPosition = GridView.INVALID_POSITION;
     private int favoriteReorderIndex = -1;
     private long favoriteReorderPageChangedAt;
+    private String favoriteReorderKey = "";
+    private int favoriteReorderEdge;
+    private boolean favoriteReorderHasPointer;
+    private final Runnable reorderHighlight = this::highlightFavoriteReorderCard;
     private Runnable pendingFavoriteReorder;
     private Runnable pendingFavoriteOptions;
     private Runnable pendingUnnamedStationPrompt;
@@ -2712,7 +2716,7 @@ public final class MainActivity extends Activity implements
     private void showActiveFavorite(String stationKey, boolean followStationPage) {
         String normalizedKey = stationKey == null ? "" : stationKey;
         int previousPage = favoritePage;
-        if (!normalizedKey.isEmpty()) {
+        if (!favoriteReordering && !normalizedKey.isEmpty()) {
             List<FavoriteStation> displayed = displayedStations();
             for (int index = 0; index < displayed.size(); index++) {
                 if (displayed.get(index).key().equals(normalizedKey)) {
@@ -2734,10 +2738,20 @@ public final class MainActivity extends Activity implements
     }
 
     private void refreshFavorites() {
+        List<FavoriteStation> dragOrder = favoriteReordering ? new ArrayList<>(displayedStations()) : null;
         favoriteStations.clear();
         favoriteStations.addAll(favoriteStore.load());
         catalogStations.clear();
         catalogStations.addAll(stationStore.load());
+        if (dragOrder != null) {
+            List<FavoriteStation> latest = displayedStations();
+            List<FavoriteStation> merged = StationOrder.withLatestStations(dragOrder, latest);
+            latest.clear();
+            latest.addAll(merged);
+            favoriteReorderIndex = StationOrder.indexOf(latest, favoriteReorderKey);
+            if (favoriteReorderIndex < 0) clearFavoriteReorderSession();
+            else favoritePage = favoriteReorderIndex / FAVORITES_PER_PAGE;
+        }
         int pageCount = favoritePageCount();
         if (pageCount == 0) {
             favoritePage = 0;
@@ -2808,6 +2822,7 @@ public final class MainActivity extends Activity implements
     }
 
     private void showStationCatalog(boolean favorites) {
+        if (favoriteReordering && showingFavorites != favorites) finishFavoriteReorder(false);
         stationNavigationStore.setFavoritesSelected(favorites);
         if (showingFavorites != favorites) {
             showingFavorites = favorites;
@@ -2856,6 +2871,10 @@ public final class MainActivity extends Activity implements
         if (!pageStations.isEmpty()) {
             favoritesList.setSelection(0);
         }
+        if (favoriteReordering) {
+            favoritesList.removeCallbacks(reorderHighlight);
+            favoritesList.postOnAnimation(reorderHighlight);
+        }
     }
 
     private int favoritePageCount() {
@@ -2895,14 +2914,19 @@ public final class MainActivity extends Activity implements
                     Math.round(event.getX()),
                     Math.round(event.getY())
             );
-            scheduleFavoriteOptions(favoriteTouchDownPosition);
+            if (favoriteReordering) {
+                favoriteReorderHasPointer = true;
+                favoritesList.getParent().requestDisallowInterceptTouchEvent(true);
+            } else {
+                scheduleFavoriteOptions(favoriteTouchDownPosition);
+            }
             return true;
         }
         if (event.getActionMasked() == MotionEvent.ACTION_MOVE) {
             float deltaX = event.getX() - favoriteTouchDownX;
             float deltaY = event.getY() - favoriteTouchDownY;
             if (favoriteReordering) {
-                updateFavoriteReorder(event);
+                if (favoriteReorderHasPointer) updateFavoriteReorder(event);
                 return true;
             }
             if (Math.hypot(deltaX, deltaY) >= dp(8)) {
@@ -2928,7 +2952,10 @@ public final class MainActivity extends Activity implements
             cancelPendingFavoriteReorder();
             cancelPendingFavoriteOptions();
             if (favoriteReordering) {
-                finishFavoriteReorder(true);
+                // CANCEL belongs to the touch stream, not to the edit session.
+                // Keep the picked station so the next touch can continue it.
+                favoriteReorderHasPointer = false;
+                favoritesList.getParent().requestDisallowInterceptTouchEvent(false);
                 return true;
             }
             favoriteTouchDragging = false;
@@ -2942,6 +2969,15 @@ public final class MainActivity extends Activity implements
         cancelPendingFavoriteReorder();
         cancelPendingFavoriteOptions();
         if (favoriteReordering) {
+            if (!favoriteReorderHasPointer) return true;
+            favoriteReorderHasPointer = false;
+            favoritesList.getParent().requestDisallowInterceptTouchEvent(false);
+            int pos = favoritesList.pointToPosition(Math.round(event.getX()), Math.round(event.getY()));
+            if (favoriteReorderEdge != 0 && (favoriteReorderEdge == reorderEdgeAt(event.getX())
+                    || pos == GridView.INVALID_POSITION)) return true;
+            if (pos != GridView.INVALID_POSITION && pos < favoriteAdapter.getCount()) {
+                moveFavoriteReorderTo(favoritePage * FAVORITES_PER_PAGE + pos);
+            }
             finishFavoriteReorder(true);
             return true;
         }
@@ -3116,6 +3152,9 @@ public final class MainActivity extends Activity implements
             return;
         }
         favoriteReordering = true;
+        favoriteReorderKey = stationKey;
+        favoriteReorderEdge = 0;
+        favoriteReorderHasPointer = false;
         favoriteReorderIndex = stationIndex;
         favoriteReorderPageChangedAt = 0L;
         favoriteTouchDragging = false;
@@ -3136,22 +3175,17 @@ public final class MainActivity extends Activity implements
             return;
         }
         long now = SystemClock.elapsedRealtime();
-        int edge = dp(82);
-        if (now - favoriteReorderPageChangedAt >= STATION_REORDER_PAGE_DELAY_MS) {
-            if (event.getX() <= edge && favoritePage > 0) {
-                moveFavoriteReorderTo(favoritePage * FAVORITES_PER_PAGE - 1);
+        int edge = reorderEdgeAt(event.getX());
+        if (edge != 0 && edge == favoriteReorderEdge) return;
+        if (edge != 0 && favoritePage + edge >= 0 && favoritePage + edge < favoritePageCount()) {
+            if (favoriteReorderPageChangedAt == 0L || now - favoriteReorderPageChangedAt >= STATION_REORDER_PAGE_DELAY_MS) {
+                int destination = edge < 0 ? favoritePage * FAVORITES_PER_PAGE - 1
+                        : (favoritePage + 1) * FAVORITES_PER_PAGE;
+                favoriteReorderEdge = edge;
                 favoriteReorderPageChangedAt = now;
-                return;
+                moveFavoriteReorderTo(destination);
             }
-            if (event.getX() >= favoritesList.getWidth() - edge
-                    && favoritePage + 1 < favoritePageCount()) {
-                moveFavoriteReorderTo(Math.min(
-                        stations.size() - 1,
-                        (favoritePage + 1) * FAVORITES_PER_PAGE
-                ));
-                favoriteReorderPageChangedAt = now;
-                return;
-            }
+            return;
         }
 
         int pagePosition = favoritesList.pointToPosition(
@@ -3161,11 +3195,18 @@ public final class MainActivity extends Activity implements
         if (pagePosition == GridView.INVALID_POSITION) {
             return;
         }
+        favoriteReorderEdge = 0;
         int targetIndex = Math.min(
                 stations.size() - 1,
                 favoritePage * FAVORITES_PER_PAGE + pagePosition
         );
         moveFavoriteReorderTo(targetIndex);
+    }
+
+    private int reorderEdgeAt(float x) {
+        int width = favoritesList.getWidth();
+        int edge = Math.min(dp(82), width / 12);
+        return x <= edge ? -1 : x >= width - edge ? 1 : 0;
     }
 
     private void moveFavoriteReorderTo(int targetIndex) {
@@ -3178,7 +3219,6 @@ public final class MainActivity extends Activity implements
         favoritePage = targetIndex / FAVORITES_PER_PAGE;
         favoritePageManuallySelected = true;
         renderFavoritePage();
-        favoritesList.post(this::highlightFavoriteReorderCard);
     }
 
     private void highlightFavoriteReorderCard() {
@@ -3187,10 +3227,12 @@ public final class MainActivity extends Activity implements
             return;
         }
         int pagePosition = favoriteReorderIndex - favoritePage * FAVORITES_PER_PAGE;
+        if (pagePosition < 0 || pagePosition >= favoriteAdapter.getCount()) return;
         int childIndex = pagePosition - favoritesList.getFirstVisiblePosition();
         View card = favoritesList.getChildAt(childIndex);
         if (card == null) {
-            favoritesList.postDelayed(this::highlightFavoriteReorderCard, 16L);
+            favoritesList.removeCallbacks(reorderHighlight);
+            if (favoritesList.isShown() && !destroyed) favoritesList.postOnAnimation(reorderHighlight);
             return;
         }
         card.setAlpha(0.72f);
@@ -3214,20 +3256,30 @@ public final class MainActivity extends Activity implements
         if (!favoriteReordering) {
             return;
         }
-        clearFavoriteReorderHighlight();
-        List<FavoriteStation> ordered = new ArrayList<>(displayedStations());
+        List<FavoriteStation> ordered = StationOrder.withLatestStations(displayedStations(),
+                showingFavorites ? favoriteStore.load() : stationStore.load());
+        clearFavoriteReorderSession();
         if (showingFavorites) {
             favoriteStore.replaceOrder(ordered);
         } else {
             stationStore.replaceOrder(ordered);
         }
-        favoriteReordering = false;
-        favoriteReorderIndex = -1;
-        favoriteTouchDownPosition = GridView.INVALID_POSITION;
         refreshFavorites();
         if (announce) {
             toast(tr("Kanavajärjestys tallennettu", "Station order saved"));
         }
+    }
+
+    private void clearFavoriteReorderSession() {
+        favoritesList.removeCallbacks(reorderHighlight);
+        favoriteReordering = false;
+        favoriteReorderKey = "";
+        favoriteReorderIndex = -1;
+        favoriteReorderEdge = 0;
+        favoriteReorderHasPointer = false;
+        favoriteTouchDownPosition = GridView.INVALID_POSITION;
+        favoritesList.getParent().requestDisallowInterceptTouchEvent(false);
+        clearFavoriteReorderHighlight();
     }
 
 
