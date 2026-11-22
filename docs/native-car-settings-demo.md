@@ -8,7 +8,7 @@ From the project root, using the project's Gradle version:
 gradle -I tools/car-settings-demo.gradle -PexperimentalTestBuild6=true :app:assemblePlayCarSettingsDemo
 ```
 
-The package is `fi.radioplus.app.play.settingsdemo`, version `0.16.1-settings-demo2`. It updates demo 1 in place. It uses the SDK debug signing configuration. It does not replace any normal build or share its private preferences. The launcher opens the normal radio, without seeded sample stations. Open **Settings** in the bottom navigation.
+The package is `fi.radioplus.app.play.settingsdemo`, version `0.16.1-settings-demo3`. It updates previous settings demos in place. It uses the SDK debug signing configuration. It does not replace any normal build or share its private preferences. The launcher opens the normal radio, without seeded sample stations. Open **Settings** in the bottom navigation.
 
 ## What to try
 
@@ -18,7 +18,7 @@ The package is `fi.radioplus.app.play.settingsdemo`, version `0.16.1-settings-de
 
 ## Design and verification
 
-The design follows Google's [custom automotive media screens](https://developers.google.com/cars/design/automotive-os/apps/media/guidelines-custom-screens) and [settings guidance](https://developers.google.com/cars/design/automotive-os/apps/media/create-your-app/design-settings). One scrollable root exposes the settings. The fixed header uses the installed app's launcher icon and Android's native borderless button with the system Close and Up icons. Its translated label is shown when space permits and is always available to accessibility services. Controls are native, at least 80 dp in each dimension, with 24 dp between adjacent targets. Primary type starts at 32 (title: 36), secondary at 24. Text respects larger system font settings, wraps, and never scales below the guideline minimum. Settings do not declare a distraction-optimized exemption.
+The design uses Google's [custom automotive media screens](https://developers.google.com/cars/design/automotive-os/apps/media/guidelines-custom-screens) and [settings guidance](https://developers.google.com/cars/design/automotive-os/apps/media/create-your-app/design-settings). The shared header deliberately omits the optional brand mark: it has only the native borderless navigation button and the screen title. Close exits settings; Up returns one screen. The translated button label is shown when space permits and is always available to accessibility services. Controls are native, at least 80 dp in each dimension, with 24 dp between adjacent targets. Primary type starts at 32 (title: 36), secondary at 24. Text respects larger system font settings, wraps, and never scales below the guideline minimum. Settings do not declare a distraction-optimized exemption.
 
 To run just the demo's device tests on a stock emulator:
 

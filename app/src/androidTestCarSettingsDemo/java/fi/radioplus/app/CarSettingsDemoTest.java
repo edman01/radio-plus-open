@@ -20,7 +20,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.WebView;
 import android.widget.Button;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.Switch;
@@ -148,14 +147,13 @@ public final class CarSettingsDemoTest {
         });
     }
 
-    @Test public void headerUsesInstalledLogoAndBorderlessPlatformNavigation() throws Exception {
+    @Test public void headerHasNoTrailingLogoAndKeepsBorderlessPlatformNavigation() throws Exception {
         CarSettingsActivity a=launch();
         main(()->{
-            ImageView brand=a.findViewById(R.id.car_settings_brand);
-            assertNotNull(brand);assertFalse(brand.isClickable());assertNull(brand.getBackground());
-            assertTrue("Show the installed launcher icon, without redrawing or tinting it",
-                    rendered(a.getApplicationInfo().loadIcon(a.getPackageManager())).sameAs(rendered(brand.getDrawable())));
             Button nav=a.findViewById(R.id.settings_close);
+            ViewGroup bar=(ViewGroup)nav.getParent();
+            assertSame("No logo or reserved slot after the title",a.findViewById(R.id.car_settings_title),
+                    bar.getChildAt(bar.getChildCount()-1));
             assertTrue("Focus and press feedback",nav.getBackground().isStateful());
             Drawable idle=nav.getBackground().getConstantState().newDrawable(a.getResources(),a.getTheme()).mutate();
             idle.setState(new int[]{android.R.attr.state_enabled});idle.jumpToCurrentState();
