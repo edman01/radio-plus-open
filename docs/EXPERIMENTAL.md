@@ -24,8 +24,8 @@ it does not include G5 or SPD support.
 
 ## Reglink device-test preview — S5.74 and S6.02
 
-**Not included in community beta 5. Disabled in normal builds.** To build the
-device-test variant, add `-PreglinkStockAssisted=true` to `:app:assemblePlayRelease`.
+**Not included in community beta 5. Disabled in normal builds.** See the opt-in build command in
+[BUILD.md](BUILD.md#reglink-device-test-build).
 
 This stock-assisted experiment requires the exact inspected combination of
 `com.reglink.services`, `com.reglink.apps.radio` and `com.reglink.apps.mtkradio`.
