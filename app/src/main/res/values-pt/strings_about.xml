@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="settings_back">← Voltar</string>
+    <string name="settings_navigate_back">Voltar</string>
     <string name="settings_about">Acerca da aplicação</string>
     <string name="about_title">Acerca do Radio+</string>
     <string name="about_version">Versão %1$s</string>

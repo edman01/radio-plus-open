@@ -64,6 +64,7 @@ public final class UiRadioAdoptionTest {
     private boolean ownsService;
     private boolean observerRegistered;
     private volatile boolean sawPcm;
+    private WheelStartupTestPrefs startupPrefs;
 
     private final AudioManager.AudioPlaybackCallback playbackObserver =
             new AudioManager.AudioPlaybackCallback() {
@@ -75,6 +76,7 @@ public final class UiRadioAdoptionTest {
     @Before public void setUp() throws Exception {
         assumeFalse("Never inject synthetic tuner state on a Junsun head unit", hasVendorFramework());
         context = instrumentation.getTargetContext();
+        startupPrefs = new WheelStartupTestPrefs(context);
         assertNull("Stop the test app before UI-adoption instrumentation",
                 field(RadioPlaybackService.class, "runningInstance", null));
         audio = context.getSystemService(AudioManager.class);
@@ -104,6 +106,7 @@ public final class UiRadioAdoptionTest {
             }
         } finally {
             if (observerRegistered) audio.unregisterAudioPlaybackCallback(playbackObserver);
+            if (startupPrefs != null) startupPrefs.close();
         }
     }
 
@@ -254,6 +257,105 @@ public final class UiRadioAdoptionTest {
                 "routingPulseStatus", service)), "The foreground recovery did not yield to another source");
         assertNoAudioWrites();
         assertFalse(sawPcm);
+    }
+
+    private void verifiedV7() {
+        instrumentation.runOnMainSync(() -> setField(service, "boundDetection",
+                new RadioApiFactory.Detection(RadioBackendProfile.HCN_CURRENT_31, "", "", "")));
+    }
+
+    private String pulseStatus() {
+        return (String) field(RadioPlaybackService.class, "routingPulseStatus", service);
+    }
+
+    @Test public void audibleV7AutoStartAdoptsThenRestoresWithoutAStationTap() throws Exception {
+        verifiedV7();
+        AutoStartPreferences.setEnabled(context, true);
+        RadioPlaybackService.ensureRunningForDeviceStart(context);
+        await(() -> "scheduled".equals(pulseStatus()), "No startup claim");
+        long claim = claimId();
+        RadioPlaybackService.noteUiBackgrounded(); // AGAMA may be on top throughout startup.
+        RadioPlaybackService.ensureRunningForDeviceStart(context);
+        await(() -> "completed".equals(pulseStatus()), "No automatic claim with AGAMA in front");
+        drain();
+        assertEquals(claim, claimId());
+        assertTrue(sawPcm);
+        assertNoAudioWrites();
+        assertPlayingAtObservedStation();
+    }
+
+    @Test public void manualRestoreSurvivesNewServiceAndScreenSleepWithoutEnablingAutostart() throws Exception {
+        verifiedV7();
+        openUi();
+        assertAdoptedWithoutAudioWrites(claimId());
+        instrumentation.runOnMainSync(() -> assertTrue(RadioPlaybackService.requestWheelRouteRepair()));
+        await(() -> AutoStartPreferences.remembersWheelRestore(context), "Completed manual repair wasn't remembered");
+        assertFalse(AutoStartPreferences.isEnabled(context));
+        instrumentation.runOnMainSync(() -> {
+            browser.disconnect();
+            context.stopService(new Intent(context, RadioPlaybackService.class));
+        });
+        await(() -> field(RadioPlaybackService.class, "runningInstance", null) == null, "Old service still running");
+        connectPassiveBrowser(); // A launcher can browse the new service without asking it to play.
+        verifiedV7();
+        assertFalse(RadioPlaybackService.isPlaybackRequested());
+        RadioPlaybackService.ensureRunningForUi(context);
+        await(() -> "completed".equals(pulseStatus()), "No cold UI repair after service recreation");
+        long coldClaim = claimId();
+        android.content.BroadcastReceiver monitor = (android.content.BroadcastReceiver)
+                field(RadioPlaybackService.class, "accWakeReceiver", service);
+        instrumentation.runOnMainSync(() -> {
+            monitor.onReceive(context, new Intent(Intent.ACTION_SCREEN_OFF));
+            setField(service, "screenOffAtElapsed", SystemClock.elapsedRealtime() - 4_000L);
+            monitor.onReceive(context, new Intent(Intent.ACTION_SCREEN_ON));
+        });
+        await(() -> claimId() > coldClaim && "completed".equals(pulseStatus()), "No repair after deep sleep");
+        assertNoAudioWrites();
+        assertPlayingAtObservedStation();
+    }
+
+    @Test public void startupClaimYieldsToExternalSourceDuringSettle() throws Exception {
+        verifiedV7();
+        AutoStartPreferences.setEnabled(context, true);
+        openUi();
+        await(() -> "scheduled".equals(pulseStatus()), "Startup claim missing");
+        source.packageName = "test.external.player";
+        await(() -> "skipped-external-source".equals(pulseStatus()), "Late repair did not yield");
+        assertNoAudioWrites();
+        assertFalse(sawPcm);
+    }
+
+    @Test public void additionalWakeCannotUndoPauseOrRunStaleStartupClaim() throws Exception {
+        verifiedV7();
+        AutoStartPreferences.setEnabled(context, true);
+        RadioPlaybackService.ensureRunningForDeviceStart(context);
+        await(() -> "scheduled".equals(pulseStatus()), "No pending startup claim");
+        controller.getTransportControls().pause();
+        await(() -> !RadioPlaybackService.isPlaybackRequested(), "Pause not delivered");
+        RadioPlaybackService.ensureRunningForDeviceStart(context);
+        SystemClock.sleep(3_400L);
+        drain();
+        assertFalse(RadioPlaybackService.isPlaybackRequested());
+        assertFalse(sawPcm);
+        assertEquals(0, tuner.routes);
+        assertEquals(0, tuner.focusRequests);
+        assertEquals(0, tuner.tunes);
+    }
+
+    @Test public void briefOemStartupMuteDefersTheMarkerWithoutEverUnmuting() throws Exception {
+        verifiedV7();
+        AutoStartPreferences.setEnabled(context, true);
+        openUi();
+        await(() -> "scheduled".equals(pulseStatus()), "No startup claim");
+        long claim = claimId();
+        player.muted = true;
+        await(() -> "waiting-for-quiet".equals(pulseStatus()), "Recovery did not wait for stock startup");
+        assertFalse(sawPcm);
+        assertNoAudioWrites();
+        player.muted = false; // The tuner, not Radio+, finishes waking up.
+        await(() -> "completed".equals(pulseStatus()), "Recovery did not finish after stock became ready");
+        assertEquals(claim, claimId());
+        assertNoAudioWrites();
     }
 
     @Test public void explicitPlayAfterAdoptionStillPerformsTheOwnershipHandoff() throws Exception {

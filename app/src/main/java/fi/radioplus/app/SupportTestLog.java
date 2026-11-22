@@ -155,7 +155,7 @@ final class SupportTestLog {
                 + "HCN_RF_CHANGE: observed frequency change only, not evidence of a button. "
                 + "HCN_LIST_STEP: a=next (1) or previous (-1); b mask: 1=favorites (else stations), 2=timed key. "
                 + "HCN_WHEEL_RESULT: a=1 already on neighbour, 2 tuned, 0 unconfirmed, -1 unknown origin.\n"
-                + "HCN_ROUTE_REPAIR: requested (1), local marker completed (2), skipped/failed (0); b=0 repair button, 1 first station selection after adoption. Not proof of key delivery.\n"
+                + "HCN_ROUTE_REPAIR: requested (1), local marker completed (2), skipped/failed (0); b=0 repair button, 1 first station selection after adoption, 2 startup/wake. Not proof of key delivery.\n"
                 + "OWNER_STABLE: a=stock owner on both reads, b=matching routes. ROUTE: platform/model. "
                 + "MIX_FLAGS: mix/flags. ROUTE_ACTION: a=action. Missing route=-1.\n"
                 + "DETECTED/CONNECTED: a=profile enum ordinal. START: a=version code, b=SDK.\n"

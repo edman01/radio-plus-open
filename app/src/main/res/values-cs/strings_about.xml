@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="settings_back">← Zpět</string>
+    <string name="settings_navigate_back">Zpět</string>
     <string name="settings_about">O aplikaci</string>
     <string name="about_title">O aplikaci Radio+</string>
     <string name="about_version">Verze %1$s</string>

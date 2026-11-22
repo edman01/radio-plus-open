@@ -37,6 +37,11 @@ commands. Parked device retest: leave accessibility off, select a station in
 Favorites, press Next twice, and check the two consecutive tiles. Repeat in
 Stations. If keys still miss Radio+, use **Restore steering-wheel controls**
 once and repeat; a changed frequency on its own is not a successful key test.
+On one V7 the manual restore worked in Build 12 but the problem returned on restart.
+Build 13 adds automatic recovery on startup and wake. Parked hardware check:
+with Auto-start enabled and accessibility off, restart, wait for FM to settle,
+then press Next twice **without** using Restore or tapping a station first.
+Repeat after ACC sleep. Real steering behavior after restart still needs confirmation.
 Steering-wheel mute behavior needs separate testing. Successful volume control
 does not establish compatibility with every steering command. Behavior depends
 on how the firmware routes button events; test while parked.

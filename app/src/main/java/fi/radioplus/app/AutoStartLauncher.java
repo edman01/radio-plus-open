@@ -26,7 +26,7 @@ final class AutoStartLauncher {
             // service still restores radio playback and exposes a tappable
             // notification; Junsun builds that permit startup activities also
             // continue through the activity request below.
-            RadioPlaybackService.ensureRunning(context);
+            RadioPlaybackService.ensureRunningForDeviceStart(context);
             playbackStarted = true;
         } catch (RuntimeException error) {
             Log.w(TAG, "Startup playback service was blocked by the system", error);

@@ -886,9 +886,15 @@ public final class AboutAppUiTest {
         assertTrue(settings.isShowing());
         assertNotNull("Radio category preserved", settings.findViewById(R.id.settings_sensitivity));
         instrumentation.runOnMainSync(() -> {
-            Button back = settings.findViewById(R.id.settings_close);
-            assertEquals(activity.getString(R.string.settings_back), back.getText().toString());
-            assertTextFits(back);
+            android.widget.ImageButton back = settings.findViewById(R.id.settings_close);
+            assertEquals(activity.getString(R.string.settings_navigate_back), back.getContentDescription());
+            assertNotNull(back.getDrawable());
+            int min = Math.round(48 * activity.getResources().getDisplayMetrics().density);
+            assertTrue(back.getWidth() >= min && back.getHeight() >= min);
+            TextView title = findText(settings.getWindow().getDecorView(), activity.getString(R.string.action_setup));
+            assertNotNull(title);
+            assertTrue("Back must be before the settings title", back.getRight() < title.getLeft());
+            assertTextFits(title);
             assertTrue(back.performClick());
         });
         instrumentation.waitForIdleSync();

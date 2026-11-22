@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="settings_back">← Terug</string>
+    <string name="settings_navigate_back">Terug</string>
     <string name="settings_about">Over de app</string>
     <string name="about_title">Over Radio+</string>
     <string name="about_version">Versie %1$s</string>

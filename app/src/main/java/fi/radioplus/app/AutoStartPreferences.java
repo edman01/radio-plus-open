@@ -6,6 +6,7 @@ import android.content.Context;
 final class AutoStartPreferences {
     private static final String PREFERENCES = "radio_plus_startup";
     private static final String KEY_ENABLED = "auto_start_enabled";
+    private static final String KEY_HCN_WHEEL = "hcn_restore_wheel_on_start";
 
     private AutoStartPreferences() {
     }
@@ -14,6 +15,16 @@ final class AutoStartPreferences {
         return storageContext(context)
                 .getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
                 .getBoolean(KEY_ENABLED, false);
+    }
+
+    static boolean remembersWheelRestore(Context context) {
+        return storageContext(context).getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+                .getBoolean(KEY_HCN_WHEEL, false);
+    }
+
+    static void rememberWheelRestore(Context context) {
+        storageContext(context).getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+                .edit().putBoolean(KEY_HCN_WHEEL, true).apply();
     }
 
     @SuppressLint("ApplySharedPref")

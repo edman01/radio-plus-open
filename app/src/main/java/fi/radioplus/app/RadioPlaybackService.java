@@ -62,6 +62,8 @@ public final class RadioPlaybackService extends MediaBrowserService {
     private static final long METADATA_REFRESH_MS = 1500L;
     private static final long PAUSE_FOCUS_HANDOFF_MS = 650L;
     private static final long OEM_GAIN_SETTLE_MS = 650L;
+    // The stock session can register again after the ordinary focus/unmute handoff.
+    private static final long HCN_STARTUP_SETTLE_MS = 3_000L;
     // Junsun's framework exposes these as McuConstant.K_STEP_FORWARD (274)
     // and K_STEP_BACKWARD (275). They are not Android DPAD directions.
     private static final int KEYCODE_JUNSUN_TUNER_NEXT = 274;
@@ -87,6 +89,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
             "fi.radioplus.app.action.TAKE_OVER_PLAYBACK";
     private static final String ACTION_OPEN_UI =
             "fi.radioplus.app.action.OPEN_UI";
+    static final String ACTION_DEVICE_START = "fi.radioplus.app.action.DEVICE_START";
     static final String ACTION_TUNE_STATION =
             "fi.radioplus.app.action.TUNE_WIDGET_STATION";
     static final String ACTION_TUNE_UI_STATION =
@@ -119,6 +122,12 @@ public final class RadioPlaybackService extends MediaBrowserService {
     private volatile boolean uiTakeoverRequired;
     private volatile long routingClaimId;
     private volatile long uiBackgroundGeneration;
+    private volatile long screenSleepGeneration;
+    // Coalesce overlapping boot/ACC/UI intents, but not a new sleep cycle or OEM connection.
+    private long lastStartupWheelAt = -10_000L;
+    private long lastStartupWheelCycle = -1L;
+    private long lastStartupWheelEpoch = -1L;
+    private IRadioServiceAPI lastStartupWheelEndpoint;
     private long lastWheelRepairAt = -2_000L;
     private final PlaybackOwnershipPolicy playbackOwnership = new PlaybackOwnershipPolicy();
     private Runnable pendingRoutingClaim;
@@ -284,13 +293,17 @@ public final class RadioPlaybackService extends MediaBrowserService {
         context.startForegroundService(service);
     }
 
+    static void ensureRunningForDeviceStart(Context context) {
+        context.startForegroundService(new Intent(context, RadioPlaybackService.class).setAction(ACTION_DEVICE_START));
+    }
+
     static void ensureRunningForUi(Context context) {
         RadioPlaybackService current = runningInstance;
         // Reopening the screen is not a Play command. Preserve both ongoing
         // radio playback and an intentional pause without another focus/PCM
         // handoff. A cold launch first checks whether the stock radio already
         // plays, rather than treating screen creation as an explicit Play.
-        if (current == null || current.stopping) {
+        if (current == null || current.stopping || (!current.playbackRequested && current.playbackRequestRevision == 0)) {
             context.startForegroundService(new Intent(context, RadioPlaybackService.class)
                     .setAction(ACTION_OPEN_UI));
         }
@@ -519,7 +532,15 @@ public final class RadioPlaybackService extends MediaBrowserService {
             return START_NOT_STICKY;
         }
         if (ACTION_OPEN_UI.equals(action)) {
-            requestPlaybackForUi();
+            requestPlaybackForUi(false);
+            return START_NOT_STICKY;
+        }
+        if (ACTION_DEVICE_START.equals(action)) {
+            if (!AutoStartPreferences.isEnabled(this)) return START_NOT_STICKY;
+            // A live service that has already yielded or been paused is not a cold boot.
+            if (!(isVerifiedV7(radio) && !playbackRequested && playbackRequestRevision != 0)) {
+                requestPlaybackForUi(true);
+            }
             return START_NOT_STICKY;
         }
 
@@ -575,19 +596,24 @@ public final class RadioPlaybackService extends MediaBrowserService {
             public void onReceive(Context context, Intent intent) {
                 String action = intent == null ? null : intent.getAction();
                 if (Intent.ACTION_SCREEN_OFF.equals(action)) {
+                    screenSleepGeneration++;
                     hcnWheelHistory = new HcnWheelHistory();
                     hcnResumeEpoch.set(-1L);
                     screenOffAtElapsed = SystemClock.elapsedRealtime();
                     return;
                 }
-                if (Intent.ACTION_SCREEN_ON.equals(action)) hcnWheelHistory = new HcnWheelHistory();
-                if (!Intent.ACTION_SCREEN_ON.equals(action)
-                        || !AutoStartPreferences.isEnabled(context)) {
-                    return;
-                }
+                if (!Intent.ACTION_SCREEN_ON.equals(action)) return;
+                hcnWheelHistory = new HcnWheelHistory();
                 long now = SystemClock.elapsedRealtime();
                 if (AutoStartLaunchPolicy.isWakeAfterSleep(screenOffAtElapsed, now)) {
-                    AutoStartLauncher.launch(context, "ACC/screen wake");
+                    boolean autoStart = AutoStartPreferences.isEnabled(context);
+                    if (autoStart) AutoStartLauncher.launch(context, "ACC/screen wake");
+                    if ((autoStart || AutoStartPreferences.remembersWheelRestore(context)) && isVerifiedV7(radio)
+                            && playbackRequested && oemRouteActive && activatedPlaybackEpoch == playbackEpoch) {
+                        // Also covers a wake whose launcher call coalesced with a nearby ACC broadcast.
+                        // The wheel path alone cannot launch the UI or resume paused playback.
+                        scheduleRoutingClaim(radio, playbackEpoch, RoutingReason.STARTUP, screenSleepGeneration);
+                    }
                 }
                 screenOffAtElapsed = -1L;
             }
@@ -778,33 +804,60 @@ public final class RadioPlaybackService extends MediaBrowserService {
         });
     }
 
-    private void requestPlaybackForUi() {
+    private void requestPlaybackForUi(boolean deviceStart) {
+        IRadioServiceAPI endpoint = radio;
+        long activeEpoch = playbackEpoch;
+        if (deviceStart && isVerifiedV7(endpoint) && isCurrentPlayback(activeEpoch, endpoint)
+                && oemRouteActive && activatedPlaybackEpoch == activeEpoch) {
+            // A wake/duplicate boot signal is not another Play. Check the source when the
+            // deferred wheel repair runs; never unmute or take focus from a new player here.
+            scheduleRoutingClaim(endpoint, activeEpoch, RoutingReason.STARTUP, screenSleepGeneration);
+            return;
+        }
         // Inspect before activating the shared input gain too: even that write
         // can disturb an already audible OEM route after process recreation.
+        boolean alreadyPlaying = playbackRequested;
+        long sleepCycle = screenSleepGeneration;
         setPlaybackRequested(true, false);
         long requestRevision = playbackRequestRevision;
         executeRadioCommand("open radio screen", (current, epoch) -> {
             RadioPlaybackHealthReader.Snapshot health = readPlaybackHealth();
             if (!isCurrentPlayback(epoch, current)
                     || playbackRequestRevision != requestRevision) return;
+            boolean v7 = isVerifiedV7(current);
+            if (deviceStart && !v7) {
+                activateOemPlayback(current, true, epoch); // Preserve other backends' auto-start.
+                return;
+            }
+            if (deviceStart && health.sourceKnown && !isRadioOrOwnSource(health)
+                    && (alreadyPlaying || androidMediaPlaying())) {
+                mainHandler.post(() -> {
+                    if (isCurrentPlayback(epoch, current) && playbackRequestRevision == requestRevision)
+                        setPlaybackRequested(false, false);
+                });
+                return;
+            }
+            boolean startupWheel = v7 && (deviceStart || AutoStartPreferences.isEnabled(this)
+                    || AutoStartPreferences.remembersWheelRestore(this));
             if (RadioApiFactory.supportsSeparateAudioFocus(current)
                     && OemFocusInteropPolicy.shouldAdoptPlayingRadioForUi(
                             health.sourceKnown, health.hcnOwnsSource(), health.muteKnown, health.muted,
                             oemFocusState.wasFocusReleasedByRadioPlus())) {
                 // Adopt observed playback, not the manufacturer's focus handle.
-                // No source selection, focus/mute/gain write, retune or PCM pulse.
+                // No source selection, focus/mute/gain write or retune.
                 oemRouteActive = true;
                 oemFocusState.markRouteRequested();
                 oemFocusState.markFocusResumed();
                 activatedPlaybackEpoch = epoch;
-                if (isVerifiedV7(current)) hcnAdoptedWheelEpoch.set(epoch);
+                if (startupWheel) scheduleRoutingClaim(current, epoch, RoutingReason.STARTUP, sleepCycle);
+                else if (v7) hcnAdoptedWheelEpoch.set(epoch);
                 uiTakeoverRequired = false;
                 Log.i(TAG, "Already-playing stock radio adopted without audio reinitialization");
                 return;
             }
             // Unknown, paused or external playback still needs the established
             // startup path. Explicit Play commands never use the adoption path.
-            activateOemPlayback(current, true, epoch);
+            activateOemPlayback(current, true, epoch, startupWheel, sleepCycle);
         });
     }
 
@@ -991,6 +1044,11 @@ public final class RadioPlaybackService extends MediaBrowserService {
             long epoch
     )
             throws RemoteException {
+        return activateOemPlayback(current, explicitTakeover, epoch, false, 0L);
+    }
+
+    private boolean activateOemPlayback(IRadioServiceAPI current, boolean explicitTakeover, long epoch,
+            boolean startupWheel, long sleepCycle) throws RemoteException {
         if (!isCurrentPlayback(epoch, current)) return false;
         if (current instanceof ReglinkRadioApi) {
             // Stock-assisted only: no focus request, source switch, PCM marker,
@@ -1082,6 +1140,8 @@ public final class RadioPlaybackService extends MediaBrowserService {
                 // The media session survived our pause. Do not play silent PCM
                 // and reselect analog FM after it has already become audible.
                 routingPulseStatus = "reused-after-pause";
+            } else if (startupWheel) {
+                scheduleRoutingClaim(current, epoch, RoutingReason.STARTUP, sleepCycle);
             } else if (RadioApiFactory.usesHcnFramework(current)) {
                 scheduleRoutingClaim(current, epoch);
             }
@@ -1108,35 +1168,70 @@ public final class RadioPlaybackService extends MediaBrowserService {
         pendingRoutingClaim = null;
     }
 
-    private enum RoutingReason { PLAY, REPAIR, FIRST_UI_TUNE }
+    private enum RoutingReason { PLAY, REPAIR, FIRST_UI_TUNE, STARTUP }
+
+    private boolean androidMediaPlaying() {
+        return audioManager != null && !audioManager.getActivePlaybackConfigurations().isEmpty();
+    }
 
     private void scheduleRoutingClaim(IRadioServiceAPI current, long epoch) {
         scheduleRoutingClaim(current, epoch, RoutingReason.PLAY, 0L);
     }
 
-    private void scheduleRoutingClaim(IRadioServiceAPI current, long epoch, RoutingReason reason, long uiAtRequest) {
+    private void scheduleRoutingClaim(IRadioServiceAPI current, long epoch, RoutingReason reason, long generation) {
         boolean repair = reason != RoutingReason.PLAY;
-        int fromSelection = reason == RoutingReason.FIRST_UI_TUNE ? 1 : 0;
+        boolean startup = reason == RoutingReason.STARTUP;
+        int trigger = startup ? 2 : reason == RoutingReason.FIRST_UI_TUNE ? 1 : 0;
         BooleanSupplier eligible = () -> isCurrentPlayback(epoch, current)
-                && (!repair || (uiBackgroundGeneration == uiAtRequest && isVerifiedV7(current)));
+                && (!repair || (isVerifiedV7(current) && (startup
+                        ? screenSleepGeneration == generation && oemRouteActive && activatedPlaybackEpoch == epoch
+                        : uiBackgroundGeneration == generation)));
         mainHandler.post(() -> {
             if (!eligible.getAsBoolean()) return;
+            if (startup) {
+                long now = SystemClock.elapsedRealtime();
+                if (lastStartupWheelEndpoint == current && lastStartupWheelEpoch == epoch
+                        && lastStartupWheelCycle == generation && now - lastStartupWheelAt < 10_000L) return;
+                lastStartupWheelEndpoint = current;
+                lastStartupWheelEpoch = epoch;
+                lastStartupWheelCycle = generation;
+                lastStartupWheelAt = now;
+            }
             hcnAdoptedWheelEpoch.compareAndSet(epoch, -1L);
             cancelRoutingClaim();
             long claim = routingClaimId;
             BooleanSupplier live = () -> eligible.getAsBoolean() && routingClaimId == claim;
-            if (repair) SupportTestLog.event(SupportTestLog.Event.HCN_ROUTE_REPAIR, 1, fromSelection);
+            if (repair) SupportTestLog.event(SupportTestLog.Event.HCN_ROUTE_REPAIR, 1, trigger);
             routingPulseStatus = "scheduled";
-            pendingRoutingClaim = () -> {
-                pendingRoutingClaim = null;
-                if (!live.getAsBoolean()) return;
-                executeRadioCommand("media routing", (connected, commandEpoch) -> {
+            class Attempt implements Runnable {
+                private int remainingQuietChecks = 2;
+
+                @Override public void run() {
+                    pendingRoutingClaim = null;
+                    if (live.getAsBoolean()) executeRadioCommand("media routing", this::check);
+                }
+
+                private void check(IRadioServiceAPI connected, long commandEpoch) throws RemoteException {
                     if (!live.getAsBoolean() || connected != current || commandEpoch != epoch) return;
                     RadioPlaybackHealthReader.Snapshot health = readPlaybackHealth();
                     boolean otherSource = health.sourceKnown && !isRadioOrOwnSource(health);
-                    if (otherSource || (repair && health.muteKnown && health.muted)) {
-                        routingPulseStatus = otherSource ? "skipped-external-source" : "skipped-muted";
-                        if (repair) SupportTestLog.event(SupportTestLog.Event.HCN_ROUTE_REPAIR, 0, fromSelection);
+                    boolean muted = repair && health.muteKnown && health.muted;
+                    boolean busy = startup && androidMediaPlaying();
+                    if (startup && health.sourceKnown && health.hcnOwnsSource() && (muted || busy)
+                            && remainingQuietChecks-- > 0) {
+                        // Stock may still be registering its media player. Wait without holding up
+                        // the tuner executor, and never emit a marker while someone's audio is active.
+                        routingPulseStatus = "waiting-for-quiet";
+                        mainHandler.post(() -> {
+                            if (!live.getAsBoolean()) return;
+                            pendingRoutingClaim = this;
+                            mainHandler.postDelayed(this, 1_000L);
+                        });
+                        return;
+                    }
+                    if (otherSource || muted || busy) {
+                        routingPulseStatus = otherSource ? "skipped-external-source" : muted ? "skipped-muted" : "skipped-active-media";
+                        if (repair) SupportTestLog.event(SupportTestLog.Event.HCN_ROUTE_REPAIR, 0, trigger);
                         return; // Never reclaim radio from another app in a delayed callback.
                     }
                     routingPulseStatus = "running";
@@ -1144,20 +1239,25 @@ public final class RadioPlaybackService extends MediaBrowserService {
                     routingPulseStatus = result.status.name().toLowerCase(Locale.ROOT);
                     SteeringDiagnosticTrace.get().event("routing-pulse", result.diagnostic());
                     if (repair) SupportTestLog.event(SupportTestLog.Event.HCN_ROUTE_REPAIR,
-                            result.status == MediaKeyRoutingPulse.Status.COMPLETED ? 2 : 0, fromSelection);
+                            result.status == MediaKeyRoutingPulse.Status.COMPLETED ? 2 : 0, trigger);
                     if (!live.getAsBoolean() || !result.trackCreated || !result.trackReleased) return;
+                    if (reason == RoutingReason.REPAIR && result.status == MediaKeyRoutingPulse.Status.COMPLETED)
+                        AutoStartPreferences.rememberWheelRestore(RadioPlaybackService.this);
                     // The marker is released. Asking an already audible HCN radio for
                     // its source again can put stock back in charge of the very next key.
                     health = readPlaybackHealth();
                     if (health.sourceKnown && !isRadioOrOwnSource(health)) return;
+                    // Unknown state is not permission for an unattended analog source switch.
+                    if (startup && (!health.sourceKnown || (health.muteKnown && health.muted))) return;
                     if (isVerifiedV7(current) && health.audibleHcnRoute()) return;
                     if (!live.getAsBoolean()) return;
                     oemRouteActive = current.requestPlayAudio();
                     SteeringDiagnosticTrace.get().event("routing-pulse",
                             "route-restored=" + oemRouteActive);
-                });
-            };
-            mainHandler.postDelayed(pendingRoutingClaim, OEM_GAIN_SETTLE_MS);
+                }
+            }
+            pendingRoutingClaim = new Attempt();
+            mainHandler.postDelayed(pendingRoutingClaim, startup ? HCN_STARTUP_SETTLE_MS : OEM_GAIN_SETTLE_MS);
         });
     }
 
@@ -1261,6 +1361,7 @@ public final class RadioPlaybackService extends MediaBrowserService {
 
     private void resetOemPlaybackOwnership() {
         hcnWheelHistory = new HcnWheelHistory();
+        lastStartupWheelEndpoint = null;
         hcnResumeEpoch.set(-1L);
         hcnAdoptedWheelEpoch.set(-1L);
         cancelRoutingClaim();

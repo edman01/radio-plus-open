@@ -81,6 +81,7 @@ public final class MediaRoutingOwnershipTest {
     private boolean ownsService;
     private boolean playbackCallbackRegistered;
     private volatile boolean sawActivePcm;
+    private WheelStartupTestPrefs startupPrefs;
     private long lastKeyTime;
 
     private final AudioManager.AudioPlaybackCallback playbackObserver =
@@ -94,6 +95,7 @@ public final class MediaRoutingOwnershipTest {
         assumeTrue("Default media-key token lookup requires Android 13", Build.VERSION.SDK_INT >= 33);
         assumeFalse("Never run the fake-tuner fixture on physical Junsun hardware", hasVendorFramework());
         context = instrumentation.getTargetContext();
+        startupPrefs = new WheelStartupTestPrefs(context);
         assertNull("Stop the target app before routing instrumentation", field(
                 RadioPlaybackService.class, "runningInstance", null));
         instrumentation.getUiAutomation().adoptShellPermissionIdentity(Manifest.permission.MEDIA_CONTENT_CONTROL);
@@ -143,6 +145,7 @@ public final class MediaRoutingOwnershipTest {
                     if (!savedPreferences.isEmpty()) StationWidgetProvider.requestDataRefresh(context);
                 }
             } finally {
+                if (startupPrefs != null) startupPrefs.close();
                 if (adoptedShellIdentity) instrumentation.getUiAutomation().dropShellPermissionIdentity();
             }
         }
@@ -312,6 +315,41 @@ public final class MediaRoutingOwnershipTest {
             expectSystemTune(KeyEvent.KEYCODE_MEDIA_NEXT, BRAVO, 0);
         } finally {
             SteeringDiagnosticTrace.get().clear();
+            sendFixtureCommand("stop");
+        }
+    }
+
+    @Test public void deviceStartupRestoresActualDefaultAfterStockRegistersWithoutManualRepair() throws Exception {
+        assumeTrue("Use the independent emulator-only player",
+                Boolean.parseBoolean(InstrumentationRegistry.getArguments().getString("externalFixture")));
+        instrumentation.runOnMainSync(() -> setField(service, "boundDetection",
+                new RadioApiFactory.Detection(RadioBackendProfile.HCN_CURRENT_31, "", "", "")));
+        AutoStartPreferences.setEnabled(context, true);
+        try {
+            // Start the competing app first so its second registration is a warm, fast launch.
+            sendFixtureCommand("pulse");
+            await(() -> EXTERNAL_FIXTURE_PACKAGE.equals(sessions.getMediaKeyEventSessionPackageName())
+                    && audio.getActivePlaybackConfigurations().isEmpty(), "Another player must own the initial default");
+            RadioPlaybackService.ensureRunningForDeviceStart(context);
+            await(() -> "scheduled".equals(pulseStatus()), "Device startup did not schedule wheel recovery");
+            int routes = tuner.routeRequests, focuses = tuner.focusRequests;
+            long claim = (Long) field(RadioPlaybackService.class, "routingClaimId", service);
+            sendFixtureCommand("pulse"); // A later stock startup, after Radio+'s service has started.
+            RadioPlaybackService.ensureRunningForDeviceStart(context); // Duplicate BOOT / ACC trigger.
+            await(() -> "completed".equals(pulseStatus())
+                            && controller.getSessionToken().equals(sessions.getMediaKeyEventSession())
+                            && audio.getActivePlaybackConfigurations().isEmpty(),
+                    "Actual system wheel target was not recovered at startup");
+            drainServiceCommands();
+            assertEquals("Only one startup claim", claim, (long) (Long) field(RadioPlaybackService.class, "routingClaimId", service));
+            assertEquals("No additional source selection on unknown health", routes, tuner.routeRequests);
+            assertEquals(focuses, tuner.focusRequests);
+            assertEquals(0, tuner.tunes().size());
+            expectSystemTune(KeyEvent.KEYCODE_MEDIA_NEXT, CHARLIE, 0);
+            expectSystemTune(KeyEvent.KEYCODE_MEDIA_NEXT, BRAVO, 0);
+            new StationNavigationStore(context).setFavoritesSelected(false);
+            expectSystemTune(KeyEvent.KEYCODE_MEDIA_PREVIOUS, ALPHA, 0);
+        } finally {
             sendFixtureCommand("stop");
         }
     }

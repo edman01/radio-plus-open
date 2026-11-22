@@ -82,8 +82,9 @@ wheel selection is the starting point unless another station is already establis
 If the only conflicting evidence is an old poll, navigation follows the live
 tuner just as it did in Community Beta 5.
 An already active V7 radio route is not requested again on a wheel step,
-screen arrow or station tile. Opening an already audible radio remains passive;
-the first deliberate station selection after that can register Radio+ for media buttons.
+screen arrow or station tile. Opening an already audible radio adopts its tuning and
+audio unchanged. With Auto-start off and no remembered repair, the first deliberate
+station selection can register Radio+ for media buttons.
 A frequency change alone is not a button press. In experimental builds, the
 **About app → Export support log** report distinguishes observed tuner changes
 from received list commands while the ordinary radio screen is open.
@@ -105,6 +106,14 @@ request audio focus. It uses one short local audio marker, then releases it.
 No marker is played repeatedly in the background. A completed request is not
 proof of delivery: test two separate presses against the displayed list while
 parked. This cannot redirect keys handled entirely inside the head unit.
+
+On the verified current V7, Auto-start also requests the wheel route after
+startup or ACC wake, without waiting for a station tap. A completed manual
+repair in Test Build 13 or later remembers this behavior even with Auto-start
+off; it does not enable Auto-start or launch a stopped app. The automatic
+request waits for the stock radio to settle, does not claim over active Android
+audio or a known external source, and is cancelled if playback stops. It does
+not repeat on every screen visit or station change.
 
 Starting playback registers Radio+ for Android media controls. Changing stations
 during playback reuses the active radio source to avoid an unnecessary audio

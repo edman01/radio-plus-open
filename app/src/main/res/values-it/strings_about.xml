@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="settings_back">← Indietro</string>
+    <string name="settings_navigate_back">Indietro</string>
     <string name="settings_about">Informazioni sull’app</string>
     <string name="about_title">Informazioni su Radio+</string>
     <string name="about_version">Versione %1$s</string>

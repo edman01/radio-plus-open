@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="settings_back">← Takaisin</string>
+    <string name="settings_navigate_back">Takaisin</string>
     <string name="settings_about">Tietoja sovelluksesta</string>
     <string name="about_title">Tietoja Radio+:sta</string>
     <string name="about_version">Versio %1$s</string>
