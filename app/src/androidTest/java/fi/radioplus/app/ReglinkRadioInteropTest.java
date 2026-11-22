@@ -122,7 +122,9 @@ public final class ReglinkRadioInteropTest {
         long count(int code) { return calls.stream().filter(value -> value == code).count(); }
     }
 
-    private static final class SharedVariables extends Binder {
+    static final class SharedVariables extends Binder {
+        String hfp = "connected";
+        boolean reverse, bt;
         String module = "4754";
         boolean initialized = true;
         boolean onboardRadio;
@@ -139,22 +141,26 @@ public final class ReglinkRadioInteropTest {
             String key = data.readString();
             reply.writeNoException();
             if (code == 7) {
-                assertEquals("Env.RadioHwModule", key);
+                assertTrue("Env.RadioHwModule".equals(key) || "phone.hfp_state".equals(key));
                 assertNull(data.readString());
-                reply.writeString(module);
+                reply.writeString("phone.hfp_state".equals(key) ? hfp : module);
             } else {
                 assertEquals(9, code);
-                assertTrue("Env.Init_AllCompleted".equals(key) || "Env.OnboardRadio".equals(key));
+                assertTrue("Env.Init_AllCompleted".equals(key) || "Env.OnboardRadio".equals(key)
+                        || "Env.IsReversing".equals(key) || "bt.connected".equals(key));
                 int defaultValue = data.readInt();
                 assertTrue(defaultValue == 0 || defaultValue == 1);
-                reply.writeInt(("Env.Init_AllCompleted".equals(key) ? initialized : onboardRadio) ? 1 : 0);
+                reply.writeInt(("Env.Init_AllCompleted".equals(key) ? initialized
+                        : "Env.IsReversing".equals(key) ? reverse : "bt.connected".equals(key) ? bt : onboardRadio) ? 1 : 0);
             }
             assertEquals(0, data.dataAvail());
             return true;
         }
     }
 
-    private static final class Common extends Binder {
+    static final class Common extends Binder {
+        final ReglinkWheelInteropTest.Keys keys = new ReglinkWheelInteropTest.Keys();
+        final ReglinkWheelInteropTest.Notices notices = new ReglinkWheelInteropTest.Notices();
         final IBinder tuner;
         final SharedVariables shared = new SharedVariables();
         final List<Integer> calls = new ArrayList<>();
@@ -172,17 +178,19 @@ public final class ReglinkRadioInteropTest {
             assertEquals(0, flags);
             String service = data.readString();
             assertTrue("Radio".equals(service) || "SharedVariable".equals(service)
-                    || "MediaHub".equals(service) || "Media".equals(service));
+                    || "MediaHub".equals(service) || "Media".equals(service)
+                    || "Key".equals(service) || "Message".equals(service));
             services.add(service);
             assertEquals(0, data.dataAvail());
             reply.writeNoException();
             reply.writeStrongBinder("Radio".equals(service) ? tuner : "Media".equals(service) ? media
-                    : "MediaHub".equals(service) ? hub : shared);
+                    : "MediaHub".equals(service) ? hub : "Key".equals(service) ? keys
+                    : "Message".equals(service) ? notices : shared);
             return true;
         }
     }
 
-    private static final class Hub extends Binder {
+    static final class Hub extends Binder {
         String owner = "radio";
         Hub() { attachInterface(null, ReglinkStockSession.HUB_DESCRIPTOR); }
         @Override protected boolean onTransact(int code, Parcel data, Parcel reply, int flags) {
@@ -657,6 +665,37 @@ public final class ReglinkRadioInteropTest {
                             drainService(instrumentation, service);
                             assertEquals(Arrays.asList(fromFavorites ? "fm:10480" : "fm:10090", "fm:9810"),
                                     tuner.tunes.subList(initialWrites, tuner.tunes.size()));
+                        }
+                        if (!manual && BuildConfig.REGLINK_STOCK_ASSISTED) {
+                            // Foreground wheel follows the highlighted tab, unlike a launcher
+                            // that cannot see it. Run the actual service/tuner path, including
+                            // its cancellation guard and the registered OEM callback.
+                            java.util.concurrent.atomic.AtomicBoolean visible = new java.util.concurrent.atomic.AtomicBoolean(true);
+                            try (ReglinkWheelKeys keys = new ReglinkWheelKeys(common, android.os.Process.myUid(),
+                                    visible::get, next -> RadioPlaybackService.postWheelSkip(api, next, visible::get))) {
+                                keys.open();
+                                long ts = System.currentTimeMillis();
+                                for (boolean favTab : new boolean[]{false, true}) {
+                                    nav.setFavoritesSelected(favTab);
+                                    int before = tuner.tunes.size();
+                                    assertTrue(common.keys.press(66, ++ts));
+                                    assertTrue(common.keys.press(66, ts)); // one physical gesture
+                                    drainService(instrumentation, service);
+                                    assertEquals(favTab, nav.playbackFromFavorites());
+                                    assertTrue(common.keys.press(65, ++ts));
+                                    drainService(instrumentation, service);
+                                    assertEquals(Arrays.asList(favTab ? "fm:10480" : "fm:10090", "fm:9810"),
+                                            tuner.tunes.subList(before, tuner.tunes.size()));
+                                }
+                                int before = tuner.tunes.size();
+                                // Cancel an accepted press before the main thread runs it.
+                                instrumentation.runOnMainSync(() -> {
+                                    assertTrue(RadioPlaybackService.postWheelSkip(api, true, visible::get));
+                                    visible.set(false);
+                                });
+                                drainService(instrumentation, service);
+                                assertEquals(before, tuner.tunes.size());
+                            }
                         }
                         // A rejected selection from the other list must not replace the origin.
                         RadioPlaybackService.tuneStation(context, new FavoriteStation(3, 522, "Invalid for this tuner"), false);

@@ -10,4 +10,6 @@
     <string name="steering_test_recording">"Acquisizione in memoria"</string>
     <string name="steering_test_stopped">"Acquisizione arrestata"</string>
     <string name="steering_test_unknown_target">"Destinatario dei tasti multimediali: sconosciuto. Una sessione attiva non dimostra che riceva i comandi dei tasti."</string>
+    <string name="reglink_wheel_seek">Ricerca della radio di serie (predefinita)</string>
+    <string name="reglink_wheel_list">Cambia stazione nella lista selezionata in Radio+ (sperimentale)</string>
 </resources>

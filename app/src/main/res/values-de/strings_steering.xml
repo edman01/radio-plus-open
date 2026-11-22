@@ -10,4 +10,6 @@
     <string name="steering_test_recording">"RAM-Aufzeichnung"</string>
     <string name="steering_test_stopped">"Aufzeichnung beendet"</string>
     <string name="steering_test_unknown_target">"Ziel der Mediensteuerung: unbekannt. Eine aktive Sitzung beweist nicht, dass sie die Tastenbefehle empfängt."</string>
+    <string name="reglink_wheel_seek">Sendersuchlauf des Originalradios (Standard)</string>
+    <string name="reglink_wheel_list">In der ausgewählten Radio+-Liste wechseln (experimentell)</string>
 </resources>

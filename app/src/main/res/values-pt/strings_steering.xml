@@ -10,4 +10,6 @@
     <string name="steering_test_recording">"Captura em memória"</string>
     <string name="steering_test_stopped">"Captura terminada"</string>
     <string name="steering_test_unknown_target">"Destino dos botões multimédia: desconhecido. Uma sessão ativa não prova que recebe os comandos desses botões."</string>
+    <string name="reglink_wheel_seek">Busca do rádio original (padrão)</string>
+    <string name="reglink_wheel_list">Mudar de estação na lista selecionada do Radio+ (experimental)</string>
 </resources>

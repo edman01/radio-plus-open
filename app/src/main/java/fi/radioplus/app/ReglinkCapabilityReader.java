@@ -98,7 +98,7 @@ final class ReglinkCapabilityReader {
         return new Sample(module, initialized, onboard);
     }
 
-    private static boolean bool(IBinder shared, String key, boolean defaultValue)
+    static boolean bool(IBinder shared, String key, boolean defaultValue)
             throws RemoteException {
         return transact(shared, SHARED_DESCRIPTOR, 9, data -> {
             data.writeString(key);

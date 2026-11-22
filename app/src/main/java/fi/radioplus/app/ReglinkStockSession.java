@@ -28,7 +28,7 @@ final class ReglinkStockSession {
         media = service(common, "Media", MEDIA_DESCRIPTOR);
     }
 
-    private static IBinder service(IBinder common, String name, String descriptor) throws RemoteException {
+    static IBinder service(IBinder common, String name, String descriptor) throws RemoteException {
         IBinder binder = read(common, ReglinkRadioApi.COMMON_DESCRIPTOR, 2,
                 data -> data.writeString(name), Parcel::readStrongBinder);
         if (binder == null || !descriptor.equals(binder.getInterfaceDescriptor())) {

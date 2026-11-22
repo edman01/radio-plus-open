@@ -10,4 +10,6 @@
     <string name="steering_test_recording">"Belleğe kayıt"</string>
     <string name="steering_test_stopped">"Kayıt durduruldu"</string>
     <string name="steering_test_unknown_target">"Medya tuşlarının hedefi: bilinmiyor. Etkin bir oturum, tuş komutlarını aldığını kanıtlamaz."</string>
+    <string name="reglink_wheel_seek">Orijinal radyoda istasyon arama (varsayılan)</string>
+    <string name="reglink_wheel_list">Seçili Radio+ listesinde istasyon değiştir (deneysel)</string>
 </resources>

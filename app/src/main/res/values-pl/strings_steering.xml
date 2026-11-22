@@ -10,4 +10,6 @@
     <string name="steering_test_recording">"Zapis w pamięci"</string>
     <string name="steering_test_stopped">"Zapis zatrzymany"</string>
     <string name="steering_test_unknown_target">"Odbiorca przycisków multimedialnych: nieznany. Aktywna sesja nie dowodzi, że odbiera polecenia z przycisków."</string>
+    <string name="reglink_wheel_seek">Wyszukiwanie w fabrycznym radiu (domyślnie)</string>
+    <string name="reglink_wheel_list">Zmieniaj stacje na wybranej liście Radio+ (eksperymentalne)</string>
 </resources>

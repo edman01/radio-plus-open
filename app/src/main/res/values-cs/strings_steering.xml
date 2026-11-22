@@ -10,4 +10,6 @@
     <string name="steering_test_recording">"Záznam do paměti"</string>
     <string name="steering_test_stopped">"Záznam zastaven"</string>
     <string name="steering_test_unknown_target">"Příjemce mediálních tlačítek: neznámý. Aktivní relace nedokazuje, že přijímá příkazy tlačítek."</string>
+    <string name="reglink_wheel_seek">Ladění původního rádia (výchozí)</string>
+    <string name="reglink_wheel_list">Přepínat stanice ve vybraném seznamu Radio+ (experimentální)</string>
 </resources>

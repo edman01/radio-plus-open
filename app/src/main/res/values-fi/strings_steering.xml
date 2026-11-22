@@ -10,4 +10,6 @@
     <string name="steering_test_recording">"Tallennus muistiin"</string>
     <string name="steering_test_stopped">"Testi pysäytetty"</string>
     <string name="steering_test_unknown_target">"Järjestelmän mediapainikkeiden kohde: ei tiedossa. Aktiivinen mediasessio ei varmista sitä."</string>
+    <string name="reglink_wheel_seek">Vakioradion taajuushaku (oletus)</string>
+    <string name="reglink_wheel_list">Vaihda valitun Radio+-listan asemia (kokeellinen)</string>
 </resources>

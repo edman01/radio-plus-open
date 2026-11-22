@@ -44,6 +44,7 @@ import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.function.BooleanSupplier;
 
 /**
  * Keeps the stock radio tuner service alive while Radio+ is playing in the
@@ -324,6 +325,26 @@ public final class RadioPlaybackService extends MediaBrowserService {
     static boolean isPlaybackRequested() {
         RadioPlaybackService current = runningInstance;
         return current != null && !current.stopping && current.playbackRequested;
+    }
+
+    static ReglinkRadioApi activeWheelRadio() {
+        RadioPlaybackService s = runningInstance;
+        if (!BuildConfig.REGLINK_STOCK_ASSISTED || s == null || s.stopping
+                || !s.playbackRequested || !s.oemRouteActive) return null;
+        IRadioServiceAPI api = s.radio;
+        return api instanceof ReglinkRadioApi && ((ReglinkRadioApi) api).isS602External4754()
+                && !((ReglinkRadioApi) api).isClosed() ? (ReglinkRadioApi) api : null;
+    }
+
+    static boolean postWheelSkip(ReglinkRadioApi api, boolean next, BooleanSupplier visible) {
+        RadioPlaybackService s = runningInstance;
+        if (s == null || activeWheelRadio() != api || !visible.getAsBoolean()) return false;
+        long epoch = s.playbackEpoch;
+        boolean favorites = s.stationNavigationStore.favoritesSelected();
+        BooleanSupplier current = () -> visible.getAsBoolean() && s.isCurrentPlayback(epoch, api);
+        return s.mainHandler.post(() -> {
+            if (current.getAsBoolean()) s.selectAdjacentStation(next, api, favorites, current);
+        });
     }
 
     /** Read on the UI thread; local state does not prove system media-key ownership. */
@@ -1264,6 +1285,11 @@ public final class RadioPlaybackService extends MediaBrowserService {
     }
 
     private void selectAdjacentStation(boolean next, ReglinkRadioApi launcherRadio) {
+        selectAdjacentStation(next, launcherRadio, null, () -> true);
+    }
+
+    private void selectAdjacentStation(boolean next, ReglinkRadioApi launcherRadio,
+            Boolean wheelFavorites, BooleanSupplier stillVisible) {
         // Snapshot the list when the command arrives. A later tab change must
         // not redirect a queued press, and no list must ever fall back to seek.
         boolean visibleFavorites = stationNavigationStore.favoritesSelected();
@@ -1279,10 +1305,12 @@ public final class RadioPlaybackService extends MediaBrowserService {
         if (launcherRadio == null) setPlaybackRequested(true);
         long requestRevision = playbackRequestRevision;
         executeRadioCommand(next ? "next preset" : "previous preset", (current, epoch) -> {
+            if (!stillVisible.getAsBoolean()) return;
             if (launcherRadio != null && (current != launcherRadio || !isCurrentPlayback(epoch, current)
                     || !launcherRadio.requestStockPlayback())) return;
             // Resolve launcher origin after earlier station selections on this executor.
-            boolean fromFavorites = launcherRadio == null ? visibleFavorites : stationNavigationStore.playbackFromFavorites();
+            boolean fromFavorites = wheelFavorites != null ? wheelFavorites
+                    : launcherRadio == null ? visibleFavorites : stationNavigationStore.playbackFromFavorites();
             List<FavoriteStation> stations = launcherRadio == null ? visibleStations : stationNavigationStore.load(fromFavorites);
             SteeringDiagnosticTrace.get().event("navigation", (next ? "next" : "previous")
                     + " list=" + (fromFavorites ? "favorites" : "stations") + " count=" + stations.size());
@@ -1303,11 +1331,14 @@ public final class RadioPlaybackService extends MediaBrowserService {
             } else {
                 if (!validateStationTarget(current, target, epoch, requestRevision, previouslyRequested)) return;
                 if (launcherRadio == null) activateForStationNavigation(current, epoch);
-                boolean tuned = tuneTo(current, target, epoch);
+                boolean tuned = wheelFavorites != null
+                        ? launcherRadio.tuneToBand(normalizeBand(target.band), target.frequency,
+                                () -> isCurrentPlayback(epoch, current) && stillVisible.getAsBoolean())
+                        : tuneTo(current, target, epoch);
                 SteeringDiagnosticTrace.get().event("tuner", "frequency-confirmed=" + tuned);
                 if (tuned && isCurrentPlayback(epoch, current)) {
                     oemRouteActive = finishConfirmedTuneRoute(current);
-                    if (launcherRadio == null) rememberConfirmedList(current, fromFavorites);
+                    if (launcherRadio == null || wheelFavorites != null) rememberConfirmedList(current, fromFavorites);
                     SteeringDiagnosticTrace.get().event("tuner", "route-reported=" + oemRouteActive);
                     mainHandler.post(this::refreshMediaMetadataFromRadio);
                     Log.i(TAG, "Media preset confirmed: " + target.key());

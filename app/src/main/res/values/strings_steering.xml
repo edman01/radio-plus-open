@@ -10,4 +10,6 @@
     <string name="steering_test_recording">"RAM capture"</string>
     <string name="steering_test_stopped">"Capture stopped"</string>
     <string name="steering_test_unknown_target">"System media-key target: unknown. An active session does not prove ownership."</string>
+    <string name="reglink_wheel_seek">Stock radio seek (default)</string>
+    <string name="reglink_wheel_list">Follow selected Radio+ list (experimental)</string>
 </resources>

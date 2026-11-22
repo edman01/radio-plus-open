@@ -10,4 +10,6 @@
     <string name="steering_test_recording">"Captura en memoria"</string>
     <string name="steering_test_stopped">"Captura detenida"</string>
     <string name="steering_test_unknown_target">"Destino de los botones multimedia: desconocido. Una sesión activa no demuestra que reciba sus comandos."</string>
+    <string name="reglink_wheel_seek">Búsqueda de la radio original (predeterminada)</string>
+    <string name="reglink_wheel_list">Cambiar de emisora en la lista seleccionada de Radio+ (experimental)</string>
 </resources>

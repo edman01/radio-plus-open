@@ -58,8 +58,8 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
         }
     }
 
-    private interface Writer { void write(Parcel data); }
-    private interface Reader<T> { T read(Parcel reply) throws RemoteException; }
+    interface Writer { void write(Parcel data); }
+    interface Reader<T> { T read(Parcel reply) throws RemoteException; }
     private final IBinder common;
     private final IBinder radio;
     private final ReglinkCapabilityReader.Snapshot capabilities;
@@ -215,7 +215,7 @@ final class ReglinkRadioApi implements IRadioServiceAPI, AutoCloseable {
         }
     }
 
-    private static <T> T transact(IBinder binder, String descriptor, int code,
+    static <T> T transact(IBinder binder, String descriptor, int code,
             Writer writer, Reader<T> reader) throws RemoteException {
         Parcel data = Parcel.obtain();
         Parcel reply = Parcel.obtain();

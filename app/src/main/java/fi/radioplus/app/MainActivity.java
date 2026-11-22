@@ -83,6 +83,9 @@ public final class MainActivity extends Activity implements
     private final LinkedHashSet<Integer> observedScanFrequencies = new LinkedHashSet<>();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService logoExecutor = Executors.newSingleThreadExecutor();
+    private ReglinkWheelSession wheelSession;
+    private boolean wheelResumed;
+    private static final String WHEEL_FOLLOW_LIST = "reglink_s602_4754_wheel_list";
 
     private TextView connectionText;
     private TextView bandText;
@@ -279,11 +282,15 @@ public final class MainActivity extends Activity implements
     @Override
     protected void onResume() {
         super.onResume();
+        wheelResumed = true;
+        updateWheelSession();
         SteeringKeyService.setRadioVisible(!debugPreview);
     }
 
     @Override
     protected void onPause() {
+        wheelResumed = false;
+        updateWheelSession();
         SteeringKeyService.setRadioVisible(false);
         RadioPlaybackService.noteUiBackgrounded();
         SteeringDiagnosticTrace.get().stop();
@@ -311,6 +318,7 @@ public final class MainActivity extends Activity implements
     @Override
     protected void onDestroy() {
         destroyed = true;
+        if (wheelSession != null) wheelSession.close();
         if (settingsDialog != null) {
             settingsDialog.dismiss();
         }
@@ -449,6 +457,7 @@ public final class MainActivity extends Activity implements
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
+        updateWheelSession();
         if (hasFocus) {
             showSystemBars();
             if (favoritesList != null && favoriteAdapter != null) {
@@ -743,6 +752,21 @@ public final class MainActivity extends Activity implements
     }
 
     private void showSteeringKeySetup() {
+        if (BuildConfig.REGLINK_STOCK_ASSISTED && RadioApiFactory.usesS602LauncherLists()) {
+            android.content.SharedPreferences prefs = getSharedPreferences("radio_plus_navigation", MODE_PRIVATE);
+            AlertDialog picker = new AlertDialog.Builder(this).setTitle(R.string.settings_steering)
+                    .setSingleChoiceItems(new String[]{getString(R.string.reglink_wheel_seek),
+                                    getString(R.string.reglink_wheel_list)},
+                            prefs.getBoolean(WHEEL_FOLLOW_LIST, false) ? 1 : 0, (dialog, index) -> {
+                                prefs.edit().putBoolean(WHEEL_FOLLOW_LIST, index == 1).apply();
+                                SupportTestLog.event(SupportTestLog.Event.WHEEL_LISTENER, index == 1 ? 2 : 0, 0);
+                                updateWheelSession();
+                                dialog.dismiss();
+                            }).setNegativeButton(R.string.settings_back, null).create();
+            picker.show();
+            styleCarDialog(picker);
+            return;
+        }
         if (RadioPlaybackService.shouldIgnoreRawMediaKeys()) {
             showUnverifiedBackendFeature();
             return;
@@ -763,6 +787,14 @@ public final class MainActivity extends Activity implements
                 .setNegativeButton(R.string.settings_back, null).create();
         dialog.show();
         styleCarDialog(dialog);
+    }
+
+    private void updateWheelSession() {
+        if (!BuildConfig.REGLINK_STOCK_ASSISTED) return;
+        boolean active = wheelResumed && !destroyed && !debugPreview && hasWindowFocus()
+                && getSharedPreferences("radio_plus_navigation", MODE_PRIVATE).getBoolean(WHEEL_FOLLOW_LIST, false);
+        if (active && wheelSession == null) wheelSession = new ReglinkWheelSession(this);
+        if (wheelSession != null) wheelSession.visible(active);
     }
 
     private void showSteeringDiagnostics() {

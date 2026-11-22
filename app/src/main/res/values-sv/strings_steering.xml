@@ -10,4 +10,6 @@
     <string name="steering_test_recording">"Inspelning i minnet"</string>
     <string name="steering_test_stopped">"Inspelning stoppad"</string>
     <string name="steering_test_unknown_target">"Mottagare för medieknappar: okänd. En aktiv session bevisar inte att den tar emot knappkommandon."</string>
+    <string name="reglink_wheel_seek">Originalradions stationssökning (standard)</string>
+    <string name="reglink_wheel_list">Byt station i den valda Radio+-listan (experimentellt)</string>
 </resources>

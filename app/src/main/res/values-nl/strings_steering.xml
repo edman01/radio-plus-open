@@ -10,4 +10,6 @@
     <string name="steering_test_recording">"Opname in geheugen"</string>
     <string name="steering_test_stopped">"Opname gestopt"</string>
     <string name="steering_test_unknown_target">"Ontvanger van mediaknoppen: onbekend. Een actieve sessie bewijst niet dat deze de knopopdrachten ontvangt."</string>
+    <string name="reglink_wheel_seek">Zenders zoeken met de originele radio (standaard)</string>
+    <string name="reglink_wheel_list">Wisselen binnen de geselecteerde Radio+-lijst (experimenteel)</string>
 </resources>

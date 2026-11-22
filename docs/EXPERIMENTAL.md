@@ -24,8 +24,8 @@ it does not include G5 or SPD support.
 
 ## Reglink device-test preview — S5.74 and S6.02
 
-**Not included in community beta 5. Disabled in normal builds.** See the opt-in build command in
-[BUILD.md](BUILD.md#reglink-device-test-build).
+**Not included in community beta 5. Disabled in normal builds.** To build the
+device-test variant, add `-PreglinkStockAssisted=true` to `:app:assemblePlayRelease`.
 
 This stock-assisted experiment requires the exact inspected combination of
 `com.reglink.services`, `com.reglink.apps.radio` and `com.reglink.apps.mtkradio`.
@@ -49,8 +49,19 @@ favorites as in dev40. An empty list does not trigger a tuner seek.
 Select **Any active player** in AGAMA's music
 integration. On Android 8.1 AGAMA checks its own notification access and storage
 permission before sending the arrows; Radio+ does not request either. Both
-changes need confirmation on the head unit. CAN buttons retain their stock seek
-behavior. S5.74, other tuner modules and the Junsun V7 do not use these changes.
+changes need confirmation on the head unit. S5.74, other tuner modules and the
+Junsun V7 do not use these changes.
+
+**Dev42: optional steering-wheel list navigation (S6.02 / external 4754 only).**
+Stock seek remains the default. Under **Settings → General → Steering-wheel
+buttons**, choose **Follow selected Radio+ list** to try it. With Radio+ on
+screen, short Previous/Next presses follow the highlighted **Favorites** or
+**Stations** tab in saved order. If the list is empty, Radio+ does not seek.
+In AGAMA, the arrows still follow the list the playing station came from.
+The experiment only handles presses the firmware offers to Radio+. If the
+stock radio or CAN decoder has already handled the press, its seek continues;
+Radio+ does not retune a second time or change factory mappings. The new
+wheel behavior has been tested with simulated events, not on a physical car.
 
 - Start the stock radio, press Home, then open Radio+. Leave the stock radio
   running in the background: it retains audio-source and focus ownership.
@@ -63,10 +74,10 @@ behavior. S5.74, other tuner modules and the Junsun V7 do not use these changes.
 - A missing, changed, mixed or externally muted source blocks new commands.
   Source loss during a scan discards its results rather than stopping another
   owner's tuner. Restart Radio+ before another scan after that interruption.
-- No independent cold-start audio, Radio+ pause/resume, station seek, LOCAL/DX,
-  integrated RDS daemon or Radio+ favorites navigation from native wheel keys.
-  Stock buttons retain their own behavior; Radio+ does not send a second tune.
-- The interface is unchanged. Closing or reclaiming the stock radio can stop
+- No independent cold-start audio, Radio+ pause/resume, station seek, LOCAL/DX
+  or integrated RDS daemon. On other profiles, native wheel keys retain their
+  usual behavior.
+- Closing or reclaiming the stock radio can stop
   audio. An accepted tuner command may itself have OEM audio side effects;
   readback and simulated protocol tests do not prove audible output or safe
   behavior through phone calls, navigation prompts or ACC sleep/wake.
@@ -78,7 +89,11 @@ The opt-in test APK includes a bounded, persistent technical log. To send it:
 reproduce the issue, open **Settings → General → About app → Export support log**,
 then save the text file and attach it to your report. The report includes detected
 APK fingerprints, tuner/source states, tuning/scan outcomes, sanitized app crash
-locations and suggested next checks. It cannot verify audible sound. Logs stay
+locations and suggested next checks. For a wheel test, try the keys in the
+first 45 seconds after returning to the radio screen. The log distinguishes a
+firmware key notice from a list change actually requested by Radio+. It cannot
+verify audible sound, events kept inside the CAN decoder or the MCU firmware
+version. No serial number, VIN, IMEI or MAC address is needed. Logs stay
 private until you export and send them; nothing is uploaded automatically.
 
 ## Development build 0.16.1-dev34 — SPD / Junsun V9 Plus

@@ -10,4 +10,6 @@
     <string name="steering_test_recording">"Capture en mémoire"</string>
     <string name="steering_test_stopped">"Capture arrêtée"</string>
     <string name="steering_test_unknown_target">"Destinataire des commandes multimédias : inconnu. Une session active ne prouve pas qu’elle reçoit ces commandes."</string>
+    <string name="reglink_wheel_seek">Recherche de la radio d’origine (par défaut)</string>
+    <string name="reglink_wheel_list">Parcourir la liste sélectionnée dans Radio+ (expérimental)</string>
 </resources>

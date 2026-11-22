@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit;
 final class SupportTestLog {
     enum Event { START, DETECTED, CONNECTED, CAPABILITIES, BIND_ERROR, SOURCE, TUNE_REQUEST, TUNE_CONFIRMED,
         SCAN_REQUEST, SCAN_RESULTS, COMMAND_REJECTED, ENDPOINT_ERROR, OWNER_STABLE, ROUTE, MIX_FLAGS, ROUTE_ACTION,
-        BAND_RECALL, TUNE_READBACK, LAUNCHER_PRESET, SESSION_ARROW }
+        BAND_RECALL, TUNE_READBACK, LAUNCHER_PRESET, SESSION_ARROW, WHEEL_LISTENER, WHEEL_OBSERVED, WHEEL_ARROW }
     enum Problem {
         STOCK_APK_UNKNOWN("The installed stock APK is not recognized. Send the stock radio/services APKs from this same firmware; do not replace them."),
         STOCK_COMBINATION("The three Reglink APKs do not match an inspected set. Send all three installed APKs from the same unit."),
@@ -113,6 +113,22 @@ final class SupportTestLog {
                 found = true; result.append("- ").append(problem.name()).append(": ").append(problem.nextCheck).append('\n');
             }
         }
+        // Interpret only the most recent listener visit; an old accepted press
+        // is not evidence that the latest car/route delivered one.
+        int start = Math.max(body.lastIndexOf(" START "), body.lastIndexOf(" WHEEL_LISTENER "));
+        if (start >= 0 && body.startsWith(" WHEEL_LISTENER a=1 ", start)) {
+            String visit = body.substring(start);
+            if (visit.contains(" WHEEL_ARROW a=65 b=1\n") || visit.contains(" WHEEL_ARROW a=66 b=1\n")) {
+                result.append("- Radio+ received a wheel arrow and queued a list change. Check tuner readback and what you heard.\n");
+            } else if (visit.contains(" WHEEL_ARROW a=65 b=0\n") || visit.contains(" WHEEL_ARROW a=66 b=0\n")) {
+                result.append("- An arrow reached Radio+ but was passed back to the firmware. Check that the stock radio was playing and the main Radio+ screen was focused.\n");
+            } else if (visit.contains(" WHEEL_OBSERVED a=65 ") || visit.contains(" WHEEL_OBSERVED a=66 ")) {
+                result.append("- The firmware announced a previous/next key, but Radio+ did not record handling it. Another handler may have taken it first.\n");
+            } else {
+                result.append("- No wheel arrow recorded for this visit. That does not prove the button was not pressed.\n");
+            }
+            found = true;
+        }
         if (!found) result.append("- No classified failure was retained. Describe what happened and whether sound was audible.\n");
         result.append("Confirmed source/frequency is not proof of speaker sound. Suggestions may need further device testing.\n\nEvents:\n");
         return result.toString();
@@ -130,6 +146,10 @@ final class SupportTestLog {
                 + "BAND_RECALL: target band/kHz. TUNE_READBACK: last observed band/kHz after timeout. "
                 + "LAUNCHER_PRESET: Android key code (87 next, 88 previous).\n"
                 + "SESSION_ARROW: key and mask (1 AGAMA, 2 virtual keyboard, 4/8 zero down/event time, 16 active).\n"
+                + "WHEEL_LISTENER: 0=default, 1=fallback registered, 2=opted in. WHEEL_OBSERVED: 0/1=observer ready; "
+                + "65/66=firmware previous/next notice, not proof Radio+ was offered the key. "
+                + "WHEEL_ARROW: 65/66, b=queued by Radio+ (1) or passed through (0). "
+                + "No notice is inconclusive; some CAN paths bypass the key dispatcher.\n"
                 + "OWNER_STABLE: a=stock owner on both reads, b=matching routes. ROUTE: platform/model. "
                 + "MIX_FLAGS: mix/flags. ROUTE_ACTION: a=action. Missing route=-1.\n"
                 + "DETECTED/CONNECTED: a=profile enum ordinal. START: a=version code, b=SDK.\n"
