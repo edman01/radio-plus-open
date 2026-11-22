@@ -67,8 +67,9 @@
     <string name="message_011" formatted="false">"DX zayıf istasyonlar da"</string>
     <string name="message_012" formatted="false">"Arama hassasiyeti"</string>
     <string name="message_013" formatted="false">"Kapat"</string>
-    <string name="message_014" formatted="false">"Otomatik başlatma açıldı. Junsun Startup application ayarını Empty olarak seçin."</string>
-    <string name="message_015" formatted="false">"Otomatik başlatma kapatıldı"</string>
+    <string name="settings_auto_start_enabled">Otomatik başlatma açıldı</string>
+    <string name="settings_auto_start_enabled_junsun" formatted="false">"Otomatik başlatma açıldı. Junsun Startup application ayarını Empty olarak seçin."</string>
+    <string name="settings_auto_start_disabled" formatted="false">"Otomatik başlatma kapatıldı"</string>
     <string name="message_016" formatted="false">"Dil"</string>
     <string name="message_017" formatted="false">"İptal"</string>
     <string name="message_018" formatted="false">"İstasyon listesi tamamlanıyor…"</string>

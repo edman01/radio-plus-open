@@ -23,8 +23,6 @@ final class TranslationCatalog {
         ids.put("DX weak stations too", R.string.message_011);
         ids.put("Scan sensitivity", R.string.message_012);
         ids.put("Close", R.string.message_013);
-        ids.put("Auto-start enabled. Set Junsun Startup application to Empty.", R.string.message_014);
-        ids.put("Auto-start disabled", R.string.message_015);
         ids.put("Language", R.string.message_016);
         ids.put("Cancel", R.string.message_017);
         ids.put("Finalizing station list…", R.string.message_018);

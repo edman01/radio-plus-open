@@ -67,8 +67,9 @@
     <string name="message_011" formatted="false">"DX även svaga stationer"</string>
     <string name="message_012" formatted="false">"Sökkänslighet"</string>
     <string name="message_013" formatted="false">"Stäng"</string>
-    <string name="message_014" formatted="false">"Autostart aktiverad. Ställ in Junsuns Startup application på Empty."</string>
-    <string name="message_015" formatted="false">"Autostart avaktiverad"</string>
+    <string name="settings_auto_start_enabled">Autostart aktiverad</string>
+    <string name="settings_auto_start_enabled_junsun" formatted="false">"Autostart aktiverad. Ställ in Junsuns Startup application på Empty."</string>
+    <string name="settings_auto_start_disabled" formatted="false">"Autostart avaktiverad"</string>
     <string name="message_016" formatted="false">"Språk"</string>
     <string name="message_017" formatted="false">"Avbryt"</string>
     <string name="message_018" formatted="false">"Slutför stationslistan…"</string>

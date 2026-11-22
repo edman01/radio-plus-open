@@ -14,8 +14,9 @@
     <string name="message_011" formatted="false">"DX weak stations too"</string>
     <string name="message_012" formatted="false">"Scan sensitivity"</string>
     <string name="message_013" formatted="false">"Close"</string>
-    <string name="message_014" formatted="false">"Auto-start enabled. Set Junsun Startup application to Empty."</string>
-    <string name="message_015" formatted="false">"Auto-start disabled"</string>
+    <string name="settings_auto_start_enabled">Auto-start enabled</string>
+    <string name="settings_auto_start_enabled_junsun" formatted="false">"Auto-start enabled. Set Junsun Startup application to Empty."</string>
+    <string name="settings_auto_start_disabled" formatted="false">"Auto-start disabled"</string>
     <string name="message_016" formatted="false">"Language"</string>
     <string name="message_017" formatted="false">"Cancel"</string>
     <string name="message_018" formatted="false">"Finalizing station list…"</string>

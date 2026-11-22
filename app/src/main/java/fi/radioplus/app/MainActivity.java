@@ -850,12 +850,7 @@ public final class MainActivity extends Activity implements
 
     private void setAutoStartEnabled(boolean enabled) {
         AutoStartPreferences.setEnabled(this, enabled);
-        toast(enabled
-                ? tr(
-                        "Automaattikäynnistys päällä. Valitse Junsunin Startup application -asetukseksi Empty.",
-                        "Auto-start enabled. Set Junsun Startup application to Empty."
-                )
-                : tr("Automaattikäynnistys pois päältä", "Auto-start disabled"));
+        toast(getString(AutoStartNotice.messageId(enabled, Build.MANUFACTURER, Build.BRAND, Build.MODEL)));
     }
 
     private void showLanguageDialog() {

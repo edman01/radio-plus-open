@@ -18,6 +18,7 @@ import android.os.SystemClock;
 import android.text.Layout;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.accessibility.AccessibilityEvent;
 import android.view.inspector.WindowInspector;
 import android.widget.Button;
 import android.widget.TextView;
@@ -713,6 +714,44 @@ public final class AboutAppUiTest {
                 assertEquals(activity.getString(R.string.settings_toggle_off), state.getText().toString());
             });
         } finally { AutoStartPreferences.setEnabled(context, initial); }
+        assertNoPlayback();
+    }
+
+    @Test public void autoStartNoticesAreLocalizedAndOnlyTheJunsunHintNamesTheBrand() {
+        for (String lang : AppLanguage.codes()) {
+            AppLanguage.set(context, lang);
+            Context localized = AppLanguage.wrap(context);
+            String generic = localized.getString(AutoStartNotice.messageId(true, "alps", "alps", "V7"));
+            String hint = localized.getString(AutoStartNotice.messageId(true, "Junsun", "alps", "V7"));
+            String off = localized.getString(AutoStartNotice.messageId(false, "Junsun", null, null));
+            assertFalse(lang, generic.trim().isEmpty());
+            assertFalse(lang, generic.contains("Junsun"));
+            assertFalse(lang, off.contains("Junsun"));
+            assertTrue(lang, hint.contains("Junsun") && hint.contains("Empty"));
+            assertNotEquals(lang, generic, off);
+            if ("fi".equals(lang)) assertEquals("Automaattikäynnistys päällä", generic);
+            if ("en".equals(lang)) assertEquals("Auto-start enabled", generic);
+        }
+    }
+
+    @Test public void stockEmulatorShowsGenericToastWhenAutoStartIsEnabled() throws Exception {
+        boolean initial = AutoStartPreferences.isEnabled(context);
+        try {
+            AutoStartPreferences.setEnabled(context, false);
+            instrumentation.runOnMainSync(() -> activity.findViewById(R.id.more_button).performClick());
+            instrumentation.waitForIdleSync();
+            RadioSettingsDialog settings = (RadioSettingsDialog) field(MainActivity.class, "settingsDialog", activity);
+            android.app.UiAutomation ui = instrumentation.getUiAutomation();
+            String expected = activity.getString(R.string.settings_auto_start_enabled);
+            AccessibilityEvent toast = ui.executeAndWaitForEvent(
+                    () -> instrumentation.runOnMainSync(() -> settings.findViewById(R.id.settings_auto_start).performClick()),
+                    event -> event.getEventType() == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED
+                            && event.getText().stream().anyMatch(expected::contentEquals), 5_000);
+            toast.recycle();
+            assertTrue(AutoStartPreferences.isEnabled(context));
+        } finally {
+            AutoStartPreferences.setEnabled(context, initial);
+        }
         assertNoPlayback();
     }
 

@@ -14,8 +14,9 @@
     <string name="message_011" formatted="false">"DX anche stazioni deboli"</string>
     <string name="message_012" formatted="false">"Sensibilità di ricerca"</string>
     <string name="message_013" formatted="false">"Chiudi"</string>
-    <string name="message_014" formatted="false">"Avvio automatico attivato. Imposta «Startup application» di Junsun su «Empty»."</string>
-    <string name="message_015" formatted="false">"Avvio automatico disattivato"</string>
+    <string name="settings_auto_start_enabled">Avvio automatico attivato</string>
+    <string name="settings_auto_start_enabled_junsun" formatted="false">"Avvio automatico attivato. Imposta «Startup application» di Junsun su «Empty»."</string>
+    <string name="settings_auto_start_disabled" formatted="false">"Avvio automatico disattivato"</string>
     <string name="message_016" formatted="false">"Lingua"</string>
     <string name="message_017" formatted="false">"Annulla"</string>
     <string name="message_018" formatted="false">"Completamento dell’elenco stazioni…"</string>

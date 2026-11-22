@@ -14,8 +14,9 @@
     <string name="message_011" formatted="false">"DX también emisoras débiles"</string>
     <string name="message_012" formatted="false">"Sensibilidad de búsqueda"</string>
     <string name="message_013" formatted="false">"Cerrar"</string>
-    <string name="message_014" formatted="false">"Inicio automático activado. Configura «Startup application» de Junsun en «Empty»."</string>
-    <string name="message_015" formatted="false">"Inicio automático desactivado"</string>
+    <string name="settings_auto_start_enabled">Inicio automático activado</string>
+    <string name="settings_auto_start_enabled_junsun" formatted="false">"Inicio automático activado. Configura «Startup application» de Junsun en «Empty»."</string>
+    <string name="settings_auto_start_disabled" formatted="false">"Inicio automático desactivado"</string>
     <string name="message_016" formatted="false">"Idioma"</string>
     <string name="message_017" formatted="false">"Cancelar"</string>
     <string name="message_018" formatted="false">"Finalizando la lista de emisoras…"</string>

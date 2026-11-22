@@ -67,8 +67,9 @@
     <string name="message_011" formatted="false">"DX ook zwakke zenders"</string>
     <string name="message_012" formatted="false">"Zoekgevoeligheid"</string>
     <string name="message_013" formatted="false">"Sluiten"</string>
-    <string name="message_014" formatted="false">"Automatisch starten ingeschakeld. Stel Junsun Startup application in op Empty."</string>
-    <string name="message_015" formatted="false">"Automatisch starten uitgeschakeld"</string>
+    <string name="settings_auto_start_enabled">Automatisch starten ingeschakeld</string>
+    <string name="settings_auto_start_enabled_junsun" formatted="false">"Automatisch starten ingeschakeld. Stel Junsun Startup application in op Empty."</string>
+    <string name="settings_auto_start_disabled" formatted="false">"Automatisch starten uitgeschakeld"</string>
     <string name="message_016" formatted="false">"Taal"</string>
     <string name="message_017" formatted="false">"Annuleren"</string>
     <string name="message_018" formatted="false">"Zenderlijst afronden…"</string>

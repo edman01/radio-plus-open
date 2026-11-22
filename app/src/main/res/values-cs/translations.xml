@@ -67,8 +67,9 @@
     <string name="message_011" formatted="false">"DX i slabé stanice"</string>
     <string name="message_012" formatted="false">"Citlivost vyhledávání"</string>
     <string name="message_013" formatted="false">"Zavřít"</string>
-    <string name="message_014" formatted="false">"Automatické spuštění zapnuto. V Junsun nastavte Startup application na Empty."</string>
-    <string name="message_015" formatted="false">"Automatické spuštění vypnuto"</string>
+    <string name="settings_auto_start_enabled">Automatické spuštění zapnuto</string>
+    <string name="settings_auto_start_enabled_junsun" formatted="false">"Automatické spuštění zapnuto. V Junsun nastavte Startup application na Empty."</string>
+    <string name="settings_auto_start_disabled" formatted="false">"Automatické spuštění vypnuto"</string>
     <string name="message_016" formatted="false">"Jazyk"</string>
     <string name="message_017" formatted="false">"Zrušit"</string>
     <string name="message_018" formatted="false">"Dokončování seznamu stanic…"</string>
