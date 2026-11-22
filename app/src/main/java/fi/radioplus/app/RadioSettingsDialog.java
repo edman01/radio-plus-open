@@ -8,7 +8,8 @@ import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.InsetDrawable;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.os.Build;
 import android.view.Gravity;
@@ -292,8 +293,13 @@ final class RadioSettingsDialog extends Dialog {
         thumb.setShape(GradientDrawable.OVAL);
         thumb.setSize(dp(20), dp(20));
         thumb.setColor(new ColorStateList(states, new int[]{Color.rgb(27, 44, 18), WHITE}));
+        // Switch subtracts a thumb's optical insets from the track. Inset the
+        // painted layer instead so the 3 dp rim stays visible at both ends.
+        LayerDrawable thumbSlot = new LayerDrawable(new Drawable[]{thumb});
+        int rim = dp(3);
+        thumbSlot.setLayerInset(0, rim, rim, rim, rim);
         toggle.setThumbTintList(null);
-        toggle.setThumbDrawable(new InsetDrawable(thumb, dp(3)));
+        toggle.setThumbDrawable(thumbSlot);
         toggle.setChecked(checked);
         toggle.setOnCheckedChangeListener((button, enabled) -> {
             state.setText(enabled ? R.string.settings_toggle_on : R.string.settings_toggle_off);

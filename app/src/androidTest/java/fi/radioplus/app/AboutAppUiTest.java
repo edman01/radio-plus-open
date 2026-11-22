@@ -727,13 +727,30 @@ public final class AboutAppUiTest {
         try {
             toggle.draw(new Canvas(image));
             int trackPixels = 0, thumbPixels = 0, thumbX = 0;
+            Rect knob = new Rect();
             for (int y = 0; y < image.getHeight(); y++) for (int x = 0; x < image.getWidth(); x++) {
                 int pixel = image.getPixel(x, y);
                 if (pixel == trackColor) trackPixels++;
-                if (pixel == thumbColor) { thumbPixels++; thumbX += x; }
+                if (pixel == thumbColor) {
+                    thumbPixels++; thumbX += x;
+                    knob.union(x, y, x + 1, y + 1);
+                }
             }
             assertTrue("Track must be visible inside the control", trackPixels > 5);
             assertTrue("Thumb must be visible inside the control", thumbPixels > 5);
+            // The thumb must be surrounded by track, even at either end of its travel.
+            int gap = Math.max(1, Math.round(2 * toggle.getResources().getDisplayMetrics().density));
+            int cx = knob.centerX(), cy = knob.centerY();
+            int[][] rim = {{knob.left - gap, cy}, {knob.right - 1 + gap, cy},
+                    {cx, knob.top - gap}, {cx, knob.bottom - 1 + gap}};
+            for (int[] point : rim) {
+                int x = point[0], y = point[1];
+                assertTrue("Rim falls outside the switch", x >= 0 && x < image.getWidth()
+                        && y >= 0 && y < image.getHeight());
+                int color = image.getPixel(x, y);
+                assertTrue("Track rim missing at (" + x + ", " + y + ") when checked=" + toggle.isChecked(),
+                        color == trackColor || (!toggle.isChecked() && color == Color.rgb(155, 173, 188)));
+            }
             return thumbX / thumbPixels;
         } finally { image.recycle(); }
     }

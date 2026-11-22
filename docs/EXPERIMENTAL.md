@@ -28,7 +28,7 @@ it does not include G5 or SPD support.
 [BUILD.md](BUILD.md#reglink-device-test-build).
 
 For **Experimental Test Build 6** use `-PexperimentalTestBuild6=true`. Its
-logo-free APK reports `0.16.1-experimental-testbuild6-play` (version code 105)
+logo-free APK reports `0.16.1-experimental-testbuild6-play` (version code 106)
 in **Settings → General → About Radio+**. It includes the FM/AM, AGAMA and
 optional steering-wheel changes below. This is a hardware test build, not a
 new community beta; the wheel still needs confirmation on the target unit.
