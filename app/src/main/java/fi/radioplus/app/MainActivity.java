@@ -67,6 +67,7 @@ public final class MainActivity extends Activity implements
     private static final int REQUEST_STATION_LOGO = 701;
     private static final int REQUEST_PLAYBACK_NOTIFICATIONS = 702;
     private static final int REQUEST_SUPPORT_LOG = 703;
+    private static final int REQUEST_CAR_SETTINGS = 704;
     private static final long TUNE_SELECTION_GRACE_MS = 2500L;
     private static final long PAGE_EXIT_ANIMATION_MS = 85L;
     private static final long PAGE_ENTER_ANIMATION_MS = 175L;
@@ -343,6 +344,10 @@ public final class MainActivity extends Activity implements
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_CAR_SETTINGS) {
+            if (resultCode == RESULT_OK) recreate(); // The in-package activity changed the UI language.
+            return;
+        }
         if (requestCode == REQUEST_SUPPORT_LOG) {
             if (resultCode == RESULT_OK && data != null && data.getData() != null) {
                 Uri destination = data.getData();
@@ -693,6 +698,13 @@ public final class MainActivity extends Activity implements
     }
 
     private void showMoreControlsDialog() {
+        // Only the opt-in car-settings APK declares this activity. Do not send settings
+        // intents to another app or change the stable build's existing dialog.
+        Intent carSettings = new Intent(Intent.ACTION_APPLICATION_PREFERENCES).setPackage(getPackageName());
+        if (carSettings.resolveActivity(getPackageManager()) != null) {
+            startActivityForResult(carSettings, REQUEST_CAR_SETTINGS);
+            return;
+        }
         if (settingsDialog != null && settingsDialog.isShowing()) {
             return;
         }

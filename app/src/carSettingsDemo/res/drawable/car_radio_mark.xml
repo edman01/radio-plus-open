@@ -1,0 +1,9 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="56dp" android:height="56dp"
+    android:viewportWidth="56" android:viewportHeight="56">
+    <!-- High-contrast, single-accent version of the Radio+ launcher radio silhouette. -->
+    <path android:fillColor="#1B2530" android:pathData="M13,2h30a11,11 0,0 1,11 11v30a11,11 0,0 1,-11 11H13A11,11 0,0 1,2 43V13A11,11 0,0 1,13 2z"/>
+    <path android:pathData="M14,22h28a2,2 0,0 1,2 2v17a2,2 0,0 1,-2 2H14a2,2 0,0 1,-2 -2V24a2,2 0,0 1,2 -2z M15,27h26 M16,13l20,9"
+        android:strokeColor="#F4F7F8" android:strokeWidth="2.6" android:strokeLineJoin="round" android:strokeLineCap="round"/>
+    <path android:pathData="M35,31v8 M31,35h8 M38,15q4,0 4,4 M38,10q9,0 9,9"
+        android:strokeColor="@color/accent" android:strokeWidth="2.4" android:strokeLineCap="round"/>
+</vector>

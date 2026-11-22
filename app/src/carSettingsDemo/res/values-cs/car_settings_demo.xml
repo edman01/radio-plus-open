@@ -1,0 +1,10 @@
+<resources>
+    <string name="car_demo_app">Radio+ · Ukázka nastavení</string>
+    <string name="car_tuner_hint">Citlivost ladění můžete změnit po připojení rádia s podporou LOCAL/DX.</string>
+    <string name="car_wheel_hint">Volitelné ovládání tlačítky na volantu.</string>
+    <string name="car_test_hint">Nejprve zaparkujte. Stisky multimediálních tlačítek se budou 30 sekund zobrazovat pouze zde.</string>
+    <string name="car_locale_hint">Vyberte jazyk aplikace Radio+.</string>
+    <string name="car_no_tuner">Není připojen kompatibilní tuner</string>
+    <string name="car_access_hint">Ovládání tlačítky můžete nastavit v možnostech usnadnění systému Android.</string>
+    <string name="car_log_hint">Uložte technickou zprávu do zařízení. Neodesílá se automaticky.</string>
+</resources>

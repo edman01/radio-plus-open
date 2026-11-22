@@ -1,0 +1,10 @@
+<resources>
+    <string name="car_demo_app">Radio+ · Demo de ajustes</string>
+    <string name="car_tuner_hint">Conecta una radio con LOCAL/DX para cambiar la sensibilidad de búsqueda.</string>
+    <string name="car_wheel_hint">Control opcional de los botones del volante.</string>
+    <string name="car_test_hint">Estaciona el vehículo. Las pulsaciones multimedia solo se muestran aquí durante 30 segundos.</string>
+    <string name="car_locale_hint">Elige el idioma de Radio+.</string>
+    <string name="car_no_tuner">No hay un sintonizador compatible conectado</string>
+    <string name="car_access_hint">Gestiona el control de los botones en los ajustes de accesibilidad de Android.</string>
+    <string name="car_log_hint">Guarda el informe técnico en el dispositivo. No se envía automáticamente.</string>
+</resources>

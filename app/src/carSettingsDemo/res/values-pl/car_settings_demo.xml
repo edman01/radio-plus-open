@@ -1,0 +1,10 @@
+<resources>
+    <string name="car_demo_app">Radio+ · Demo ustawień</string>
+    <string name="car_tuner_hint">Aby zmienić czułość wyszukiwania, podłącz radio z obsługą LOCAL/DX.</string>
+    <string name="car_wheel_hint">Opcjonalne sterowanie przyciskami na kierownicy.</string>
+    <string name="car_test_hint">Najpierw zaparkuj. Przez 30 sekund naciśnięcia przycisków multimedialnych będą widoczne tylko tutaj.</string>
+    <string name="car_locale_hint">Wybierz język aplikacji Radio+.</string>
+    <string name="car_no_tuner">Nie podłączono zgodnego tunera</string>
+    <string name="car_access_hint">Sterowanie przyciskami można skonfigurować w ustawieniach ułatwień dostępu Androida.</string>
+    <string name="car_log_hint">Zapisz raport techniczny na urządzeniu. Nie zostanie wysłany automatycznie.</string>
+</resources>

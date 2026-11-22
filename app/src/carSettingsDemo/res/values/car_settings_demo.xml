@@ -1,0 +1,21 @@
+<resources>
+    <string name="car_demo_app">Radio+ · Settings Demo</string>
+    <string name="car_tuner_hint">Connect a radio that supports LOCAL/DX to change scan sensitivity.</string>
+    <string name="car_wheel_hint">Optional controls for the steering-wheel buttons.</string>
+    <string name="car_test_hint">Park first. For 30 seconds, media-button events are shown here only.</string>
+    <string name="car_locale_hint">Choose the language used in Radio+.</string>
+    <string name="car_no_tuner">No compatible tuner connected</string>
+    <string name="car_access_hint">Open Android accessibility settings to manage optional button routing.</string>
+    <string name="car_log_hint">Save a technical report locally. It is not sent automatically.</string>
+    <item type="id" name="car_settings_title" />
+    <item type="id" name="car_settings_scroll" />
+    <item type="id" name="car_settings_body" />
+    <item type="id" name="car_test_open" />
+    <style name="CarSettingsDemoTheme" parent="AppTheme">
+        <item name="android:windowBackground">#10151C</item>
+        <item name="android:statusBarColor">#10151C</item>
+        <item name="android:navigationBarColor">#10151C</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>

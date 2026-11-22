@@ -1,0 +1,10 @@
+<resources>
+    <string name="car_demo_app">Radio+ · Instellingendemo</string>
+    <string name="car_tuner_hint">Sluit een radio met LOCAL/DX aan om de zoekgevoeligheid te wijzigen.</string>
+    <string name="car_wheel_hint">Optionele bediening met stuurknoppen.</string>
+    <string name="car_test_hint">Parkeer eerst. Ingedrukte mediaknoppen worden 30 seconden lang alleen hier getoond.</string>
+    <string name="car_locale_hint">Kies de taal van Radio+.</string>
+    <string name="car_no_tuner">Geen geschikte tuner aangesloten</string>
+    <string name="car_access_hint">Beheer de knopbediening in de toegankelijkheidsinstellingen van Android.</string>
+    <string name="car_log_hint">Sla het technische rapport lokaal op. Het wordt niet automatisch verzonden.</string>
+</resources>

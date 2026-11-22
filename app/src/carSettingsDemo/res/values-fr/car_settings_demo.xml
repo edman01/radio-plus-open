@@ -1,0 +1,10 @@
+<resources>
+    <string name="car_demo_app">Radio+ · Démo des réglages</string>
+    <string name="car_tuner_hint">Connectez un autoradio compatible LOCAL/DX pour régler la sensibilité de recherche.</string>
+    <string name="car_wheel_hint">Commandes facultatives pour les touches du volant.</string>
+    <string name="car_test_hint">Garez le véhicule. Les appuis sur les touches multimédias sont affichés ici pendant 30 secondes.</string>
+    <string name="car_locale_hint">Choisissez la langue de Radio+.</string>
+    <string name="car_no_tuner">Aucun tuner compatible connecté</string>
+    <string name="car_access_hint">Gérez les touches dans les paramètres d’accessibilité Android.</string>
+    <string name="car_log_hint">Enregistrez le rapport technique sur l’appareil. Il ne sera pas envoyé automatiquement.</string>
+</resources>

@@ -1,0 +1,10 @@
+<resources>
+    <string name="car_demo_app">Radio+ · Ayar demosu</string>
+    <string name="car_tuner_hint">Arama hassasiyetini değiştirmek için LOCAL/DX destekleyen bir radyo bağlayın.</string>
+    <string name="car_wheel_hint">Direksiyon düğmeleri için isteğe bağlı denetimler.</string>
+    <string name="car_test_hint">Önce park edin. Medya düğmesi olayları 30 saniye boyunca yalnızca burada gösterilir.</string>
+    <string name="car_locale_hint">Radio+ için bir dil seçin.</string>
+    <string name="car_no_tuner">Uyumlu bir radyo alıcısı bağlı değil</string>
+    <string name="car_access_hint">Düğme denetimini Android erişilebilirlik ayarlarından yönetin.</string>
+    <string name="car_log_hint">Teknik raporu cihaza kaydedin. Rapor otomatik olarak gönderilmez.</string>
+</resources>

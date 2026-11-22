@@ -1,0 +1,25 @@
+// Opt-in native settings demo. The ordinary release and debug variants do not include its UI.
+beforeProject { p ->
+    if (p.path == ':app') p.plugins.withId('com.android.application') {
+        def components = p.extensions.getByName('androidComponents')
+        components.finalizeDsl { dsl ->
+            dsl.buildTypes.create('carSettingsDemo') {
+                initWith(dsl.buildTypes.debug)
+                applicationIdSuffix '.settingsdemo'
+                versionNameSuffix ''
+                signingConfig dsl.signingConfigs.getByName('debug')
+                matchingFallbacks = ['debug']
+            }
+            dsl.testBuildType = 'carSettingsDemo'
+        }
+        components.beforeVariants(components.selector().withBuildType('carSettingsDemo')) { v ->
+            v.enable = v.productFlavors.any { it.second == 'play' }
+        }
+        components.onVariants(components.selector().withBuildType('carSettingsDemo')) { v ->
+            v.outputs.each { out ->
+                out.versionName.set('0.16.1-settings-demo1')
+                out.versionCode.set(1)
+            }
+        }
+    }
+}

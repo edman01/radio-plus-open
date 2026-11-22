@@ -1,0 +1,10 @@
+<resources>
+    <string name="car_demo_app">Radio+ · Einstellungsdemo</string>
+    <string name="car_tuner_hint">Zum Ändern der Suchlaufempfindlichkeit ein Radio mit LOCAL/DX verbinden.</string>
+    <string name="car_wheel_hint">Optionale Steuerung über die Lenkradtasten.</string>
+    <string name="car_test_hint">Zuerst parken. Medientasten werden 30 Sekunden lang nur hier angezeigt.</string>
+    <string name="car_locale_hint">Die Sprache für Radio+ auswählen.</string>
+    <string name="car_no_tuner">Kein kompatibler Tuner verbunden</string>
+    <string name="car_access_hint">Die optionale Tastensteuerung lässt sich in den Android-Bedienungshilfen verwalten.</string>
+    <string name="car_log_hint">Technischen Bericht lokal speichern. Er wird nicht automatisch gesendet.</string>
+</resources>

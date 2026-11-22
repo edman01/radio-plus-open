@@ -1,0 +1,10 @@
+<resources>
+    <string name="car_demo_app">Radio+ · Asetusdemo</string>
+    <string name="car_tuner_hint">Hakuherkkyyttä voi muuttaa, kun LOCAL/DX-säätöä tukeva radio on yhdistetty.</string>
+    <string name="car_wheel_hint">Ratin painikkeiden valinnainen ohjaus.</string>
+    <string name="car_test_hint">Pysäköi ensin. Mediapainallukset näkyvät 30 sekunnin ajan vain tässä näkymässä.</string>
+    <string name="car_locale_hint">Valitse Radio+:n käyttämä kieli.</string>
+    <string name="car_no_tuner">Yhteensopivaa viritintä ei ole yhdistetty</string>
+    <string name="car_access_hint">Voit hallita painikeohjausta Androidin esteettömyysasetuksissa.</string>
+    <string name="car_log_hint">Tallenna tekninen loki laitteelle. Sitä ei lähetetä automaattisesti.</string>
+</resources>

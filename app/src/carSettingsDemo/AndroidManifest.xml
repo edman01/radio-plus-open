@@ -1,0 +1,14 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:tools="http://schemas.android.com/tools">
+    <application android:label="@string/car_demo_app" tools:replace="android:label">
+        <!-- Parked settings only: AAOS must be allowed to block this activity while driving.
+             No caller-provided extras, URI or flags are used to perform settings changes. -->
+        <activity android:name=".CarSettingsActivity" android:label="@string/action_setup"
+            android:exported="true" android:theme="@style/CarSettingsDemoTheme">
+            <intent-filter>
+                <action android:name="android.intent.action.APPLICATION_PREFERENCES" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
