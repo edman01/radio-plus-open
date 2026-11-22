@@ -2,6 +2,7 @@ package fi.radioplus.app;
 
 import android.app.Activity;
 import android.content.res.ColorStateList;
+import android.content.res.TypedArray;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
@@ -27,7 +28,7 @@ import android.widget.TextView;
 
 /** Native controls with one focusable touch target per setting. Sizes are never scaled below car minima. */
 final class CarSettingsViews {
-    static final int BASE = 0xff10151c, SURFACE = 0xff1b2530, NAV = 0xff263440,
+    static final int BASE = 0xff10151c, SURFACE = 0xff1b2530,
             PRESSED = 0xff334554, PRIMARY = 0xfff4f7f8, SECONDARY = 0xffc7d1da,
             LINE = 0xff43525e, INDICATOR = 0xffcad5df;
     private final Activity a;
@@ -36,6 +37,7 @@ final class CarSettingsViews {
     final ScrollView scroll;
     final Button nav;
     final TextView title;
+    private final Drawable closeIcon, backIcon;
     private final boolean showNavLabel;
 
     CarSettingsViews(Activity activity, Runnable navigate) {
@@ -56,18 +58,25 @@ final class CarSettingsViews {
         });
         int widthDp = a.getResources().getConfiguration().screenWidthDp;
         float scale = a.getResources().getConfiguration().fontScale;
-        showNavLabel = widthDp >= 590 && scale <= 1.35f;
+        // Material's actionModeCloseDrawable is a Back arrow. Its actual X is the search closeIcon.
+        closeIcon = platformIcon(android.R.attr.closeIcon, android.R.attr.searchViewStyle);
+        backIcon = platformIcon(android.R.attr.homeAsUpIndicator, 0);
+        showNavLabel = (widthDp >= 590 && scale <= 1.35f) || closeIcon == null || backIcon == null;
         int edge = dp(widthDp < 460 ? 16 : 24);
         LinearLayout bar = new LinearLayout(a);
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setBaselineAligned(false);
         bar.setPadding(edge,dp(8),edge,dp(8));
         root.addView(bar,-1,-2);
-        nav = new Button(a);
-        style(nav, NAV);
+        // Keep the platform's borderless button background, including focus and press feedback.
+        nav = new Button(a, null, android.R.attr.borderlessButtonStyle);
+        sizeControl(nav);
         nav.setId(R.id.settings_close);
         nav.setGravity(Gravity.CENTER);
-        nav.setPadding(dp(showNavLabel ? 16 : 22),0,dp(showNavLabel ? 16 : 22),0);
+        nav.setTextColor(accent);
+        nav.setCompoundDrawableTintList(ColorStateList.valueOf(accent));
+        int navInset = dp(showNavLabel ? 12 : 22);
+        nav.setPaddingRelative(navInset,0,navInset,0);
         nav.setOnClickListener(v -> navigate.run());
         bar.addView(nav,new LinearLayout.LayoutParams(showNavLabel ? -2 : dp(80),-2));
         title = text("",36,PRIMARY,true);
@@ -78,10 +87,12 @@ final class CarSettingsViews {
         titleSize.setMarginEnd(dp(8));
         bar.addView(title,titleSize);
         ImageView brand = new ImageView(a);
-        brand.setImageResource(R.drawable.car_radio_mark);
+        brand.setId(R.id.car_settings_brand);
+        brand.setImageDrawable(a.getApplicationInfo().loadIcon(a.getPackageManager()));
         brand.setScaleType(ImageView.ScaleType.FIT_CENTER);
         brand.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-        bar.addView(brand,dp(widthDp < 460 ? 44 : 56),dp(widthDp < 460 ? 44 : 56));
+        int brandSize = dp(widthDp < 460 ? 40 : 48);
+        bar.addView(brand,brandSize,brandSize);
         View divider = new View(a); divider.setBackgroundColor(LINE);
         root.addView(divider,-1,dp(1));
         scroll = new ScrollView(a);
@@ -102,9 +113,23 @@ final class CarSettingsViews {
         String name = a.getString(atRoot ? R.string.settings_close : R.string.settings_navigate_back);
         nav.setText(showNavLabel ? name : "");
         nav.setContentDescription(name);
-        nav.setCompoundDrawablesRelativeWithIntrinsicBounds(atRoot ? R.drawable.car_close : R.drawable.car_back,0,0,0);
+        nav.setCompoundDrawablesRelative(atRoot ? closeIcon : backIcon,null,null,null);
         nav.setCompoundDrawablePadding(showNavLabel ? dp(8) : 0);
         if (Build.VERSION.SDK_INT >= 28) body.setAccessibilityPaneTitle(a.getString(heading));
+    }
+
+    private Drawable platformIcon(int attr, int defStyleAttr) {
+        TypedArray theme = a.obtainStyledAttributes(null,new int[]{attr},defStyleAttr,0);
+        try {
+            Drawable icon = theme.getDrawable(0);
+            if (icon != null) {
+                icon = icon.mutate();
+                icon.setBounds(0,0,dp(36),dp(36));
+            }
+            return icon;
+        } finally {
+            theme.recycle();
+        }
     }
 
     void section(int label) {
@@ -161,7 +186,7 @@ final class CarSettingsViews {
         p.topMargin=body.getChildCount()==0 ? 0 : dp(gap);
         body.addView(v,p);
     }
-    private void style(TextView v,int fill) {
+    private void sizeControl(TextView v) {
         if (v instanceof Button) ((Button)v).setAllCaps(false);
         v.setTextSize(TypedValue.COMPLEX_UNIT_PX,typePx(32)); v.setTextColor(PRIMARY);
         v.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));
@@ -170,12 +195,15 @@ final class CarSettingsViews {
         v.setMinHeight(dp(80)); v.setMinimumHeight(dp(80));
         v.setMinWidth(dp(80)); v.setMinimumWidth(dp(80));
         v.setLetterSpacing(0); v.setStateListAnimator(null);
+    }
+    private void style(TextView v,int fill) {
+        sizeControl(v);
         v.setPaddingRelative(dp(18),dp(12),dp(18),dp(12));
         v.setBackgroundTintList(null);
         StateListDrawable bg=new StateListDrawable();
         bg.addState(new int[]{android.R.attr.state_focused},shape(fill,accent,12));
         bg.addState(new int[]{android.R.attr.state_pressed},shape(PRESSED,accent,12));
-        bg.addState(new int[]{},shape(fill,fill==NAV ? INDICATOR : LINE,12));
+        bg.addState(new int[]{},shape(fill,LINE,12));
         v.setBackground(new RippleDrawable(ColorStateList.valueOf(0x18ffffff),bg,null));
     }
     private void setId(View v,int id) {if(id!=View.NO_ID)v.setId(id);}

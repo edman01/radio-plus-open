@@ -17,8 +17,8 @@ beforeProject { p ->
         }
         components.onVariants(components.selector().withBuildType('carSettingsDemo')) { v ->
             v.outputs.each { out ->
-                out.versionName.set('0.16.1-settings-demo1')
-                out.versionCode.set(1)
+                out.versionName.set('0.16.1-settings-demo2')
+                out.versionCode.set(2)
             }
         }
     }

@@ -7,7 +7,12 @@ import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.content.res.TypedArray;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Rect;
+import android.graphics.drawable.Drawable;
 import android.os.SystemClock;
 import android.text.Spanned;
 import android.text.style.AbsoluteSizeSpan;
@@ -15,6 +20,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.WebView;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.Switch;
@@ -116,6 +122,49 @@ public final class CarSettingsDemoTest {
             return null;
         });
     }
+    private static Bitmap rendered(Drawable icon) {
+        Rect original=icon.copyBounds();
+        Bitmap b=Bitmap.createBitmap(80,80,Bitmap.Config.ARGB_8888);
+        try {icon.setBounds(0,0,b.getWidth(),b.getHeight());icon.draw(new Canvas(b));}
+        finally {icon.setBounds(original);}
+        return b;
+    }
+
+    private void assertFrameworkNav(CarSettingsActivity a,boolean root)throws Exception {
+        main(()->{
+            Button nav=a.findViewById(R.id.settings_close);
+            int attr=root?android.R.attr.closeIcon:android.R.attr.homeAsUpIndicator;
+            TypedArray attrs=a.obtainStyledAttributes(null,new int[]{attr},root?android.R.attr.searchViewStyle:0,0);
+            Drawable original;
+            try {original=attrs.getDrawable(0);}finally {attrs.recycle();}
+            assertNotNull("Stock Android navigation icon",original);
+            original=original.mutate();
+            original.setTint(nav.getCurrentTextColor());
+            original.setLayoutDirection(nav.getLayoutDirection());
+            Drawable actual=nav.getCompoundDrawablesRelative()[0];
+            assertNotNull(actual);
+            assertTrue("Use the actual themed Android glyph",rendered(original).sameAs(rendered(actual)));
+            return null;
+        });
+    }
+
+    @Test public void headerUsesInstalledLogoAndBorderlessPlatformNavigation() throws Exception {
+        CarSettingsActivity a=launch();
+        main(()->{
+            ImageView brand=a.findViewById(R.id.car_settings_brand);
+            assertNotNull(brand);assertFalse(brand.isClickable());assertNull(brand.getBackground());
+            assertTrue("Show the installed launcher icon, without redrawing or tinting it",
+                    rendered(a.getApplicationInfo().loadIcon(a.getPackageManager())).sameAs(rendered(brand.getDrawable())));
+            Button nav=a.findViewById(R.id.settings_close);
+            assertTrue("Focus and press feedback",nav.getBackground().isStateful());
+            Drawable idle=nav.getBackground().getConstantState().newDrawable(a.getResources(),a.getTheme()).mutate();
+            idle.setState(new int[]{android.R.attr.state_enabled});idle.jumpToCurrentState();
+            assertTrue("No resting button box",Bitmap.createBitmap(80,80,Bitmap.Config.ARGB_8888).sameAs(rendered(idle)));
+            return null;
+        });
+        assertFrameworkNav(a,true);tap(a,R.id.settings_language);assertFrameworkNav(a,false);
+    }
+
     @Test public void exportedParkedActivityHasNoDistractionExemption() throws Exception{
         Intent intent=new Intent(Intent.ACTION_APPLICATION_PREFERENCES).setPackage(ctx.getPackageName());
         ActivityInfo info=ctx.getPackageManager().resolveActivity(intent,PackageManager.GET_META_DATA).activityInfo;
@@ -186,7 +235,7 @@ public final class CarSettingsDemoTest {
     @Test public void textAndIndicatorsExceedRequiredContrastIncludingPress(){
         int pressed=CarSettingsViews.PRESSED;
         int lit=Color.rgb(lighten(Color.red(pressed)),lighten(Color.green(pressed)),lighten(Color.blue(pressed)));
-        for(int bg:new int[]{CarSettingsViews.BASE,CarSettingsViews.SURFACE,CarSettingsViews.NAV,pressed,lit})
+        for(int bg:new int[]{CarSettingsViews.BASE,CarSettingsViews.SURFACE,pressed,lit})
             for(int fg:new int[]{CarSettingsViews.PRIMARY,CarSettingsViews.SECONDARY,CarSettingsViews.INDICATOR,ctx.getColor(R.color.accent)})
                 assertTrue("Contrast "+Integer.toHexString(fg)+"/"+Integer.toHexString(bg),(Color.luminance(fg)+.05)/(Color.luminance(bg)+.05)>=4.5);
     }

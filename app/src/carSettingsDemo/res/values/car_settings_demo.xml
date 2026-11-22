@@ -8,6 +8,7 @@
     <string name="car_access_hint">Open Android accessibility settings to manage optional button routing.</string>
     <string name="car_log_hint">Save a technical report locally. It is not sent automatically.</string>
     <item type="id" name="car_settings_title" />
+    <item type="id" name="car_settings_brand" />
     <item type="id" name="car_settings_scroll" />
     <item type="id" name="car_settings_body" />
     <item type="id" name="car_test_open" />
