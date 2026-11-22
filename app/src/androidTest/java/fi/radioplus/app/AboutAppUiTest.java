@@ -144,25 +144,33 @@ public final class AboutAppUiTest {
     }
 
     @Test public void unsupportedScanIsHiddenButTsManualTuningRemainsReachable() throws Exception {
+        checkTuningMenu(false, RadioBackendProfile.TS_AC8259_V115,
+                RadioBackendProfile.TS_825X_V27, RadioBackendProfile.TS_8667Q_V23, RadioBackendProfile.UNKNOWN);
+    }
+
+    @Test public void issue6Mt8163OpensAutomaticAndManualTuning() throws Exception {
+        checkTuningMenu(true, RadioBackendProfile.forApkSha256(RadioBackendProfile.MT8163_20240912_APK_SHA256));
+    }
+
+    private void checkTuningMenu(boolean scanAvailable, RadioBackendProfile... profiles) throws Exception {
         Field latest = RadioApiFactory.class.getDeclaredField("latest"); latest.setAccessible(true);
         Object before = latest.get(null);
         try {
-            for (RadioBackendProfile profile : new RadioBackendProfile[]{RadioBackendProfile.TS_AC8259_V115,
-                    RadioBackendProfile.TS_825X_V27, RadioBackendProfile.TS_8667Q_V23,
-                    RadioBackendProfile.UNKNOWN}) {
+            for (RadioBackendProfile profile : profiles) {
+                boolean hasMenu = profile.isTs() || scanAvailable;
                 latest.set(null, new RadioApiFactory.Detection(profile, "", "", ""));
                 instrumentation.runOnMainSync(() -> {
                     try {
                         Method update = MainActivity.class.getDeclaredMethod("updateScanUi", boolean.class, String.class);
                         update.setAccessible(true); update.invoke(activity, false, "");
-                        assertEquals(profile.isTs(), activity.findViewById(R.id.auto_scan_button).isEnabled());
+                        assertEquals(hasMenu, activity.findViewById(R.id.auto_scan_button).isEnabled());
                         activity.onStateChanged(new RadioServiceClient.RadioState(0, 98100, "", "", "",
                                 false, false, false, false, false, false, false));
-                        assertEquals(profile.isTs(), activity.findViewById(R.id.auto_scan_button).isEnabled());
-                        assertFalse(activity.findViewById(R.id.scan_button).isEnabled());
+                        assertEquals(hasMenu, activity.findViewById(R.id.auto_scan_button).isEnabled());
+                        assertEquals(scanAvailable, activity.findViewById(R.id.scan_button).isEnabled());
                     } catch (ReflectiveOperationException e) { throw new AssertionError(e); }
                 });
-                if (profile.isTs()) {
+                if (hasMenu) {
                     instrumentation.runOnMainSync(() -> activity.findViewById(R.id.auto_scan_button).performClick());
                     instrumentation.waitForIdleSync();
                     instrumentation.runOnMainSync(() -> {
@@ -176,9 +184,12 @@ public final class AboutAppUiTest {
                                 close = root.findViewById(android.R.id.button2);
                             }
                         }
-                        assertNotNull("Tuning choices remain available on TS", choices);
-                        assertEquals(1, choices.getAdapter().getCount());
-                        assertEquals(activity.getString(R.string.tuning_manual), choices.getAdapter().getItem(0));
+                        assertNotNull("Tuning menu should open", choices);
+                        assertEquals(scanAvailable ? 2 : 1, choices.getAdapter().getCount());
+                        if (scanAvailable) assertEquals(activity.getString(R.string.tuning_automatic),
+                                choices.getAdapter().getItem(0));
+                        assertEquals(activity.getString(R.string.tuning_manual),
+                                choices.getAdapter().getItem(scanAvailable ? 1 : 0));
                         assertNotNull(close); assertTrue(close.performClick());
                     });
                     instrumentation.waitForIdleSync();

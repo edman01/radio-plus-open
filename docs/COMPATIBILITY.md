@@ -36,6 +36,10 @@ Read the [profile limitations and installation notes](EXPERIMENTAL.md) before tr
 | SPD / Junsun V9 Plus profile | `19449.2730.4FBC6B6.5CC38CB.20260130.191936`, matching stock app and system framework | `com.spd.radio` |
 
 Support currently covers the inspected stock radio apps from these firmware versions.
+Newer source builds also recognize the V1 PRO.C / MT8163 stock radio
+`V.1.0.2409121625` (AJ `2024.09.28.12_3_2424`, [issue #6](https://github.com/edman01/radio-plus-open/issues/6)).
+It uses the legacy 25-method HCN profile; reception and station discovery still
+need confirmation in the car. Experimental 2 and community beta 5 lack this fingerprint.
 Other versions may not be recognized. A matching model or package name alone
 does not guarantee compatibility.
 

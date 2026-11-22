@@ -68,8 +68,18 @@ public final class RadioBackendInteropTest {
     }
 
     @Test public void legacyUsesVerifiedTransactionMapAndParcelTypes() throws Exception {
+        for (String hash : new String[]{RadioBackendProfile.MT8163_APK_SHA256,
+                RadioBackendProfile.MT8163_20240912_APK_SHA256}) {
+            checkLegacyTuner(RadioBackendProfile.forApkSha256(hash));
+        }
+    }
+
+    private void checkLegacyTuner(RadioBackendProfile profile) throws Exception {
         Tuner tuner = new Tuner(true);
-        IRadioServiceAPI api = RadioApiFactory.create(RadioBackendProfile.HCN_LEGACY_25, tuner);
+        IRadioServiceAPI api = RadioApiFactory.create(profile, tuner);
+        assertTrue(profile.isEnabledForDeviceControl());
+        assertTrue(RadioApiFactory.supportsScanning(api));
+        assertFalse(RadioApiFactory.supportsSeparateAudioFocus(api));
         assertSame(tuner, api.asBinder());
         Binder client = new Binder();
         api.registerRadioClientBinder(client);

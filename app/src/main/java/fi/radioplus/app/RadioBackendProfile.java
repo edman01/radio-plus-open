@@ -25,6 +25,9 @@ enum RadioBackendProfile {
             "985143a87eb4ad7bcd0f8763c240a013ccba695a1c64e2cc09ff3a0cfa56870b";
     static final String MT8163_APK_SHA256 =
             "e1a505eb5f860382b3aee3e9f664013f92ce939c05942780b73c34c3ac5ce539";
+    // Issue #6: V1 PRO.C V.1.0.2409121625 exports the same 25-method service.
+    static final String MT8163_20240912_APK_SHA256 =
+            "43f1a458b3c741b8d0e2896e678cce064740ff6d240c5de8116826951dc059c0";
     static final String AC8259_APK_SHA256 =
             "0c9af15504740594734b21e472abb9edbd6875feb50e1b98a8e97e1b6cbbc4cf";
     static final String TS_825X_APK_SHA256 =
@@ -75,7 +78,8 @@ enum RadioBackendProfile {
     static RadioBackendProfile forApkSha256(String hash) {
         if (V7_APK_SHA256.equalsIgnoreCase(hash)
                 || V7_20260918_APK_SHA256.equalsIgnoreCase(hash)) return HCN_CURRENT_31;
-        if (MT8163_APK_SHA256.equalsIgnoreCase(hash)) return HCN_LEGACY_25;
+        if (MT8163_APK_SHA256.equalsIgnoreCase(hash)
+                || MT8163_20240912_APK_SHA256.equalsIgnoreCase(hash)) return HCN_LEGACY_25;
         if (AC8259_APK_SHA256.equalsIgnoreCase(hash)) return TS_AC8259_V115;
         if (TS_825X_APK_SHA256.equalsIgnoreCase(hash)) return TS_825X_V27;
         if (TS_8667Q_APK_SHA256.equalsIgnoreCase(hash)) return TS_8667Q_V23;

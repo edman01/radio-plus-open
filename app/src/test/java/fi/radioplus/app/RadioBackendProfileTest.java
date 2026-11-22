@@ -124,6 +124,10 @@ public final class RadioBackendProfileTest {
         assertEquals(RadioBackendProfile.HCN_LEGACY_25,
                 RadioBackendProfile.forApkSha256(RadioBackendProfile.MT8163_APK_SHA256));
         assertTrue(RadioBackendProfile.HCN_LEGACY_25.experimental);
+        String reportedApk = "43f1a458b3c741b8d0e2896e678cce064740ff6d240c5de8116826951dc059c0";
+        assertEquals(RadioBackendProfile.HCN_LEGACY_25, RadioBackendProfile.forApkSha256(reportedApk));
+        assertEquals(RadioBackendProfile.UNKNOWN, RadioBackendProfile.forApkSha256(reportedApk.substring(1)));
+        assertEquals(RadioBackendProfile.UNKNOWN, RadioBackendProfile.forApkSha256("V.1.0.2409121625"));
     }
     @Test public void hashComparisonAllowsUppercaseHex() {
         assertEquals(RadioBackendProfile.HCN_CURRENT_31,
